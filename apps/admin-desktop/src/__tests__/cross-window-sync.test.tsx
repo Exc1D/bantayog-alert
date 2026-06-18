@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { WindowSyncProvider, useWindowSyncContext } from '../providers/WindowSyncProvider'
+import { createStorageSyncEvent, type WindowSyncMessage } from '../test-utils'
 
 describe('Cross-window sync', () => {
   beforeEach(() => {
@@ -64,11 +65,11 @@ describe('Cross-window sync', () => {
   })
 
   it('receives select:municipality and updates store', async () => {
-    const listeners = new Set<(msg: unknown) => void>()
+    const listeners = new Set<(msg: WindowSyncMessage) => void>()
     function MockBroadcastChannel() {
       return {
         postMessage: vi.fn(),
-        set onmessage(handler: (ev: { data: unknown }) => void) {
+        set onmessage(handler: (ev: { data: WindowSyncMessage }) => void) {
           listeners.add((msg) => {
             handler({ data: msg })
           })
@@ -114,6 +115,88 @@ describe('Cross-window sync', () => {
     })
 
     expect(useCommandCenterStore.getState().selectedMunicipalityId).toBe('m1')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('ignores malformed BroadcastChannel payloads', async () => {
+    const listeners = new Set<(msg: unknown) => void>()
+    const onMsg = vi.fn()
+    function MockBroadcastChannel() {
+      return {
+        postMessage: vi.fn(),
+        set onmessage(handler: (ev: { data: unknown }) => void) {
+          listeners.add((msg) => {
+            handler({ data: msg })
+          })
+        },
+        close: vi.fn(),
+      }
+    }
+    vi.stubGlobal('BroadcastChannel', MockBroadcastChannel)
+
+    function Receiver() {
+      const { subscribe } = useWindowSyncContext()
+
+      useEffect(() => subscribe(onMsg), [subscribe])
+
+      return null
+    }
+
+    render(
+      <WindowSyncProvider>
+        <Receiver />
+      </WindowSyncProvider>,
+    )
+
+    await waitFor(() => {
+      expect(listeners.size).toBeGreaterThan(0)
+    })
+
+    act(() => {
+      listeners.forEach((fn) => {
+        fn({
+          type: 'select:report',
+          source: 'dashboard',
+        })
+      })
+    })
+
+    expect(onMsg).not.toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('ignores malformed storage fallback payloads', () => {
+    vi.stubGlobal('BroadcastChannel', undefined)
+    vi.stubGlobal('localStorage', {
+      setItem: vi.fn(),
+      getItem: vi.fn(),
+      removeItem: vi.fn(),
+    })
+
+    const onMsg = vi.fn()
+    function Receiver() {
+      const { subscribe } = useWindowSyncContext()
+
+      useEffect(() => subscribe(onMsg), [subscribe])
+
+      return null
+    }
+
+    render(
+      <WindowSyncProvider>
+        <Receiver />
+      </WindowSyncProvider>,
+    )
+
+    act(() => {
+      window.dispatchEvent(
+        createStorageSyncEvent({ type: 'select:municipality', source: 'dashboard' }),
+      )
+    })
+
+    expect(onMsg).not.toHaveBeenCalled()
 
     vi.unstubAllGlobals()
   })

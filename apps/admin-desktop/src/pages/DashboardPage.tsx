@@ -26,6 +26,8 @@ import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { useWindowSync } from '../hooks/useWindowSync'
+import { useCommandCenterStore } from '../stores/commandCenterStore'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
@@ -602,6 +604,8 @@ export default function DashboardPage() {
   )
 
   const navigate = useNavigate()
+  const { sendSync } = useWindowSync()
+  const setSuppressNextBroadcast = useCommandCenterStore((s) => s.setSuppressNextBroadcast)
 
   const handleReDispatch = useCallback((dispatchId: string) => {
     setSelectedDispatchId(dispatchId)
@@ -638,9 +642,11 @@ export default function DashboardPage() {
 
   const handleSelectMunicipality = useCallback(
     (municipality: string) => {
-      void navigate(`/map?municipality=${encodeURIComponent(municipality)}`)
+      void navigate(`/map?municipalityId=${encodeURIComponent(municipality)}`)
+      setSuppressNextBroadcast(true)
+      sendSync({ type: 'select:municipality', municipalityId: municipality, source: 'dashboard' })
     },
-    [navigate],
+    [navigate, sendSync, setSuppressNextBroadcast],
   )
 
   const handleVerifyReport = useCallback(async (reportId: string) => {

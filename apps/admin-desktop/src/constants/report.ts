@@ -137,3 +137,7 @@ export const REJECTION_REASONS = [
 ] as const
 
 export type RejectionReason = (typeof REJECTION_REASONS)[number]['value']
+
+export function isValidRejectionReason(value: unknown): value is RejectionReason {
+  return typeof value === 'string' && REJECTION_REASONS.some((r) => r.value === value)
+}

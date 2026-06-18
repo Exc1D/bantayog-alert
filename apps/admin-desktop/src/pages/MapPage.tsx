@@ -26,8 +26,14 @@ import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
-import { REJECTION_REASONS, type RejectionReason } from '../constants/report'
+import {
+  REJECTION_REASONS,
+  type RejectionReason,
+  isValidRejectionReason,
+} from '../constants/report'
 import type { Report, MunicipalPerformance } from '../types'
+
+const REJECT_NOTE_MAX_LENGTH = 500
 
 function responderEntries(responders: [string, unknown][]): {
   uid: string
@@ -136,11 +142,10 @@ export default function MapPage() {
         selectReport(msg.reportId)
       }
       if (msg.type === 'select:municipality' && msg.source === 'dashboard') {
-        // Municipality selection on map centers the map;
-        // drill-down data not yet available without a lookup helper
+        selectMunicipality(msg.municipalityId)
       }
     })
-  }, [subscribe, selectReport])
+  }, [subscribe, selectReport, selectMunicipality])
 
   const handlePinClick = useCallback(
     (reportId: string) => {
@@ -184,6 +189,10 @@ export default function MapPage() {
   const handleReject = useCallback(async (id: string, reason: RejectionReason, note: string) => {
     try {
       const trimmedNote = note.trim()
+      if (trimmedNote.length > REJECT_NOTE_MAX_LENGTH) {
+        setActionError('Admin note must be 500 characters or fewer')
+        return
+      }
       await withRetry(() =>
         callables.rejectReport({
           reportId: id,
@@ -466,7 +475,10 @@ export default function MapPage() {
               aria-label="Rejection reason"
               value={rejectReason}
               onChange={(e) => {
-                setRejectReason(e.target.value as RejectionReason)
+                const value = e.target.value
+                if (isValidRejectionReason(value)) {
+                  setRejectReason(value)
+                }
               }}
               className="w-full rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-white/30"
             >
@@ -479,7 +491,7 @@ export default function MapPage() {
             <textarea
               aria-label="Admin note (optional)"
               placeholder="Optional note (max 500 characters)"
-              maxLength={500}
+              maxLength={REJECT_NOTE_MAX_LENGTH}
               value={rejectNote}
               onChange={(e) => {
                 setRejectNote(e.target.value)

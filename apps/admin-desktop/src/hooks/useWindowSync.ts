@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
-import type { SyncMessage } from '../stores/commandCenterStore'
+import type { WindowSyncMessage } from '../stores/commandCenterStore'
 
-export function useWindowSync(onMessage?: (msg: SyncMessage) => void) {
+export function useWindowSync(onMessage?: (msg: WindowSyncMessage) => void) {
   const { sendSync, subscribe } = useWindowSyncContext()
 
   useEffect(() => {
