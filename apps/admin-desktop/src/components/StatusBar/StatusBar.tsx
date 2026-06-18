@@ -9,7 +9,7 @@ interface Props {
   activeIncidents: number
   avgResponseTime: number // minutes
   avgAcceptSeconds: number | null
-  fcmSuccessRate: number
+  fcmSuccessRate: number | null
   pendingTriage: number
   resolvedToday?: number
   muniIssues?: { resolved: number; total: number }
@@ -19,6 +19,7 @@ interface Props {
   totalResponders: number
   uncoveredMunicipalities: number
   lastDataUpdateAt: number
+  metricsError?: string | null
 }
 
 export function StatusBar({
@@ -35,6 +36,7 @@ export function StatusBar({
   totalResponders,
   uncoveredMunicipalities,
   lastDataUpdateAt,
+  metricsError,
 }: Props) {
   const { statusBarExpandedOverride, toggleStatusBarExpanded } = useCommandCenterStore()
   const isSurge = pendingTriage >= 20 || activeIncidents >= 50
@@ -70,6 +72,18 @@ export function StatusBar({
           uncoveredMunicipalities={uncoveredMunicipalities}
         />
       </div>
+
+      {metricsError != null && (
+        <div className="px-4 pb-1">
+          <span
+            role="status"
+            aria-label="Metrics unavailable"
+            className="text-xs text-[var(--color-text-muted)]"
+          >
+            Metrics unavailable
+          </span>
+        </div>
+      )}
 
       <button
         onClick={toggleStatusBarExpanded}

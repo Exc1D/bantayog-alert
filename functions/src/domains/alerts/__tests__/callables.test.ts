@@ -7,8 +7,8 @@ const mockSend = vi.hoisted(() => vi.fn().mockResolvedValue('test-msg-id'))
 vi.mock('../../ops/audit-stream.js', () => ({
   streamAuditEvent: mockStreamAuditEvent,
 }))
-vi.mock('firebase-admin', () => ({
-  messaging: vi.fn(() => ({
+vi.mock('firebase-admin/messaging', () => ({
+  getMessaging: vi.fn(() => ({
     send: mockSend,
   })),
 }))

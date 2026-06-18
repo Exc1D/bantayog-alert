@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act } from '@testing-library/react'
 import { useEffect } from 'react'
 import { WindowSyncProvider, useWindowSyncContext } from '../providers/WindowSyncProvider'
-import type { SyncMessage } from '../stores/commandCenterStore'
+import { createStorageSyncEvent } from '../test-utils'
+import type { WindowSyncMessage } from '../stores/commandCenterStore'
 
-function Consumer({ onMsg }: { onMsg: (m: SyncMessage) => void }) {
+function Consumer({ onMsg }: { onMsg: (m: WindowSyncMessage) => void }) {
   const { subscribe } = useWindowSyncContext()
   useEffect(() => subscribe(onMsg), [subscribe, onMsg])
   return null
@@ -32,33 +33,15 @@ describe('WindowSyncProvider dedup', () => {
     )
 
     // Simulate both BroadcastChannel and storage delivering the same message.
-    const msg: SyncMessage = {
+    const msg: WindowSyncMessage = {
       type: 'select:report',
       reportId: 'r1',
       source: 'dashboard',
       id: 'dedup-1',
     }
     act(() => {
-      window.dispatchEvent(
-        (() => {
-          const e = new Event('storage')
-          Object.defineProperty(e, 'key', { value: 'bantayog-sync-fallback' })
-          Object.defineProperty(e, 'newValue', {
-            value: JSON.stringify({ data: msg, timestamp: Date.now() }),
-          })
-          return e
-        })(),
-      )
-      window.dispatchEvent(
-        (() => {
-          const e = new Event('storage')
-          Object.defineProperty(e, 'key', { value: 'bantayog-sync-fallback' })
-          Object.defineProperty(e, 'newValue', {
-            value: JSON.stringify({ data: msg, timestamp: Date.now() }),
-          })
-          return e
-        })(),
-      )
+      window.dispatchEvent(createStorageSyncEvent(msg))
+      window.dispatchEvent(createStorageSyncEvent(msg))
     })
 
     expect(seen).toHaveBeenCalledTimes(1)

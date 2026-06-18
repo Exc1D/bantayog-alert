@@ -10,7 +10,7 @@ export interface TriageFilters {
   age?: TriageAge
 }
 
-export type SyncMessage =
+export type WindowSyncMessage =
   | { type: 'select:report'; reportId: string; source: 'dashboard' | 'map'; id?: string }
   | {
       type: 'select:municipality'
@@ -24,6 +24,8 @@ export type SyncMessage =
       action: 'verified' | 'rejected' | 'dispatched'
       id?: string
     }
+
+export type SyncMessage = WindowSyncMessage
 
 interface CommandCenterState {
   // Selection
@@ -42,7 +44,7 @@ interface CommandCenterState {
   triagePanelOpen: boolean
 
   // Cross-window
-  lastSyncMessage: SyncMessage | null
+  lastSyncMessage: WindowSyncMessage | null
 
   // Actions
   selectMunicipality: (id: string | null) => void
@@ -52,7 +54,7 @@ interface CommandCenterState {
   toggleStatusBarExpanded: () => void
   toggleOverlay: (overlayId: string) => void
   setTriagePanelOpen: (open: boolean) => void
-  setLastSyncMessage: (msg: SyncMessage | null) => void
+  setLastSyncMessage: (msg: WindowSyncMessage | null) => void
   setMapBounds: (
     bounds: { north: number; south: number; east: number; west: number } | null,
   ) => void

@@ -2,6 +2,15 @@
 
 ## UX / Dashboard Design
 
+- Dashboard metrics that have not yet been polled must display `—` (em dash), not `0` or `0%`. A `?? 0` default on a metrics hook looks like a real zero to an operator on first paint, falsely signaling a complete outage. Use `?? null` for the display path and guard the render with a null check.
+- The FCM success-rate metric has two separate defaults that must NOT be unified: `getStatusFcmSuccessRate` uses `?? null` (display — "not yet known"), while `getModeFcmSuccessRate` keeps `?? 1.0` (dashboard-mode input — a missing metric must not false-trip the mode into degraded). Never "fix" the mode default to match the display default.
+- A non-visible metrics poll error is as harmful as a fabricated value. Surface it in the always-visible row of the StatusBar (not inside the collapsible expanded section) so operators do not see a silent failure.
+
+## UX / Metrics Display (additions)
+
+- When widening a numeric stat card prop from `number` to `number | null`, guard derived boolean flags (like `isFcmHigh`) with a strict `!== null` check — a falsy guard `!fcmPercent` would incorrectly treat genuine `0` as unknown. Use `String(value) + '%'` instead of a template literal when the `@typescript-eslint/restrict-template-expressions` rule is active.
+- Test assertions over `getAllByRole('status')` result arrays: use `el.textContent.includes(...)` (direct access, no optional chain, no `??` coalescing) because the ESLint config in this project treats `HTMLElement.textContent` as non-nullable in test code.
+
 - For an operational EOC dashboard, every KPI needs three context layers: target/threshold, temporal comparison, and trend indicator. A bare number ("Active Now: 1") is technically correct and operationally useless. The most common dashboard failure mode in the literature is the "so what?" problem.
 - A wall-mounted command display without a map is not a Common Operating Picture. Geography is non-negotiable for disaster response. Either embed a map on the dashboard or surface a compact municipality heat strip that deep-links to the full map.
 - Operational dashboards (vs. analytical) should pre-attentively encode health at the top of the page. Pulsing mode badge + threshold-based color dots in `StatusCenter` are the right call for dim command rooms with 6-10 ft viewing distance.
@@ -239,3 +248,13 @@
 - Function tests import `@bantayog/shared-validators` through package exports (`lib/index.js`), not live `src`; after adding validator exports, rebuild the package before running emulator tests or the new schema can be `undefined` at runtime.
 - A focused emulator run can still report success while executing zero tests if a legacy file uses collection-time `itif(available)`. Convert those files to runtime `skip(...)` before trusting red/green results.
 - Callable retry wrappers must generate idempotency keys before entering `withRetry`; generating inside the retry closure gives each attempt a fresh key and can defeat idempotency.
+
+## Cross-window Sync / Validation
+
+- `WindowSyncProvider` must validate the full `WindowSyncMessage` shape at every ingress path. A type-only `type` guard lets malformed `select:report` / `select:municipality` payloads reach subscribers; storage fallback payloads must parse `data` and `timestamp` as `unknown`, validate both before dedupe, and only then forward to subscribers.
+- Red-first regression coverage should include malformed BroadcastChannel and storage fallback payloads asserting subscribers are not called.
+
+## Vitest / Module Mocking
+
+- `vi.mock` factories are hoisted and cannot reference imported functions at the top level. Use an async factory with dynamic `await import(…)` inside to call shared helpers: `vi.mock('../providers/WindowSyncProvider', async () => { const { createWindowSyncProviderModuleMock } = await import('../test-utils'); return createWindowSyncProviderModuleMock() })`. This avoids `ReferenceError: Cannot access '__vi_import_X__' before initialization`.
+- For tests that need to assert on mock methods (e.g., `sendSync.toHaveBeenCalledWith`), use `vi.hoisted(() => ({ sendSync: vi.fn<…>(), subscribe: vi.fn<…>() }))` directly in the test file. The hoisted context cannot call imported helpers either, so define the mock object inline.

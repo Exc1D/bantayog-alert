@@ -16,6 +16,7 @@ import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
+import { REJECTION_REASONS, type RejectionReason } from '../constants/report'
 import type { Report } from '../types'
 
 const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified'])
@@ -31,15 +32,6 @@ const SEVERITY_FILTERS = [
   { value: 'medium', label: 'Medium' },
   { value: 'low', label: 'Low' },
 ] as const
-const REJECTION_REASONS = [
-  { value: 'insufficient_detail', label: 'Insufficient detail' },
-  { value: 'duplicate', label: 'Duplicate' },
-  { value: 'obviously_false', label: 'Obviously false' },
-  { value: 'test_submission', label: 'Test submission' },
-] as const
-
-type RejectionReason = (typeof REJECTION_REASONS)[number]['value']
-
 interface VerifyReportPayload {
   reportId: string
   idempotencyKey: string

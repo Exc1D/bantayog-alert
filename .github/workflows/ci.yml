@@ -60,7 +60,7 @@ jobs:
         with:
           fetch-depth: 0 # audit diffs against the PR base ref
       # fallow-rs/fallow v2 branch snapshot from 2026-06-12.
-      - uses: fallow-rs/fallow@ad49086701b67af493502eb6f860ff0218d91bef
+      - uses: fallow-rs/fallow@1de4f0125e8d5d99dc13639ac579b546a060369d
         with:
           version: '2.91.0'
           command: audit
