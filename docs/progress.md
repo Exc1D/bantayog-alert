@@ -811,3 +811,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
+
+## 2026-06-18 - RF-07 Step2WhoWhere Policy Extraction
+
+- Extracted `Step2WhoWhere.handleNext` validation and next-payload derivation into pure `step2-policy.ts`, using the shared Camarines Norte municipality constants for manual centroid/label lookup.
+- Kept session-storage persistence, GPS behavior, and React error state in `Step2WhoWhere`; the handler now clears errors, delegates to the policy, maps policy errors back to existing copy, then persists contact memory and calls `onNext`.
+- Added policy coverage for valid manual input, valid GPS input with missing location confidence fallback, missing manual municipality, blank reporter name, and blank reporter phone number.
+- Verification: red-first `step2-policy.test.ts` failed on missing `./step2-policy.js`, then passed 5/5 after implementation. `pnpm --dir packages/shared-validators build` removed fresh-worktree source-map warning noise. `pnpm --dir apps/citizen-pwa exec vitest run src/components/SubmitReportForm` passed 7 files / 38 tests. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, scoped Prettier check, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed with only inherited findings. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
