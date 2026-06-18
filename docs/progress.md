@@ -811,3 +811,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
+
+## 2026-06-18 - RF-04 Decompose redispatch-report Policy
+
+- Extracted redispatch policy helpers into `functions/src/domains/dispatches/redispatch-policy.ts`: terminal-status validation, actor municipality scope derivation, severity deadline selection, and new-dispatch document construction.
+- Kept transaction orchestration, idempotency, rate limiting, reads-before-writes order, event writes, and logging inside `redispatch-report.ts`.
+- Rebuilt Functions output so `functions/lib/domains/dispatches/redispatch-policy.*` and the updated redispatch core are present with the source change.
+- Verification: red-first policy test failed on the missing module, then focused redispatch unit tests passed 17/17. Dispatch-domain emulator gate passed (14 files passed, 1 skipped; 89 passed, 4 skipped). `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, `pnpm --dir functions build`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
