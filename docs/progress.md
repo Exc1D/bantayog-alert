@@ -846,3 +846,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Extracted the duplicated Citizen PWA `isPublicIncidentData` logic into `apps/citizen-pwa/src/hooks/public-incident-guard.ts` and consumed it from both `usePublicIncidents` and `useIncident`.
 - Preserved the stricter detail-view boundary for both surfaces: malformed report type, severity, status, coordinates, and `verifiedAt` are rejected consistently instead of letting the list and detail hooks drift.
 - Verification: red-first guard test failed on the missing module, then `pnpm --dir apps/citizen-pwa exec vitest run src/hooks/public-incident-guard.test.ts src/hooks/usePublicIncidents.test.ts` passed 19/19; `pnpm --dir apps/citizen-pwa exec tsc --noEmit` and `pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
+## 2026-06-18 - RF-03 Decompose buildIncidents Mapping
+
+- Extracted Citizen public-incident mapping helpers into `apps/citizen-pwa/src/hooks/public-incident-mapping.ts`: raw data to `PublicIncident`, media candidate selection, and municipality filtering.
+- Slimmed `usePublicIncidents` so `buildIncidents` now orchestrates validation, media URL resolution, filtering, and stale-snapshot guarding instead of owning every branch inline.
+- Preserved the no-media snapshot timing by avoiding async media resolution when no candidate refs exist.
+- Verification: red-first mapping test failed on the missing module, then `pnpm --dir apps/citizen-pwa exec vitest run src/hooks/public-incident-mapping.test.ts src/hooks/usePublicIncidents.test.ts` passed 13/13; `pnpm --dir apps/citizen-pwa exec tsc --noEmit` and `pnpm --dir apps/citizen-pwa exec eslint src` passed. `pnpm exec fallow audit --base origin/main --gate new-only --format human` reported no issues in changed files.
