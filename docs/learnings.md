@@ -1,5 +1,10 @@
 # Learnings - Durable Rules
 
+## UX / Metrics Display (additions)
+
+- When widening a numeric stat card prop from `number` to `number | null`, guard derived boolean flags (like `isFcmHigh`) with a strict `!== null` check — a falsy guard `!fcmPercent` would incorrectly treat genuine `0` as unknown. Use `String(value) + '%'` instead of a template literal when the `@typescript-eslint/restrict-template-expressions` rule is active.
+- Test assertions over `getAllByRole('status')` result arrays: use `el.textContent.includes(...)` (direct access, no optional chain, no `??` coalescing) because the ESLint config in this project treats `HTMLElement.textContent` as non-nullable in test code.
+
 ## UX / Dashboard Design
 
 - Dashboard metrics that have not yet been polled must display `—` (em dash), not `0` or `0%`. A `?? 0` default on a metrics hook looks like a real zero to an operator on first paint, falsely signaling a complete outage. Use `?? null` for the display path and guard the render with a null check.
@@ -172,6 +177,7 @@
 - Schema union changes, such as `dispatchStatusSchema`, require downstream rebuilds.
 - For oversized modal refactors, extract pure policy first (defaults, validation, payload builders) and prove it with focused tests before moving JSX or caller workflows.
 - When extracting nested alertdialogs, preserve role/name, disabled/loading states, and backdrop behavior; shared modal reuse is only safe when those contracts already match.
+- Re-verify review comments after resolving current-base conflicts. PR #228 inherited a comment on TriagePanel's old internal reject modal, but the mainline merge had already removed that path; fix the surviving boundary risk rather than resurrecting stale UI to satisfy an outdated line anchor.
 - React effect lint treats direct registration helpers that can set state as effect-body state writes. Schedule app-shell registration work through async callbacks, and derive initial permission warnings outside the effect body.
 - For report-keyed prompt state, prefer a keyed child component over resetting several `useState` values from a parent `useEffect`; `react-hooks/set-state-in-effect` treats synchronous effect resets as cascading renders.
 - Citizen FCM token tests live at `apps/citizen-pwa/src/hooks/__tests__/useFcmToken.test.tsx`; older slice text may mention `src/hooks/useFcmToken.test.ts`.

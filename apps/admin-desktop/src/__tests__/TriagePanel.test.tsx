@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen, act } from '@testing-library/react'
+import { fireEvent, render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TriagePanel } from '../components/TriagePanel'
 
@@ -106,6 +106,31 @@ describe('TriagePanel', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Verify' }))
     expect(onVerify).toHaveBeenCalledWith('r1')
+  })
+
+  it('handles async reject failures at the panel boundary', async () => {
+    const user = userEvent.setup()
+    const error = new Error('reject failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    render(
+      <TriagePanel
+        report={awaitingReport}
+        onClose={vi.fn()}
+        onVerify={vi.fn()}
+        onReject={vi.fn().mockRejectedValue(error)}
+        onDispatch={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Reject' }))
+
+    try {
+      await waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith('Report rejection failed', error)
+      })
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('has dialog role and aria-modal', () => {
