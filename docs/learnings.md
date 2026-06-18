@@ -222,6 +222,7 @@
 - Worktrees can carry a stale `node_modules` without `.bin/`, so `pnpm exec <tool>` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`. Run `pnpm install --frozen-lockfile` in the worktree before trusting verification commands.
 - Organize by business domain over technical layer. Use `git mv`, update `index.ts` incrementally, and do not mix package extraction with directory reorg.
 - CLI tools invoked by CI scripts, such as `esbuild`, must be root devDependencies, not transitive dependencies.
+- Markdown progress entries must keep a blank line between top-level sections; `pnpm format:check` will fail if a merge adds `## ...` immediately after a `- Verification:` line.
 - Firebase emulator lists in CI must include every emulator required by the rules tests, including Storage when configured.
 - Terraform BigQuery `default_table_expiration_ms` must be at least `3600000`.
 - Dependabot lockfile conflicts often need a consolidated lockfile regeneration after one PR lands.
