@@ -10,7 +10,22 @@ describe('MapOverlayControls', () => {
     )
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Active Only' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Heatmap' })).toBeInTheDocument()
+  })
+
+  it('does not render dead overlay checkboxes (Heatmap / Responder Locations / Municipal Labels)', () => {
+    render(
+      <MapOverlayControls activeOverlays={new Set(['all_incidents'])} onToggleOverlay={vi.fn()} />,
+    )
+    expect(screen.queryByLabelText('Heatmap')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Responder Locations')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Municipal Labels')).not.toBeInTheDocument()
+  })
+
+  it('does not render a More button (removed with dead checkboxes)', () => {
+    render(
+      <MapOverlayControls activeOverlays={new Set(['all_incidents'])} onToggleOverlay={vi.fn()} />,
+    )
+    expect(screen.queryByRole('button', { name: /more/i })).not.toBeInTheDocument()
   })
 
   it('shows All as active when all_incidents is in overlays', () => {
@@ -48,30 +63,6 @@ describe('MapOverlayControls', () => {
     )
     await user.click(screen.getByRole('button', { name: 'All' }))
     expect(onToggleOverlay).not.toHaveBeenCalled()
-  })
-
-  it('toggles heatmap checkbox', async () => {
-    const user = userEvent.setup()
-    const onToggleOverlay = vi.fn()
-    render(
-      <MapOverlayControls
-        activeOverlays={new Set(['all_incidents'])}
-        onToggleOverlay={onToggleOverlay}
-      />,
-    )
-    await user.click(screen.getByRole('checkbox', { name: 'Heatmap' }))
-    expect(onToggleOverlay).toHaveBeenCalledWith('heatmap')
-  })
-
-  it('expands secondary toggles when More clicked', async () => {
-    const user = userEvent.setup()
-    render(
-      <MapOverlayControls activeOverlays={new Set(['all_incidents'])} onToggleOverlay={vi.fn()} />,
-    )
-    expect(screen.queryByRole('checkbox', { name: 'Responder Locations' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'More' }))
-    expect(screen.getByRole('checkbox', { name: 'Responder Locations' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Municipal Labels' })).toBeInTheDocument()
   })
 
   it('has minimum 44px hit targets', () => {

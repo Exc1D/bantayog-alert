@@ -60,6 +60,7 @@ export async function subscribeToAlertsCore(
       now: () => now.toMillis(),
     },
     async () => {
+      // Subscribe to the alerts topic
       await getMessaging().subscribeToTopic([token], 'alerts')
 
       return { success: true as const }

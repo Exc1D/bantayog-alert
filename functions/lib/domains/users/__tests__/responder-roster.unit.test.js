@@ -118,5 +118,30 @@ describe('suspendResponder Auth propagation', () => {
         });
         expect(revokeRefreshTokensMock).toHaveBeenCalledWith('responder-1');
     });
+    it('coerces malformed MFA enrollment values to false in Auth claims', async () => {
+        const { db } = mockDb({
+            agencyId: 'bfp-daet',
+            municipalityId: 'daet',
+            accountStatus: 'active',
+            mfaEnrolled: 'false',
+        });
+        adminDbMock.collection.mockImplementation(db.collection);
+        adminDbMock.runTransaction.mockImplementation(db.runTransaction);
+        await suspendResponder({
+            auth: {
+                uid: 'admin-1',
+                token: {
+                    role: 'agency_admin',
+                    agencyId: 'bfp-daet',
+                    accountStatus: 'active',
+                },
+            },
+            data: {
+                uid: 'responder-1',
+                idempotencyKey: '550e8400-e29b-41d4-a716-446655440001',
+            },
+        }, {});
+        expect(setCustomUserClaimsMock).toHaveBeenCalledWith('responder-1', expect.objectContaining({ mfaEnrolled: false }));
+    });
 });
 //# sourceMappingURL=responder-roster.unit.test.js.map

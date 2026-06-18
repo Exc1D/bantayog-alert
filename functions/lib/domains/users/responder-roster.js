@@ -46,7 +46,7 @@ function buildResponderStatusClaims(responder, targetStatus, nowMillis) {
         ...(typeof responder.agencyId === 'string' && { agencyId: responder.agencyId }),
         ...(municipalityId && { municipalityId }),
         ...(municipalityId && { permittedMunicipalityIds: [municipalityId] }),
-        mfaEnrolled: responder.mfaEnrolled ?? false,
+        mfaEnrolled: typeof responder.mfaEnrolled === 'boolean' ? responder.mfaEnrolled : false,
         lastClaimIssuedAt: nowMillis,
     };
 }

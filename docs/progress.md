@@ -1,5 +1,71 @@
 # Progress
 
+## 2026-06-18 - PR #228 Conflict Resolution + Review Follow-up
+
+- Merged current `origin/main` into `feat/3c-19b-dispatch-fcm-truthgate` and resolved the remaining conflicts in `TriagePanel.tsx`, `docs/progress.md`, `functions/src/domains/alerts/subscribe-to-alerts.ts`, and generated `functions/lib/domains/alerts/subscribe-to-alerts.js`.
+- Re-verified all three CodeRabbit threads against the post-merge tree. `ConfirmationModal` and responder MFA claim validation were still valid. The exact `TriagePanel` modal `onConfirm` path no longer exists after the 3c-18 mainline merge, but the direct `onReject` boundary still accepted promises, so the surviving boundary risk was fixed there instead of restoring the stale modal.
+- `ConfirmationModal` now routes backdrop, Escape, top-right Close, and footer Cancel through the same loading-aware cancel guard; Close is disabled while `confirmLoading` is true.
+- `TriagePanel` now catches and logs async `onReject` failures at the panel boundary.
+- `buildResponderStatusClaims` now treats Firestore `mfaEnrolled` as external input and only forwards boolean values into Auth custom claims; malformed values fall back to `false`. Rebuilt `functions/lib`.
+- Verification: red-first failures reproduced for modal dismiss lock, async reject handling, and malformed `mfaEnrolled`; focused admin tests passed 19/19; focused responder roster test passed 2/2; admin and functions typechecks passed; targeted admin/functions eslint passed; `pnpm --dir functions build` passed with the existing Node 22 engine warning under local Node 20.20.2. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-18 - PR #227 Conflict Resolution
+
+- Merged current `origin/main` into `chore/remove-dead-suppress-broadcast` to resolve PR #227's conflicts without a force push.
+- Resolved `apps/admin-desktop/src/stores/commandCenterStore.ts` by keeping the new `WindowSyncMessage` export/alias contract from PR #226 while preserving PR #227's removal of the dead `suppressNextBroadcast` state and setter.
+- Removed the now-present stale `setSuppressNextBroadcast(true)` call from `DashboardPage.handleSelectMunicipality` and the obsolete `MapPage.reject.test.tsx` store mock field after PR #226 landed on `main`.
+- Verification: rebuilt ignored shared-validator source maps locally to avoid Vite source-map warning noise, then focused admin tests passed 4 files / 15 tests. `pnpm --dir apps/admin-desktop run typecheck`, `pnpm --dir apps/admin-desktop run lint`, scoped Prettier check, and `git diff --check` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-16 - Remove dead `suppressNextBroadcast` cross-window flag (admin-desktop)
+
+- Resolved the set-but-never-read `suppressNextBroadcast` flag in `apps/admin-desktop/src/stores/commandCenterStore.ts`. `grep -rn` confirmed it was only ever **set** (no reader in production), and `WindowSyncProvider` already prevents self-echoes via UUID dedup (`sendSync` records the message id before posting) while `BroadcastChannel.postMessage` never delivers to the same window. No genuine echo-loop a reader would prevent → chose **option 2 (remove)** over wiring a phantom reader (YAGNI). A stale `true` would have wrongly suppressed a future legitimate broadcast.
+- Removed the interface field, the `setSuppressNextBroadcast` setter signature, its initial value, and the setter impl from the store; removed the single production call site (`handlePinClick` in `pages/MapPage.tsx`, including the `useCallback` dep). Deleted the now-invalid `suppressNextBroadcast: false,` literal from 6 `setState` test fixtures so `tsc` stays green (excess-property check).
+- **Branch scope note:** on this branch only `MapPage.tsx` carries the setter call. The 3c-21 `DashboardPage.handleSelectMunicipality` sender referenced in the task lives on the unmerged `feat/3c-21-municipality-drilldown` branch and is **not present here** — it needs the same one-line removal when/if it merges (no store field will exist for it to set).
+- Frontend-only: 2 source files + 6 test fixtures, 1 insertion / 15 deletions. No backend, rules, indexes, schema, or deploy.
+- Verification: `grep` = 0 references; `tsc --noEmit` clean; `eslint` clean; broadcast regression guards `cross-window-sync.test.tsx` + `dashboard-mode-layout.test.tsx` = 6/6 passed (BroadcastChannel send + localStorage fallback + receive paths intact). No red-first behavioral test was warranted because the flag was never read — removing it changes zero runtime behavior; `tsc` + the existing cross-window suite are the regression guards. The 4 firebase-importing admin tests (`dashboard-firestore-wiring`, `dashboard-redispatch`, `map-firestore-wiring`, `MapPage.ux-completeness`) fail identically with and without the change — a stash baseline at HEAD reproduced the documented pre-existing `auth/invalid-api-key` crash at `app/firebase.ts:52` ("no tests" collected at module import, before any store code runs).
+
+## 2026-06-15 - 3c-18 Map Reject: Confirmation + Real Reason Picker
+
+- Extracted `REJECTION_REASONS` (as-const value array) and `RejectionReason` union type from `TriagePage.tsx` into `constants/report.ts` so the enum is the single source of truth. Both are exported from the `../constants` barrel automatically.
+- Updated `TriagePage.tsx` to import from `../constants/report`; removed the inline copies. Zero behavioral change to Triage.
+- Updated `TriagePanel.tsx` (required 4th source file — the existing internal `ConfirmationModal` in the panel was not in the spec recon): removed the internal `rejectModalOpen` state and `ConfirmationModal`, changed the Reject button to call `onReject(report.id)` directly, removed the `ConfirmationModal` import. The panel now delegates full confirm+reason UX to the page-level modal.
+- Updated `MapPage.tsx`: added `rejectConfirmOpen`, `rejectPendingId`, `rejectReason` (`'insufficient_detail'` default), and `rejectNote` state; added `handleRequestReject`, `handleCancelReject`; changed `handleReject` to accept `(id, reason, note)`, use the **chosen** reason, use a conditional spread for non-blank notes (satisfying `exactOptionalPropertyTypes`), surface errors through `actionErrorMessage`, and close the modal in `finally`; wired `onReject={handleRequestReject}`; rendered a `<ConfirmationModal>` with the reason `<select>` (from `REJECTION_REASONS`) and optional note `<textarea>` as children.
+- Red-first: wrote `src/__tests__/MapPage.reject.test.tsx` first; confirmed 5/5 tests failed on the current code for the right reasons. Implemented; 5/5 pass.
+- Verification: `pnpm --dir apps/admin-desktop exec vitest run src/__tests__/MapPage.reject.test.tsx src/pages/TriagePage.test.tsx` — 2 files, 24/24 tests passed. `pnpm --dir apps/admin-desktop exec tsc --noEmit` — clean. `pnpm --dir apps/admin-desktop exec eslint src` — clean. `git diff --check` — clean. `MapPage.test.tsx` is a pre-existing `auth/invalid-api-key` failure unrelated to this change.
+
+## 2026-06-15 - Phase 3C-20 Dashboard Declare-Alert Error Surfacing
+
+- Fixed the silent failure path in `DashboardPage.tsx` where a failed
+  province-wide alert declaration only called `console.error`. The operator had
+  no visible signal the broadcast failed and would incorrectly believe the alert
+  had been sent. The fix is a single `setActionError(msg)` call added to
+  `onAlertError`, mirroring the exact pattern already used by the re-dispatch
+  and verify-report failure handlers (lines 627 and 651).
+- `actionError` is already rendered in the page shell by
+  `<DashboardFeedbackBanners actionError={actionError} ... />` (above the
+  modals), so no new UI, no banner relocation, and no `DeclareAlertModal`
+  changes were needed. Frontend-only; zero backend/rules/schema/deploy changes.
+- **Red-first proof:** wrote
+  `apps/admin-desktop/src/__tests__/DashboardPage.declare-alert-error.test.tsx`
+  with a `DeclareAlertModal` mock that exposes a `force-alert-error` button. The
+  test failed before the fix (`findByText('Alert broadcast failed')` timed out
+  because the handler only logged). After adding `setActionError(msg)` the test
+  passed (1/1).
+- **Verification:** `vitest run` 1/1 ✓; `tsc --noEmit` ✓ (clean); `eslint src`
+  ✓ (clean — fixed one `@typescript-eslint/no-confusing-void-expression` in the
+  test mock); `git diff --check` ✓. Files changed: `DashboardPage.tsx` (+1
+  line), `DashboardPage.declare-alert-error.test.tsx` (new, 103 lines).
+
+## 2026-06-15 - 3c-19a Dashboard FCM Metric Truth-Gate
+
+- Fixed the fabricated `0%` push-rate display on the Admin Dashboard: `getStatusFcmSuccessRate` now returns `?? null` instead of `?? 0`, widened through `StatusBar` and `StatusExpanded` props.
+- **Asymmetry preserved by design:** `getModeFcmSuccessRate` keeps `?? 1.0` — the dashboard mode computation must NOT false-trip into degraded when metrics are simply missing/unpolled. Only the _displayed number_ was lying; the mode default is correct and was left unchanged.
+- `StatusExpanded` null-guards the FCM rate: renders `—` (em dash, muted color) when `null`, renders `N%` with the existing green/amber success split when non-null. A genuine measured `0` still renders `0%` — only `null` shows the dash.
+- `StatusBar` gains an optional `metricsError?: string | null` prop that renders a `role="status"` / `aria-label="Metrics unavailable"` indicator in the always-visible top row (not buried in the collapsible `StatusExpanded`). Uses `!= null` guard so passing `null` suppresses the indicator. Conditional spread `{...(metricsError != null ? { metricsError } : {})}` satisfies `exactOptionalPropertyTypes`.
+- `DashboardStatusBarProps` extended with `metricsError: string | null`; the page's already-destructured `metricsError` from `useOpsMetrics('24h')` is now passed down to `DashboardStatusBar` → `StatusBar`.
+- Red-first TDD: wrote `StatusExpanded.test.tsx` (4 tests) and extended `StatusBar.test.tsx` (3 new tests in a `metrics error indicator` describe block) before implementation. All 3 targeted failures were reproduced for the right reasons, then resolved.
+- Verification: `vitest run` passed 33/33 tests (2 files); `tsc --noEmit` clean; `eslint src` clean; `git diff --check` clean.
+
 ## 2026-06-15 - 3c-19b Dispatch FCM Metric Truth-Gate
 
 - Mirrors 3c-19a on the `/dispatches` surface: the FCM success-rate metric no longer fabricates `0%` pre-poll.
@@ -731,3 +797,26 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added the 3D-02 Profile page off-duty/unavailable/on-break advisory derived from the same UI availability state as the segmented control. The notice uses `role="status"` and disappears when the responder is available.
 - Kept the slice UI-only: no backend semantics changes, no new listeners, no deploy, and no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 - Verification: red-first `ProfilePage.test.tsx` failed on the missing `role="status"` warning, then passed 15/15 after implementation. `pnpm --dir apps/responder-app exec tsc --noEmit`, `pnpm --dir apps/responder-app exec eslint src`, and `git diff --check` passed.
+
+## 2026-06-16 - PR #226 Review Follow-up: WindowSyncMessage + Shared Test Utilities
+
+- Addressed three PR #226 review/CI findings:
+  1. **Extract duplicated `WindowSyncProvider` mocks** into `apps/admin-desktop/src/test-utils.tsx`:
+     - Added `WindowSyncContextMock` interface, `createWindowSyncContextMock()`, `createWindowSyncProviderModuleMock()`, and `resetWindowSyncContextMock()`.
+     - Provides `WindowSyncMessage` type re-export for tests.
+  2. **Harden unknown-typed window-sync ingress** to full `WindowSyncMessage` validation:
+     - `isValidSyncMessage` now checks `id`, `reportId` / `municipalityId`, `source`, and `triage:action` values, not just `type`.
+     - The storage fallback parses `data` and `timestamp` as `unknown`, validates both before dedupe, and only then forwards to subscribers.
+  3. **Resolve merge-format CI** by merging `origin/main` into the PR branch and formatting `docs/learnings.md` plus `docs/progress.md`.
+- Fixed Vitest hoisting conflict: async `vi.mock` factories with dynamic `await import('../test-utils')` avoid `__vi_import_X__ before initialization` errors in four test files. Two assertion-based tests (`MapPage.test.tsx`, `DashboardPage.municipality-drilldown.test.tsx`) use inline `vi.hoisted` raw objects.
+- Verification: red-first malformed BroadcastChannel and storage fallback tests failed before the validation fix, then focused sync tests passed 6/6. `pnpm exec prettier --check docs/learnings.md docs/progress.md`, `tsc --noEmit`, `eslint src`, and `git diff --check` passed.
+
+## 2026-06-18 - PR #226 CI and Review Follow-up
+
+- Added runtime rejection-note length enforcement in Admin Desktop `MapPage`: trimmed admin notes over 500 characters now stop locally before `rejectReport`, matching the textarea limit instead of relying on UI-only validation.
+- Reduced the PR's Fallow fail findings by simplifying `WindowSyncProvider` sync-message validation helpers and moving repeated test scaffolding into `apps/admin-desktop/src/test-utils.tsx`; the local changed-code audit now reports `verdict: warn` instead of the CI-blocking `fail`.
+- Left remaining Fallow duplication warnings alone because they are warning-tier or inherited after the gate moved out of fail, and fixing them would widen the PR beyond the still-valid CI blocker and review comment.
+- Verification: red-first focused note-length test failed before the guard, then passed. Changed admin-desktop tests passed 8/8 files and 40/40 tests. `pnpm --dir apps/admin-desktop run typecheck`, `pnpm --dir apps/admin-desktop run lint`, scoped Prettier check, and `fallow audit --format json --quiet --base origin/main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+- Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
+- Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.

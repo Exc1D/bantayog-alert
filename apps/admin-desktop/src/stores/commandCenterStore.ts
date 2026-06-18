@@ -10,7 +10,7 @@ export interface TriageFilters {
   age?: TriageAge
 }
 
-export type SyncMessage =
+export type WindowSyncMessage =
   | { type: 'select:report'; reportId: string; source: 'dashboard' | 'map'; id?: string }
   | {
       type: 'select:municipality'
@@ -24,6 +24,8 @@ export type SyncMessage =
       action: 'verified' | 'rejected' | 'dispatched'
       id?: string
     }
+
+export type SyncMessage = WindowSyncMessage
 
 interface CommandCenterState {
   // Selection
@@ -42,8 +44,7 @@ interface CommandCenterState {
   triagePanelOpen: boolean
 
   // Cross-window
-  lastSyncMessage: SyncMessage | null
-  suppressNextBroadcast: boolean
+  lastSyncMessage: WindowSyncMessage | null
 
   // Actions
   selectMunicipality: (id: string | null) => void
@@ -53,11 +54,10 @@ interface CommandCenterState {
   toggleStatusBarExpanded: () => void
   toggleOverlay: (overlayId: string) => void
   setTriagePanelOpen: (open: boolean) => void
-  setLastSyncMessage: (msg: SyncMessage | null) => void
+  setLastSyncMessage: (msg: WindowSyncMessage | null) => void
   setMapBounds: (
     bounds: { north: number; south: number; east: number; west: number } | null,
   ) => void
-  setSuppressNextBroadcast: (value: boolean) => void
 }
 
 export const useCommandCenterStore = create<CommandCenterState>((set) => ({
@@ -71,7 +71,6 @@ export const useCommandCenterStore = create<CommandCenterState>((set) => ({
   activeOverlays: new Set(['all_incidents']),
   triagePanelOpen: false,
   lastSyncMessage: null,
-  suppressNextBroadcast: false,
 
   selectMunicipality: (id) => {
     set({ selectedMunicipalityId: id })
@@ -107,8 +106,5 @@ export const useCommandCenterStore = create<CommandCenterState>((set) => ({
   },
   setMapBounds: (bounds) => {
     set({ mapBounds: bounds })
-  },
-  setSuppressNextBroadcast: (value) => {
-    set({ suppressNextBroadcast: value })
   },
 }))

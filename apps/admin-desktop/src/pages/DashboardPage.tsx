@@ -26,6 +26,7 @@ import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { useWindowSync } from '../hooks/useWindowSync'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
@@ -105,6 +106,7 @@ interface DashboardModalsProps {
 interface DashboardStatusBarProps {
   activeCount: number
   lastDataUpdateAt: number
+  metricsError: string | null
   mode: DashboardMode
   municipalData: MunicipalPerformance[]
   opsMetrics: OpsMetricsSnapshot
@@ -205,8 +207,8 @@ function getModeFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number {
   return opsMetrics?.fcmSuccessRate ?? 1.0
 }
 
-function getStatusFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number {
-  return opsMetrics?.fcmSuccessRate ?? 0
+function getStatusFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number | null {
+  return opsMetrics?.fcmSuccessRate ?? null
 }
 
 function getAvgAcceptSeconds(opsMetrics: OpsMetricsSnapshot): number | null {
@@ -338,6 +340,7 @@ function DashboardStaleDataBanner({
 function DashboardStatusBar({
   activeCount,
   lastDataUpdateAt,
+  metricsError,
   mode,
   municipalData,
   opsMetrics,
@@ -358,6 +361,7 @@ function DashboardStatusBar({
       totalResponders={responderCount}
       uncoveredMunicipalities={getUncoveredMunicipalityCount(municipalData)}
       lastDataUpdateAt={lastDataUpdateAt}
+      {...(metricsError != null ? { metricsError } : {})}
     />
   )
 }
@@ -599,6 +603,7 @@ export default function DashboardPage() {
   )
 
   const navigate = useNavigate()
+  const { sendSync } = useWindowSync()
 
   const handleReDispatch = useCallback((dispatchId: string) => {
     setSelectedDispatchId(dispatchId)
@@ -635,9 +640,10 @@ export default function DashboardPage() {
 
   const handleSelectMunicipality = useCallback(
     (municipality: string) => {
-      void navigate(`/map?municipality=${encodeURIComponent(municipality)}`)
+      void navigate(`/map?municipalityId=${encodeURIComponent(municipality)}`)
+      sendSync({ type: 'select:municipality', municipalityId: municipality, source: 'dashboard' })
     },
-    [navigate],
+    [navigate, sendSync],
   )
 
   const handleVerifyReport = useCallback(async (reportId: string) => {
@@ -738,6 +744,7 @@ export default function DashboardPage() {
       <DashboardStatusBar
         activeCount={activeCount}
         lastDataUpdateAt={lastDataUpdateAt}
+        metricsError={metricsError}
         mode={mode}
         municipalData={municipalData}
         opsMetrics={opsMetrics}
@@ -777,6 +784,7 @@ export default function DashboardPage() {
         isDispatching={isDispatching}
         onAlertError={(msg) => {
           console.error('Alert declaration failed:', msg)
+          setActionError(msg)
         }}
         onCloseAlert={() => {
           setAlertModalOpen(false)
