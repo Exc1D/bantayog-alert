@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-06-18 - RF-01 Backend-only callable runbook
+
+- Documented the RF-01 Bucket B/C Admin callable wrappers as intentionally backend-only for the pilot: `cancelDispatch`, `closeReport`, `mergeDuplicates`, `suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride`, `setRetentionExempt`, `setErasureLegalHold`, `approveErasureRequest`, `suspendUser`, `revokeUser`, `resetUserTotp`, `createUser`, and `reopenReport`.
+- Added a `docs/runbooks/pilot-demo.md#backend-only-operations` table with each callable's allowed operator role, payload shape, and operational use, based on the backing Functions source. The Admin wrapper file now points backend-only readers to that runbook section.
+- Docs/comment-only slice: no callable behavior, Admin UI wiring, rules, indexes, schema, or deploy changes.
+
 ## 2026-06-18 - PR #227 Conflict Resolution
 
 - Merged current `origin/main` into `chore/remove-dead-suppress-broadcast` to resolve PR #227's conflicts without a force push.

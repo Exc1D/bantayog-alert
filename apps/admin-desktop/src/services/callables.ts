@@ -72,6 +72,7 @@ export const callables = {
     { reportId: string; responderUid: string; idempotencyKey: IdempotencyKey },
     { dispatchId: string; status: DispatchStatus; reportId: string }
   >('dispatchResponder'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   cancelDispatch: callable<
     {
       dispatchId: string
@@ -80,6 +81,7 @@ export const callables = {
     },
     { status: DispatchStatus; dispatchId: string }
   >('cancelDispatch'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   closeReport: callable<
     { reportId: string; idempotencyKey: IdempotencyKey; closureSummary?: string },
     { status: ReportStatus; reportId: string }
@@ -93,6 +95,7 @@ export const callables = {
     },
     { status: 'shared' }
   >('shareReport'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   mergeDuplicates: callable<
     { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
     { success: true; mergedCount: number } | { success: false; errorCode: string }
@@ -105,14 +108,17 @@ export const callables = {
     { requestId: string; reason: string; idempotencyKey: IdempotencyKey },
     { status: 'declined' }
   >('declineAgencyAssistance'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   suspendResponder: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
   >('suspendResponder'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   revokeResponder: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'revoked' }
   >('revokeResponder'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   bulkAvailabilityOverride: callable<
     { uids: string[]; status: AvailabilityStatus; idempotencyKey: IdempotencyKey },
     { updated: number }
@@ -136,14 +142,17 @@ export const callables = {
     UpdateMunicipalityContactInput,
     UpdateMunicipalityContactOutput
   >('updateMunicipalityContact'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   setRetentionExempt: callable<
     { collection: string; documentId: string; exempt: boolean; reason: string },
     unknown
   >('setRetentionExempt'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   setErasureLegalHold: callable<
     { erasureRequestId: string; hold: boolean; reason: string },
     unknown
   >('setErasureLegalHold'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   approveErasureRequest: callable<
     { erasureRequestId: string; approved: boolean; reason?: string },
     unknown
@@ -151,14 +160,17 @@ export const callables = {
   toggleMutualAidVisibility: callable<{ agencyId: string; visible: boolean }, unknown>(
     'toggleMutualAidVisibility',
   ),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   suspendUser: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
   >('suspendUser'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   revokeUser: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'revoked' }
   >('revokeUser'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   resetUserTotp: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; reset: true }
@@ -177,6 +189,7 @@ export const callables = {
   listScopedOperationsMap: callableVoid<{ incidents: ScopedOperationsMapIncidentPayload[] }>(
     'listScopedOperationsMap',
   ),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   createUser: callable<
     {
       displayName: string
@@ -209,6 +222,7 @@ export const callables = {
     },
     { newDispatchId: string; status: DispatchStatus; reportId: string }
   >('redispatchReport'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   reopenReport: callable<
     { reportId: string; reason: string; idempotencyKey: IdempotencyKey },
     { status: ReportStatus; reportId: string }
