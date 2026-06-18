@@ -22,6 +22,10 @@ vi.mock('firebase/functions', async () => {
   }
 })
 
+vi.mock('../app/firebase', () => ({
+  functions: {},
+}))
+
 import { callables } from './callables'
 
 describe('callables.escalateDispatch', () => {
@@ -105,6 +109,7 @@ describe('retired admin callable wrappers', () => {
     'recordIncidentResponseEvent',
     'upsertProvincialResource',
     'archiveProvincialResource',
+    'listScopedOperationsMap',
   ] as const
 
   it.each(retiredCallableNames)('does not expose %s', (name) => {
