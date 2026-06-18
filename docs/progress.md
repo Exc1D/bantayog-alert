@@ -811,3 +811,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
+
+## 2026-06-18 - RF-06 Wizard Container Decomposition
+
+- Extracted report-wizard state, snapshot hydration, draft creation, and post-submit local-save side effects from `SubmitReportForm/index.tsx` into `useReportWizard`.
+- Kept `SubmitReportForm` as a thin render shell plus small step panels; `SubmissionPanel` behavior stayed in place and was not broadened.
+- Added a hook-level regression test for step transitions, snapshot-load autosave gating, and final draft payload creation.
+- Verification: red-first `useReportWizard.test.tsx` failed on missing `./useReportWizard.js`, then passed 3/3 after implementation. The RF-06 Citizen PWA suite passed 10 files / 45 tests. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, scoped Prettier check, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
