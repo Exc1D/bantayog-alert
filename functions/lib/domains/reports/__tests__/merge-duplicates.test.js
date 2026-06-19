@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import {} from '@firebase/rules-unit-testing';
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js';
-const itif = (condition) => (condition ? it : it.skip);
 import { setDoc, doc } from 'firebase/firestore';
 import { Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
@@ -38,15 +37,28 @@ beforeAll(async () => {
     adminApp = initializeApp({ projectId: 'merge-dup-test' }, 'merge-dup-test');
     adminDb = getFirestore(adminApp);
 });
-beforeEach(async () => {
-    if (!available || !testEnv)
+beforeEach(async function resetMergeDuplicatesFirestore() {
+    if (!available)
+        return;
+    if (!testEnv)
         return;
     await testEnv.clearFirestore();
 });
-afterAll(async () => {
+afterAll(async function cleanupMergeDuplicatesEnvironment() {
+    if (adminApp) {
+        await deleteApp(adminApp);
+    }
     await testEnv?.cleanup();
-    await deleteApp(adminApp);
 });
+function emulatorIt(name, fn) {
+    it(name, async (ctx) => {
+        if (!available || !testEnv) {
+            ctx.skip();
+            return;
+        }
+        await fn();
+    });
+}
 async function seedReport(id, overrides = {}) {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
         await setDoc(doc(ctx.firestore(), 'reports', id), {
@@ -94,7 +106,7 @@ const muniAdminActor = {
     },
 };
 describe('mergeDuplicates', () => {
-    itif(available)('rejects a non-muni-admin caller', async () => {
+    emulatorIt('rejects a non-muni-admin caller', async () => {
         const result = await mergeDuplicatesCore(adminDb, {
             primaryReportId: 'r1',
             duplicateReportIds: ['r2'],
@@ -105,7 +117,7 @@ describe('mergeDuplicates', () => {
         });
         expectError(result, 'permission-denied');
     });
-    itif(available)('rejects inactive admin', async () => {
+    emulatorIt('rejects inactive admin', async () => {
         await seedReport('r1');
         await seedReport('r2');
         const result = await mergeDuplicatesCore(adminDb, {
@@ -123,7 +135,7 @@ describe('mergeDuplicates', () => {
         });
         expectError(result, 'permission-denied');
     });
-    itif(available)('rejects report IDs from different municipalities', async () => {
+    emulatorIt('rejects report IDs from different municipalities', async () => {
         await seedReport('r1');
         await seedReport('r2', { municipalityId: 'labo' });
         const result = await mergeDuplicatesCore(adminDb, {
@@ -133,7 +145,7 @@ describe('mergeDuplicates', () => {
         }, muniAdminActor);
         expectError(result, 'invalid-argument');
     });
-    itif(available)('rejects report IDs that do not share a duplicateClusterId', async () => {
+    emulatorIt('rejects report IDs that do not share a duplicateClusterId', async () => {
         await seedReport('r1', { duplicateClusterId: 'cluster-a' });
         await seedReport('r2', { duplicateClusterId: 'cluster-b' });
         const result = await mergeDuplicatesCore(adminDb, {
@@ -143,7 +155,7 @@ describe('mergeDuplicates', () => {
         }, muniAdminActor);
         expectError(result, 'failed-precondition');
     });
-    itif(available)('sets status merged_as_duplicate on all non-primary reports', async () => {
+    emulatorIt('sets status merged_as_duplicate on all non-primary reports', async () => {
         await seedReport('r-primary');
         await seedReport('r-dup1');
         await seedReport('r-dup2');
@@ -157,7 +169,7 @@ describe('mergeDuplicates', () => {
         expect(dup1.data()?.status).toBe('merged_as_duplicate');
         expect(dup2.data()?.status).toBe('merged_as_duplicate');
     });
-    itif(available)('sets mergedInto on all non-primary reports', async () => {
+    emulatorIt('sets mergedInto on all non-primary reports', async () => {
         await seedReport('r-primary');
         await seedReport('r-dup1');
         await mergeDuplicatesCore(adminDb, {
@@ -168,7 +180,7 @@ describe('mergeDuplicates', () => {
         const dup1 = await adminDb.collection('reports').doc('r-dup1').get();
         expect(dup1.data()?.mergedInto).toBe('r-primary');
     });
-    itif(available)('aggregates unique mediaRefs from duplicates onto the primary', async () => {
+    emulatorIt('aggregates unique mediaRefs from duplicates onto the primary', async () => {
         await seedReport('r-primary', { mediaRefs: ['media-a', 'media-b'] });
         await seedReport('r-dup1', { mediaRefs: ['media-b', 'media-c'] });
         await mergeDuplicatesCore(adminDb, {
@@ -183,7 +195,7 @@ describe('mergeDuplicates', () => {
         expect(refs).toContain('media-c');
         expect(new Set(refs).size).toBe(refs.length);
     });
-    itif(available)('is idempotent', async () => {
+    emulatorIt('is idempotent', async () => {
         await seedReport('r-primary');
         await seedReport('r-dup1');
         const result1 = await mergeDuplicatesCore(adminDb, {
@@ -214,7 +226,7 @@ describe('mergeDuplicates', () => {
             .get();
         expect(mergeEvents.size).toBe(1);
     });
-    itif(available)('rejects when primary report does not exist', async () => {
+    emulatorIt('rejects when primary report does not exist', async () => {
         await seedReport('r-dup1');
         const result = await mergeDuplicatesCore(adminDb, {
             primaryReportId: 'r-missing',
@@ -223,7 +235,7 @@ describe('mergeDuplicates', () => {
         }, muniAdminActor);
         expectError(result, 'not-found');
     });
-    itif(available)('updates report_ops for primary and duplicates', async () => {
+    emulatorIt('updates report_ops for primary and duplicates', async () => {
         await seedReport('r-primary');
         await seedReport('r-dup1');
         await mergeDuplicatesCore(adminDb, {
