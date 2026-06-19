@@ -33,12 +33,6 @@ export {
   revokeResponder,
   bulkAvailabilityOverride,
 } from './domains/users/responder-roster.js'
-export {
-  requestAgencyAssistance,
-  acceptAgencyAssistance,
-  declineAgencyAssistance,
-} from './domains/agency/callables.js'
-export { shareReport } from './domains/reports/share-report.js'
 export { borderAutoShareTrigger } from './domains/reports/border-auto-share.js'
 export { duplicateClusterTrigger } from './domains/reports/duplicate-cluster-trigger.js'
 export { mergeDuplicates } from './domains/reports/merge-duplicates.js'
@@ -139,7 +133,6 @@ export { requestDataExport } from './domains/erasure/request-data-export.js'
 export { setErasureLegalHold } from './domains/erasure/set-erasure-legal-hold.js'
 export { erasureSweep } from './domains/erasure/erasure-sweep.js'
 export { retentionSweep } from './domains/erasure/retention-sweep.js'
-export { toggleMutualAidVisibility } from './domains/agency/toggle-mutual-aid.js'
 export { createUser } from './domains/users/create-user.js'
 export { createResponder } from './domains/users/create-responder.js'
 export { redispatchReport } from './domains/dispatches/redispatch-report.js'
