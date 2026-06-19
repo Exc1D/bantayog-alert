@@ -1,6 +1,12 @@
 # Progress
 
-> Condensed log. Each entry keeps the durable what/why/decisions; routine verification-command lists and "no deploy/no rules changed" boilerplate were dropped (recoverable from git).
+## 2026-06-18 - RF-08 Dedupe Firestore emulator test context
+
+- Extracted the repeated `RulesTestEnvironment.withSecurityRulesDisabled` skip/cast wrapper from `functions/src/domains/reports/__tests__/reject-report.test.ts` into `functions/src/__tests__/helpers/firestore-emulator-context.ts`, with a small helper test covering the unavailable-emulator skip path.
+- Refactored `reject-report.test.ts` to use `withFirestoreRulesDisabled` and local intent-named helpers for the repeated municipal-admin setup, awaiting-verify report seed, failed-precondition expectation, and moderation-incident assertion. Production code unchanged.
+- Red-first proof: the new helper test first failed on the missing module, then passed after the helper was added. Baseline `reject-report.test.ts` was 5/5 before the extraction; after the refactor the same focused emulator suite remained 5/5 with no newly skipped tests.
+- Verification: rebuilt `@bantayog/shared-validators` first to remove stale source-map warning noise, then `pnpm --dir functions exec vitest run src/__tests__/helpers/firestore-emulator-context.test.ts`, `firebase emulators:exec --only firestore,database,storage 'cd functions && npx vitest run src/domains/reports/__tests__/reject-report.test.ts'`, `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+  > Condensed log. Each entry keeps the durable what/why/decisions; routine verification-command lists and "no deploy/no rules changed" boilerplate were dropped (recoverable from git).
 
 ## 2026-06-19 - CI Security and Code Quality Hardening
 
