@@ -869,6 +869,7 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Kept idempotency, rate limiting, all Firestore reads-before-writes transaction orchestration, writes, and logging inside `merge-duplicates.ts`.
 - Converted the merge-duplicates emulator test from collection-time `itif(available)` registration to runtime `ctx.skip()` so unavailable emulators cannot make the file report success with zero registered tests.
 - Verification: red-first policy test failed on the missing module, then focused merge unit/policy tests passed 15/15. Emulator-backed `merge-duplicates.test.ts` registered and passed 10/10 tests. `pnpm --dir packages/shared-validators build`, `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, `pnpm --dir functions build`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
 ## 2026-06-18 - RF-04 Decompose redispatch-report Policy
 
 - Extracted redispatch policy helpers into `functions/src/domains/dispatches/redispatch-policy.ts`: terminal-status validation, actor municipality scope derivation, severity deadline selection, and new-dispatch document construction.
