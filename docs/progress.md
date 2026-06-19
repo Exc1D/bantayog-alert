@@ -29,6 +29,12 @@
 
 - Retired `listScopedOperationsMap` (Admin wrapper, unused no-payload helper, Functions source/test, stale `lib`) in its own branch.
 
+## 2026-06-18 - RF-10 Remove speculative incident-core contracts
+
+- Executed RF-10 Option A: removed the unused speculative `packages/shared-validators/src/incident-core.ts` layer, its dedicated test, the shared-validators barrel exports, and stale generated `lib/incident-core*` outputs.
+- Red-first proof followed the task doc: removed only the barrel export first, then root `pnpm build` and `pnpm typecheck` both passed, proving no runtime consumer imports the public `incident-core` surface.
+- This does not touch the PostGIS SQL/history artifacts or revive the deferred runtime migration. No rules, indexes, schema/migration files, or deploy changes.
+
 ## 2026-06-18 - PR #227 Conflict Resolution
 
 - Merged `origin/main` to resolve conflicts: kept the PR #226 `WindowSyncMessage` export/alias while preserving PR #227's removal of the dead `suppressNextBroadcast` state/setter. Removed the stale `setSuppressNextBroadcast(true)` from `DashboardPage.handleSelectMunicipality`.
