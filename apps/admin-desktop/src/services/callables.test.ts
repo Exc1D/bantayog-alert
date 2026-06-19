@@ -103,6 +103,7 @@ describe('retired admin callable wrappers', () => {
     'recordIncidentResponseEvent',
     'upsertProvincialResource',
     'archiveProvincialResource',
+    'listScopedOperationsMap',
     'shareReport',
     'requestAgencyAssistance',
     'acceptAgencyAssistance',

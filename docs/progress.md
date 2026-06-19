@@ -17,6 +17,12 @@
 - `buildResponderStatusClaims` now treats Firestore `mfaEnrolled` as external input and only forwards boolean values into Auth custom claims; malformed values fall back to `false`. Rebuilt `functions/lib`.
 - Verification: red-first failures reproduced for modal dismiss lock, async reject handling, and malformed `mfaEnrolled`; focused admin tests passed 19/19; focused responder roster test passed 2/2; admin and functions typechecks passed; targeted admin/functions eslint passed; `pnpm --dir functions build` passed with the existing Node 22 engine warning under local Node 20.20.2. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 
+## 2026-06-18 - RF-01 Retire scoped operations map callable
+
+- Retired the remaining Bucket A wrapper `listScopedOperationsMap` in its own branch: removed the Admin callable wrapper, the unused no-payload wrapper helper, the Functions scoped-operations source/test, and tracked stale `functions/lib` outputs. No `functions/src/index.ts` export existed on `main`.
+- Red-first proof: added `listScopedOperationsMap` to the retired-wrapper Admin service test before implementation. It first failed 1/15 because the wrapper still existed, then passed 15/15 after removal. The test now mocks `../app/firebase` so the wrapper test does not initialize real Firebase Auth.
+- Verification: `pnpm install --frozen-lockfile` completed with the known local Node 20 vs Functions Node 22 warning; production/non-test grep for `listScopedOperationsMap` across `apps/`, `functions/`, and `packages/` is empty; `pnpm --dir apps/admin-desktop exec vitest run src/services/callables.test.ts`, Functions/Admin `tsc --noEmit`, Functions/Admin `eslint src`, `pnpm --dir functions build`, root `pnpm typecheck`, root `pnpm lint`, scoped Prettier check, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
 ## 2026-06-18 - PR #227 Conflict Resolution
 
 - Merged current `origin/main` into `chore/remove-dead-suppress-broadcast` to resolve PR #227's conflicts without a force push.

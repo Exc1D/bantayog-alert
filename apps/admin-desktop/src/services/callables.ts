@@ -1,11 +1,6 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
-import type {
-  ReportStatus,
-  DispatchStatus,
-  ScopedOperationsMapIncidentPayload,
-  UserRole,
-} from '@bantayog/shared-types'
+import type { ReportStatus, DispatchStatus, UserRole } from '@bantayog/shared-types'
 import type {
   UpdateMunicipalityContactInput,
   UpdateMunicipalityContactOutput,
@@ -18,11 +13,6 @@ type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- P is the caller's contract
 function callable<P, R>(name: string) {
   return (payload: P) => httpsCallable<P, R>(functions, name)(payload).then((r) => r.data)
-}
-
-/** Build a no-payload callable wrapper: `callableVoid<Return>('functionName')` */
-function callableVoid<R>(name: string) {
-  return () => httpsCallable<Record<string, never>, R>(functions, name)({}).then((r) => r.data)
 }
 
 export const callables = {
@@ -143,9 +133,6 @@ export const callables = {
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; reset: true }
   >('resetUserTotp'),
-  listScopedOperationsMap: callableVoid<{ incidents: ScopedOperationsMapIncidentPayload[] }>(
-    'listScopedOperationsMap',
-  ),
   createUser: callable<
     {
       displayName: string
