@@ -183,3 +183,7 @@
 - Domain cores exercised through `@firebase/rules-unit-testing` use a client Firestore object even when cast to Admin types — prefer concrete transaction updates over Admin `FieldValue` transforms when the value is already in the snapshot.
 - Function tests import `@bantayog/shared-validators` via package exports (`lib/index.js`), not live `src` — rebuild the package after adding exports or the new schema is `undefined` at runtime.
 - Callable retry wrappers must generate idempotency keys before entering `withRetry`; generating inside the closure gives each attempt a fresh key and defeats idempotency.
+
+## Citizen PWA Status Vocabulary
+
+- The CPWA task text names `AlertsTab` as the hazard-category source, but that surface has severity filters only. Build the shared hazard registry from the union of `incident-meta.tsx` `INCIDENT_TYPES` and `situation-updates.ts` `SITUATION_HAZARD_TYPES`; do not silently drop categories unique to either public surface.

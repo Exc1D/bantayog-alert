@@ -1,5 +1,5 @@
-import { AlertTriangle, Bell, Info } from 'lucide-react'
 import type { ComponentType } from 'react'
+import { getSeverityPresentation } from './status-registry.js'
 
 export interface SeverityStyle {
   fg: string
@@ -9,38 +9,13 @@ export interface SeverityStyle {
   icon: ComponentType<{ size?: number; className?: string }>
 }
 
-const SEVERITY_MAP: Record<string, SeverityStyle> = {
-  high: {
-    fg: 'var(--color-severity-high-fg)',
-    bg: 'var(--color-severity-high-bg)',
-    label: 'HIGH',
-    dotHex: '#dc2626',
-    icon: AlertTriangle,
-  },
-  medium: {
-    fg: 'var(--color-severity-medium-fg)',
-    bg: 'var(--color-severity-medium-bg)',
-    label: 'MEDIUM',
-    dotHex: '#a73400',
-    icon: Bell,
-  },
-  low: {
-    fg: 'var(--color-severity-low-fg)',
-    bg: 'var(--color-severity-low-bg)',
-    label: 'LOW',
-    dotHex: '#414849',
-    icon: Info,
-  },
-}
-
-const DEFAULT: SeverityStyle = {
-  fg: 'var(--color-severity-low-fg)',
-  bg: 'var(--color-severity-low-bg)',
-  label: 'INFO',
-  dotHex: '#414849',
-  icon: Info,
-}
-
 export function getSeverityStyle(severity: string): SeverityStyle {
-  return SEVERITY_MAP[severity] ?? DEFAULT
+  const presentation = getSeverityPresentation(severity)
+  return {
+    fg: presentation.fg,
+    bg: presentation.bg,
+    label: presentation.label,
+    dotHex: presentation.dotHex,
+    icon: presentation.icon,
+  }
 }
