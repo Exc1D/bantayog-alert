@@ -12,6 +12,17 @@ import {
 } from '../../idempotency/guard.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import {
+  buildMergeDuplicateReportUpdate,
+  buildMergeEventData,
+  buildPrimaryMergeReportUpdate,
+  excludesPrimaryReportId,
+  hasUniqueDuplicateReportIds,
+  type MergeOpsRow,
+  type MergeReportRow,
+  validateMergeActorClaims,
+  validateMergeOpsRows,
+} from './merge-duplicates-policy.js'
 
 const log = logDimension('mergeDuplicates')
 
@@ -21,11 +32,11 @@ export const inputSchema = z
     duplicateReportIds: z.array(z.string().min(1)).min(1).max(50),
     idempotencyKey: z.uuid(),
   })
-  .refine((data) => new Set(data.duplicateReportIds).size === data.duplicateReportIds.length, {
+  .refine((data) => hasUniqueDuplicateReportIds(data.duplicateReportIds), {
     message: 'duplicateReportIds must be unique',
     path: ['duplicateReportIds'],
   })
-  .refine((data) => !data.duplicateReportIds.includes(data.primaryReportId), {
+  .refine((data) => excludesPrimaryReportId(data.primaryReportId, data.duplicateReportIds), {
     message: 'primaryReportId cannot be in duplicateReportIds',
     path: ['duplicateReportIds'],
   })
@@ -39,19 +50,14 @@ export type MergeDuplicatesResult =
   | { success: true; mergedCount: number }
   | { success: false; errorCode: string }
 
-interface OpsRow {
-  id: string
-  municipalityId?: string
-  duplicateClusterId?: string
-}
-
 export async function mergeDuplicatesCore(
   db: FirebaseFirestore.Firestore,
   input: z.infer<typeof inputSchema>,
   actor: MergeDuplicatesActor,
   correlationId = crypto.randomUUID(),
 ): Promise<MergeDuplicatesResult> {
-  if (actor.claims.role !== 'municipal_admin' && actor.claims.role !== 'provincial_superadmin') {
+  const actorPolicy = validateMergeActorClaims(actor.claims)
+  if (!actorPolicy.success && actorPolicy.reason === 'role') {
     log({
       severity: 'ERROR',
       code: 'merge.permission_denied',
@@ -61,7 +67,7 @@ export async function mergeDuplicatesCore(
     return { success: false, errorCode: 'permission-denied' }
   }
 
-  if (!actor.claims.active) {
+  if (!actorPolicy.success && actorPolicy.reason === 'inactive') {
     log({
       severity: 'ERROR',
       code: 'merge.permission_denied',
@@ -91,7 +97,7 @@ export async function mergeDuplicatesCore(
           }
         }
 
-        const opsData: OpsRow[] = opsSnaps.map((s) => {
+        const opsData: MergeOpsRow[] = opsSnaps.map((s) => {
           const d = s.data()
           return {
             id: s.id,
@@ -100,37 +106,8 @@ export async function mergeDuplicatesCore(
           }
         })
 
-        // Validate all reports have municipalityId
-        const missingMunicipality = opsData.some((d) => !d.municipalityId)
-        if (missingMunicipality) {
-          return { success: false, errorCode: 'failed-precondition' }
-        }
-
-        // Municipality check
-        const municipalities = new Set(opsData.map((d) => d.municipalityId))
-        if (municipalities.size > 1) {
-          return { success: false, errorCode: 'invalid-argument' }
-        }
-
-        // Cluster check — all reports must share exactly one cluster ID
-        const clusterIds = opsData
-          .map((d) => d.duplicateClusterId)
-          .filter((id): id is string => typeof id === 'string' && id.length > 0)
-        if (clusterIds.length !== opsData.length) {
-          return { success: false, errorCode: 'failed-precondition' }
-        }
-        if (new Set(clusterIds).size > 1) {
-          return { success: false, errorCode: 'failed-precondition' }
-        }
-
-        // Municipality authorization
-        const municipalityId = opsData[0]?.municipalityId
-        if (
-          actor.claims.role === 'municipal_admin' &&
-          actor.claims.municipalityId !== municipalityId
-        ) {
-          return { success: false, errorCode: 'permission-denied' }
-        }
+        const opsPolicy = validateMergeOpsRows(opsData, actor.claims)
+        if (!opsPolicy.success) return { success: false, errorCode: opsPolicy.errorCode }
 
         const reportSnaps = await Promise.all(
           allIds.map((id) => tx.get(db.collection('reports').doc(id))),
@@ -146,31 +123,17 @@ export async function mergeDuplicatesCore(
         if (!primarySnap) {
           return { success: false, errorCode: 'not-found' }
         }
-        const primaryReportData = primarySnap.data()
-        if (!primaryReportData) {
+        if (!primarySnap.data()) {
           return { success: false, errorCode: 'not-found' }
         }
 
-        const primaryMediaRefs = primaryReportData.mediaRefs
-        const safePrimaryMediaRefs = Array.isArray(primaryMediaRefs)
-          ? primaryMediaRefs.filter((r): r is string => typeof r === 'string')
-          : []
-        const allMediaRefs = new Set<string>(safePrimaryMediaRefs)
-
-        for (const s of reportSnaps) {
-          if (s.id === primaryReportId) continue
-          const dupMediaRefs = s.data()?.mediaRefs
-          if (Array.isArray(dupMediaRefs)) {
-            for (const ref of dupMediaRefs) {
-              if (typeof ref === 'string') {
-                allMediaRefs.add(ref)
-              }
-            }
-          }
-        }
+        const reportRows: MergeReportRow[] = reportSnaps.map((snap) => ({
+          id: snap.id,
+          mediaRefs: snap.data()?.mediaRefs,
+        }))
 
         tx.update(db.collection('reports').doc(primaryReportId), {
-          mediaRefs: Array.from(allMediaRefs),
+          ...buildPrimaryMergeReportUpdate(primaryReportId, reportRows),
           updatedAt: Timestamp.now(),
         })
         tx.update(db.collection('report_ops').doc(primaryReportId), {
@@ -179,22 +142,20 @@ export async function mergeDuplicatesCore(
 
         const eventRef = db.collection('report_events').doc()
         tx.set(eventRef, {
-          eventId: eventRef.id,
-          reportId: primaryReportId,
-          eventType: 'merge_duplicates',
-          actor: actor.uid,
-          actorRole: actor.claims.role,
-          at: Timestamp.now(),
-          correlationId,
-          schemaVersion: 1,
-          mergedCount: duplicateReportIds.length,
-          mergedDuplicateIds: duplicateReportIds,
+          ...buildMergeEventData({
+            eventId: eventRef.id,
+            primaryReportId,
+            actorUid: actor.uid,
+            actorRole: actor.claims.role,
+            at: Timestamp.now(),
+            correlationId,
+            duplicateReportIds,
+          }),
         })
 
         for (const dupId of duplicateReportIds) {
           tx.update(db.collection('reports').doc(dupId), {
-            status: 'merged_as_duplicate',
-            mergedInto: primaryReportId,
+            ...buildMergeDuplicateReportUpdate(primaryReportId),
             updatedAt: Timestamp.now(),
           })
           tx.update(db.collection('report_ops').doc(dupId), {

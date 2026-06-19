@@ -863,6 +863,12 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
 
+## 2026-06-18 - RF-05 Decompose merge-duplicates Policy
+
+- Extracted pure merge policy helpers into `functions/src/domains/reports/merge-duplicates-policy.ts`: id-set checks, actor/ops-row validation, primary media reconciliation, duplicate terminal update construction, and merge-event payload construction.
+- Kept idempotency, rate limiting, all Firestore reads-before-writes transaction orchestration, writes, and logging inside `merge-duplicates.ts`.
+- Converted the merge-duplicates emulator test from collection-time `itif(available)` registration to runtime `ctx.skip()` so unavailable emulators cannot make the file report success with zero registered tests.
+- Verification: red-first policy test failed on the missing module, then focused merge unit/policy tests passed 15/15. Emulator-backed `merge-duplicates.test.ts` registered and passed 10/10 tests. `pnpm --dir packages/shared-validators build`, `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, `pnpm --dir functions build`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 ## 2026-06-18 - RF-04 Decompose redispatch-report Policy
 
 - Extracted redispatch policy helpers into `functions/src/domains/dispatches/redispatch-policy.ts`: terminal-status validation, actor municipality scope derivation, severity deadline selection, and new-dispatch document construction.
