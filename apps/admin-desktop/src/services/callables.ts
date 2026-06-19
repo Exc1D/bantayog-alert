@@ -1,11 +1,6 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
-import type {
-  ReportStatus,
-  DispatchStatus,
-  ScopedOperationsMapIncidentPayload,
-  UserRole,
-} from '@bantayog/shared-types'
+import type { ReportStatus, DispatchStatus, UserRole } from '@bantayog/shared-types'
 import type {
   UpdateMunicipalityContactInput,
   UpdateMunicipalityContactOutput,
@@ -18,11 +13,6 @@ type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- P is the caller's contract
 function callable<P, R>(name: string) {
   return (payload: P) => httpsCallable<P, R>(functions, name)(payload).then((r) => r.data)
-}
-
-/** Build a no-payload callable wrapper: `callableVoid<Return>('functionName')` */
-function callableVoid<R>(name: string) {
-  return () => httpsCallable<Record<string, never>, R>(functions, name)({}).then((r) => r.data)
 }
 
 export const callables = {
@@ -72,6 +62,7 @@ export const callables = {
     { reportId: string; responderUid: string; idempotencyKey: IdempotencyKey },
     { dispatchId: string; status: DispatchStatus; reportId: string }
   >('dispatchResponder'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   cancelDispatch: callable<
     {
       dispatchId: string
@@ -80,39 +71,25 @@ export const callables = {
     },
     { status: DispatchStatus; dispatchId: string }
   >('cancelDispatch'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   closeReport: callable<
     { reportId: string; idempotencyKey: IdempotencyKey; closureSummary?: string },
     { status: ReportStatus; reportId: string }
   >('closeReport'),
-  shareReport: callable<
-    {
-      reportId: string
-      targetMunicipalityId: string
-      reason?: string
-      idempotencyKey: IdempotencyKey
-    },
-    { status: 'shared' }
-  >('shareReport'),
   mergeDuplicates: callable<
     { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
     { success: true; mergedCount: number } | { success: false; errorCode: string }
   >('mergeDuplicates'),
-  acceptAgencyAssistance: callable<
-    { requestId: string; idempotencyKey: IdempotencyKey },
-    { status: 'accepted' }
-  >('acceptAgencyAssistance'),
-  declineAgencyAssistance: callable<
-    { requestId: string; reason: string; idempotencyKey: IdempotencyKey },
-    { status: 'declined' }
-  >('declineAgencyAssistance'),
   suspendResponder: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
   >('suspendResponder'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   revokeResponder: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'revoked' }
   >('revokeResponder'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   bulkAvailabilityOverride: callable<
     { uids: string[]; status: AvailabilityStatus; idempotencyKey: IdempotencyKey },
     { updated: number }
@@ -136,47 +113,35 @@ export const callables = {
     UpdateMunicipalityContactInput,
     UpdateMunicipalityContactOutput
   >('updateMunicipalityContact'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   setRetentionExempt: callable<
     { collection: string; documentId: string; exempt: boolean; reason: string },
     unknown
   >('setRetentionExempt'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   setErasureLegalHold: callable<
     { erasureRequestId: string; hold: boolean; reason: string },
     unknown
   >('setErasureLegalHold'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   approveErasureRequest: callable<
     { erasureRequestId: string; approved: boolean; reason?: string },
     unknown
   >('approveErasureRequest'),
-  toggleMutualAidVisibility: callable<{ agencyId: string; visible: boolean }, unknown>(
-    'toggleMutualAidVisibility',
-  ),
   suspendUser: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
   >('suspendUser'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   revokeUser: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'revoked' }
   >('revokeUser'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   resetUserTotp: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; reset: true }
   >('resetUserTotp'),
-  requestAgencyAssistance: callable<
-    {
-      reportId: string
-      agencyId: string
-      requestType: string
-      priority: 'routine' | 'urgent' | 'emergency'
-      message: string
-      idempotencyKey: string
-    },
-    { requestId: string }
-  >('requestAgencyAssistance'),
-  listScopedOperationsMap: callableVoid<{ incidents: ScopedOperationsMapIncidentPayload[] }>(
-    'listScopedOperationsMap',
-  ),
   createUser: callable<
     {
       displayName: string
@@ -209,6 +174,7 @@ export const callables = {
     },
     { newDispatchId: string; status: DispatchStatus; reportId: string }
   >('redispatchReport'),
+  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   reopenReport: callable<
     { reportId: string; reason: string; idempotencyKey: IdempotencyKey },
     { status: ReportStatus; reportId: string }

@@ -46,7 +46,7 @@ function buildResponderStatusClaims(responder, targetStatus, nowMillis) {
         ...(typeof responder.agencyId === 'string' && { agencyId: responder.agencyId }),
         ...(municipalityId && { municipalityId }),
         ...(municipalityId && { permittedMunicipalityIds: [municipalityId] }),
-        mfaEnrolled: false,
+        mfaEnrolled: typeof responder.mfaEnrolled === 'boolean' ? responder.mfaEnrolled : false,
         lastClaimIssuedAt: nowMillis,
     };
 }
@@ -56,6 +56,7 @@ async function syncResponderAuthStatus(db, uid, targetStatus, nowMillis) {
         throw new BantayogError(BantayogErrorCode.NOT_FOUND, `Responder '${uid}' not found`);
     }
     await adminAuth.setCustomUserClaims(uid, buildResponderStatusClaims(responderSnap.data(), targetStatus, nowMillis));
+    await adminAuth.revokeRefreshTokens(uid);
 }
 async function suspendOrRevokeResponderCore(db, deps) {
     const { uid, idempotencyKey, actor, now, targetStatus } = deps;

@@ -1,13 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 // fallow-ignore-next-line code-duplication
-const { adminDbMock, setCustomUserClaimsMock } = vi.hoisted(() => ({
+const { adminDbMock, setCustomUserClaimsMock, revokeRefreshTokensMock } = vi.hoisted(() => ({
     adminDbMock: { collection: vi.fn(), runTransaction: vi.fn() },
     setCustomUserClaimsMock: vi.fn(),
+    revokeRefreshTokensMock: vi.fn(),
 }));
 // fallow-ignore-next-line code-duplication
 vi.mock('../../../admin-init.js', () => ({
     // fallow-ignore-next-line code-duplication
-    adminAuth: { setCustomUserClaims: setCustomUserClaimsMock },
+    adminAuth: {
+        setCustomUserClaims: setCustomUserClaimsMock,
+        revokeRefreshTokens: revokeRefreshTokensMock,
+    },
     // fallow-ignore-next-line code-duplication
     adminDb: adminDbMock,
 }));
@@ -70,12 +74,14 @@ describe('suspendResponder Auth propagation', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         setCustomUserClaimsMock.mockResolvedValue(undefined);
+        revokeRefreshTokensMock.mockResolvedValue(undefined);
     });
     it('updates responder Auth claims after Firestore status changes', async () => {
         const { db, txUpdates } = mockDb({
             agencyId: 'bfp-daet',
             municipalityId: 'daet',
             accountStatus: 'active',
+            mfaEnrolled: true,
         });
         adminDbMock.collection.mockImplementation(db.collection);
         adminDbMock.runTransaction.mockImplementation(db.runTransaction);
@@ -107,9 +113,35 @@ describe('suspendResponder Auth propagation', () => {
             agencyId: 'bfp-daet',
             municipalityId: 'daet',
             permittedMunicipalityIds: ['daet'],
-            mfaEnrolled: false,
+            mfaEnrolled: true,
             lastClaimIssuedAt: 1765000000000,
         });
+        expect(revokeRefreshTokensMock).toHaveBeenCalledWith('responder-1');
+    });
+    it('coerces malformed MFA enrollment values to false in Auth claims', async () => {
+        const { db } = mockDb({
+            agencyId: 'bfp-daet',
+            municipalityId: 'daet',
+            accountStatus: 'active',
+            mfaEnrolled: 'false',
+        });
+        adminDbMock.collection.mockImplementation(db.collection);
+        adminDbMock.runTransaction.mockImplementation(db.runTransaction);
+        await suspendResponder({
+            auth: {
+                uid: 'admin-1',
+                token: {
+                    role: 'agency_admin',
+                    agencyId: 'bfp-daet',
+                    accountStatus: 'active',
+                },
+            },
+            data: {
+                uid: 'responder-1',
+                idempotencyKey: '550e8400-e29b-41d4-a716-446655440001',
+            },
+        }, {});
+        expect(setCustomUserClaimsMock).toHaveBeenCalledWith('responder-1', expect.objectContaining({ mfaEnrolled: false }));
     });
 });
 //# sourceMappingURL=responder-roster.unit.test.js.map

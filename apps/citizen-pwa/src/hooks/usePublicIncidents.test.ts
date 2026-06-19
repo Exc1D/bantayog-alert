@@ -14,6 +14,10 @@ const { mockOnSnapshot } = vi.hoisted(() => ({
   mockOnSnapshot: vi.fn(),
 }))
 
+const { mockGetDownloadURL } = vi.hoisted(() => ({
+  mockGetDownloadURL: vi.fn(),
+}))
+
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn().mockReturnValue('col'),
   query: vi.fn().mockReturnValue('q'),
@@ -21,6 +25,12 @@ vi.mock('firebase/firestore', () => ({
   orderBy: vi.fn().mockReturnValue('ob'),
   limit: vi.fn().mockReturnValue('lim'),
   onSnapshot: mockOnSnapshot,
+}))
+
+vi.mock('firebase/storage', () => ({
+  getStorage: vi.fn().mockReturnValue({}),
+  ref: vi.fn((_storage, mediaRef) => mediaRef),
+  getDownloadURL: mockGetDownloadURL,
 }))
 
 import { usePublicIncidents } from './usePublicIncidents.js'
@@ -42,6 +52,7 @@ beforeEach(() => {
   mockOnSnapshot.mockReset().mockReturnValue(() => {
     return void 0
   })
+  mockGetDownloadURL.mockReset()
 })
 
 describe('usePublicIncidents', () => {
@@ -108,6 +119,61 @@ describe('usePublicIncidents', () => {
     const { result } = renderHook(() => usePublicIncidents(filters))
     expect(result.current.incidents).toHaveLength(1)
     expect(result.current.incidents[0]!.reportType).toBe('flood')
+  })
+
+  it('ignores stale snapshot results after a newer snapshot resolves', async () => {
+    let resolveFirst!: (value: string) => void
+    let resolveSecond!: (value: string) => void
+    let onNext: (snap: ReturnType<typeof makeSnap>) => void = () => undefined
+
+    mockGetDownloadURL.mockImplementation((mediaRef: string) => {
+      if (mediaRef === 'first-media') {
+        return new Promise<string>((resolve) => {
+          resolveFirst = resolve
+        })
+      }
+      if (mediaRef === 'second-media') {
+        return new Promise<string>((resolve) => {
+          resolveSecond = resolve
+        })
+      }
+      return Promise.resolve('unexpected-media')
+    })
+
+    mockOnSnapshot.mockImplementation((_q: unknown, next: (snap: object) => void) => {
+      onNext = next
+      return () => {
+        return void 0
+      }
+    })
+
+    const baseDoc = {
+      reportType: 'flood',
+      severity: 'high',
+      status: 'verified',
+      barangayId: 'b',
+      municipalityLabel: 'Daet',
+      publicLocation: { lat: 14, lng: 122 },
+      submittedAt: 1000,
+    }
+    const { result } = renderHook(() => usePublicIncidents(defaultFilters))
+
+    onNext(makeSnap([{ ...baseDoc, featuredMediaIds: ['first-media'] }]))
+    onNext(makeSnap([{ ...baseDoc, featuredMediaIds: ['second-media'] }]))
+
+    resolveSecond('https://second.example/media.jpg')
+    await waitFor(() => {
+      expect(result.current.incidents[0]!.featuredMediaUrls?.[0]).toBe(
+        'https://second.example/media.jpg',
+      )
+    })
+
+    resolveFirst('https://first.example/media.jpg')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(result.current.incidents[0]!.featuredMediaUrls?.[0]).toBe(
+      'https://second.example/media.jpg',
+    )
   })
 
   it('sets error when onSnapshot calls onError', () => {
