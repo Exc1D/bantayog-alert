@@ -368,21 +368,24 @@ function readSnapshotLocation(value: unknown): { lat: number; lng: number } | nu
   }
 
   const { lat, lng } = value
-  if (typeof lat !== 'number' || typeof lng !== 'number') {
-    return null
-  }
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return null
-  }
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+  const normalizedLat = readSnapshotCoordinate(lat, -90, 90)
+  const normalizedLng = readSnapshotCoordinate(lng, -180, 180)
+  if (normalizedLat === null || normalizedLng === null) {
     return null
   }
 
-  return { lat, lng }
+  return { lat: normalizedLat, lng: normalizedLng }
 }
 
 function hasLatAndLng(value: object): value is { lat: unknown; lng: unknown } {
   return 'lat' in value && 'lng' in value
+}
+
+function readSnapshotCoordinate(value: unknown, min: number, max: number): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    return null
+  }
+  return value
 }
 
 function readLocationMethod(value: unknown): Step2Data['locationMethod'] {
