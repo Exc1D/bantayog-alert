@@ -1,5 +1,10 @@
 # Learnings - Durable Rules
 
+## UX / Metrics Display (additions)
+
+- When widening a numeric stat card prop from `number` to `number | null`, guard derived boolean flags (like `isFcmHigh`) with a strict `!== null` check — a falsy guard `!fcmPercent` would incorrectly treat genuine `0` as unknown. Use `String(value) + '%'` instead of a template literal when the `@typescript-eslint/restrict-template-expressions` rule is active.
+- Test assertions over `getAllByRole('status')` result arrays: use `el.textContent.includes(...)` (direct access, no optional chain, no `??` coalescing) because the ESLint config in this project treats `HTMLElement.textContent` as non-nullable in test code.
+
 ## UX / Dashboard Design
 
 - Dashboard metrics that have not yet been polled must display `—` (em dash), not `0` or `0%`. A `?? 0` default on a metrics hook looks like a real zero to an operator on first paint, falsely signaling a complete outage. Use `?? null` for the display path and guard the render with a null check.
@@ -108,6 +113,7 @@
 - `React.lazy()` components fail offline. Eager-import offline states.
 - Citizen report history has four visible states: loading, genuinely empty, stale-but-visible, and failed. If Firestore and callable lookup both fail, surface the failure with retry and keep cached rows visible instead of falling through to "No reports yet."
 - Citizen map interpretive copy must be truth-gated. Hide situational headlines while alert, incident, own-report, offline, or error states are unresolved so "calm" never means "still loading" or "failed to refresh."
+- Public incident validation must stay single-source across list and detail reads. The list hook once accepted any string enum while the detail hook rejected malformed report type/severity/status; use the shared guard so bad public documents are filtered consistently.
 
 ## Dispatch / Responder / Monitor
 
@@ -172,6 +178,7 @@
 - Schema union changes, such as `dispatchStatusSchema`, require downstream rebuilds.
 - For oversized modal refactors, extract pure policy first (defaults, validation, payload builders) and prove it with focused tests before moving JSX or caller workflows.
 - When extracting nested alertdialogs, preserve role/name, disabled/loading states, and backdrop behavior; shared modal reuse is only safe when those contracts already match.
+- Re-verify review comments after resolving current-base conflicts. PR #228 inherited a comment on TriagePanel's old internal reject modal, but the mainline merge had already removed that path; fix the surviving boundary risk rather than resurrecting stale UI to satisfy an outdated line anchor.
 - React effect lint treats direct registration helpers that can set state as effect-body state writes. Schedule app-shell registration work through async callbacks, and derive initial permission warnings outside the effect body.
 - For report-keyed prompt state, prefer a keyed child component over resetting several `useState` values from a parent `useEffect`; `react-hooks/set-state-in-effect` treats synchronous effect resets as cascading renders.
 - Citizen FCM token tests live at `apps/citizen-pwa/src/hooks/__tests__/useFcmToken.test.tsx`; older slice text may mention `src/hooks/useFcmToken.test.ts`.
@@ -216,6 +223,7 @@
 - Worktrees can carry a stale `node_modules` without `.bin/`, so `pnpm exec <tool>` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`. Run `pnpm install --frozen-lockfile` in the worktree before trusting verification commands.
 - Organize by business domain over technical layer. Use `git mv`, update `index.ts` incrementally, and do not mix package extraction with directory reorg.
 - CLI tools invoked by CI scripts, such as `esbuild`, must be root devDependencies, not transitive dependencies.
+- Markdown progress entries must keep a blank line between top-level sections; `pnpm format:check` will fail if a merge adds `## ...` immediately after a `- Verification:` line.
 - Firebase emulator lists in CI must include every emulator required by the rules tests, including Storage when configured.
 - Terraform BigQuery `default_table_expiration_ms` must be at least `3600000`.
 - Dependabot lockfile conflicts often need a consolidated lockfile regeneration after one PR lands.
