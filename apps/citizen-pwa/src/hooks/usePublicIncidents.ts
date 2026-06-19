@@ -3,29 +3,35 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { PublicIncident, Filters } from '../components/MapTab/types.js'
+import {
+  filterPublicIncidentsByMunicipality,
+  getPublicIncidentMediaCandidates,
+  mapPublicIncidentData,
+} from './public-incident-mapping.js'
 
 // Always load the last 30 days — municipality filter is applied client-side.
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-function isPublicIncidentData(value: unknown): value is Omit<PublicIncident, 'id'> {
-  if (!value || typeof value !== 'object') return false
-  const data = value as Record<string, unknown>
-  const location = data.publicLocation
-  return (
-    typeof data.reportType === 'string' &&
-    typeof data.severity === 'string' &&
-    typeof data.status === 'string' &&
-    typeof data.barangayId === 'string' &&
-    typeof data.municipalityLabel === 'string' &&
-    typeof data.submittedAt === 'number' &&
-    Number.isFinite(data.submittedAt) &&
-    !!location &&
-    typeof location === 'object' &&
-    typeof (location as Record<string, unknown>).lat === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lat) &&
-    typeof (location as Record<string, unknown>).lng === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lng)
-  )
+async function resolveMediaUrls(
+  incidentId: string,
+  refs: string[],
+  source: 'featured' | 'legacy',
+): Promise<string[]> {
+  const urls: string[] = []
+  for (const mediaRef of refs) {
+    try {
+      const url = await getDownloadURL(ref(getStorage(), mediaRef))
+      urls.push(url)
+    } catch (e) {
+      const label = source === 'featured' ? 'media' : 'path'
+      const prefix = source === 'featured' ? 'featured media URL' : 'media URL'
+      console.error(
+        `Failed to resolve ${prefix} for incident ${incidentId}, ${label} ${mediaRef}`,
+        e,
+      )
+    }
+  }
+  return urls
 }
 
 export function usePublicIncidents(filters: Filters): {
@@ -59,75 +65,36 @@ export function usePublicIncidents(filters: Filters): {
       limit(100),
     )
 
-    const currentVersion = ++versionRef.current
     const unsub = onSnapshot(
       q,
       (snap) => {
+        const snapshotVersion = ++versionRef.current
+
         async function buildIncidents() {
           const all: PublicIncident[] = []
           for (const d of snap.docs) {
             const raw: unknown = d.data()
-            if (!isPublicIncidentData(raw)) {
+            const incident = mapPublicIncidentData(d.id, raw)
+            if (!incident) {
               console.error('Skipping invalid public incident document', d.id)
               continue
             }
-            const doc = raw as Record<string, unknown>
-            let featuredMediaUrls: string[] | undefined
-            const featuredMediaIds = doc.featuredMediaIds
-            if (Array.isArray(featuredMediaIds) && featuredMediaIds.length > 0) {
-              const urls: string[] = []
-              for (const id of (featuredMediaIds as unknown[]).slice(0, 3)) {
-                if (typeof id !== 'string') continue
-                try {
-                  const url = await getDownloadURL(ref(getStorage(), id))
-                  urls.push(url)
-                } catch (e) {
-                  console.error(
-                    `Failed to resolve featured media URL for incident ${d.id}, media ${id}`,
-                    e,
-                  )
-                }
-              }
-              if (urls.length > 0) {
-                featuredMediaUrls = urls
-              }
+            const { featuredMediaIds, mediaRefs } = getPublicIncidentMediaCandidates(raw)
+            let featuredMediaUrls: string[] = []
+            if (featuredMediaIds.length > 0) {
+              featuredMediaUrls = await resolveMediaUrls(d.id, featuredMediaIds, 'featured')
             }
-            // Fallback to legacy mediaRefs only when featuredMediaIds yields nothing
-            if (!featuredMediaUrls) {
-              const mediaRefs = doc.mediaRefs
-              if (Array.isArray(mediaRefs) && mediaRefs.length > 0) {
-                const urls: string[] = []
-                for (const path of mediaRefs.slice(0, 3)) {
-                  if (typeof path !== 'string') continue
-                  try {
-                    const url = await getDownloadURL(ref(getStorage(), path))
-                    urls.push(url)
-                  } catch (e) {
-                    console.error(
-                      `Failed to resolve media URL for incident ${d.id}, path ${path}`,
-                      e,
-                    )
-                  }
-                }
-                if (urls.length > 0) {
-                  featuredMediaUrls = urls
-                }
-              }
+            if (featuredMediaUrls.length === 0 && mediaRefs.length > 0) {
+              featuredMediaUrls = await resolveMediaUrls(d.id, mediaRefs, 'legacy')
             }
-            const incident: PublicIncident = {
-              id: d.id,
-              ...raw,
-            }
-            if (featuredMediaUrls) {
+            if (featuredMediaUrls.length > 0) {
               incident.featuredMediaUrls = featuredMediaUrls
             }
             all.push(incident)
           }
-          const filtered = filters.municipality
-            ? all.filter((i) => i.municipalityLabel === filters.municipality)
-            : all
+          const filtered = filterPublicIncidentsByMunicipality(all, filters.municipality)
           // Ignore stale snapshots
-          if (versionRef.current !== currentVersion) return
+          if (versionRef.current !== snapshotVersion) return
           setError(null)
           setIncidents(filtered)
           setLoading(false)
@@ -135,7 +102,7 @@ export function usePublicIncidents(filters: Filters): {
         void buildIncidents()
       },
       (err) => {
-        if (versionRef.current !== currentVersion) return
+        versionRef.current += 1
         setError(err)
         setLoading(false)
       },
