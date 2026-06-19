@@ -416,6 +416,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - RF-02: extracted `public-incident-guard.ts`, consumed by `usePublicIncidents` + `useIncident`, applying the stricter detail boundary consistently. RF-03: extracted `public-incident-mapping.ts` (raw→`PublicIncident`, media selection, municipality filter); tightened the guard to reject `verifiedAt: null`; `usePublicIncidents` assigns a fresh snapshot version per callback so stale async media resolution can't overwrite newer data.
 
-## 2026-06-19 - CPWA Citizen PWA Revamp Slice Backlog (docs only)
+## 2026-06-18 - RF-06 Wizard Container Decomposition
 
+- Extracted report-wizard state, snapshot hydration, draft creation, and post-submit local-save side effects from `SubmitReportForm/index.tsx` into `useReportWizard`.
+- Kept `SubmitReportForm` as a thin render shell plus small step panels; `SubmissionPanel` behavior stayed in place and was not broadened.
+- Added a hook-level regression test for step transitions, snapshot-load autosave gating, and final draft payload creation.
+- Verification: red-first `useReportWizard.test.tsx` failed on missing `./useReportWizard.js`, then passed 3/3 after implementation. The RF-06 Citizen PWA suite passed 10 files / 45 tests. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, scoped Prettier check, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 - Turned the resolved `/grill-me` decisions for `docs/bantayog-alert-citizen-pwa-spec.md` (v2.0) into `cpwa-00` index + 9 slices. Resolved: bottom nav `Home · Map · Report · Feed · Profile` (Alerts→Home bell, `/alerts` route survives); Home `/` "Your Local Brief" hero; Map demotes to `/map`; §9 Response Thread becomes primary tracking at `/track/:id`; one shared status registry (cpwa-01); Home-only motion override (cpwa-06, reduced-motion fallback mandatory). P0: cpwa-01, cpwa-02 (IA/routing), cpwa-07 (Response Thread). Open seams: §6.14 ending copy (cpwa-05), weather as truth-gated empty slot (cpwa-04), Map alert-zone layer defers if alert docs lack geometry. Rejected: full-screen takeover, looping hazard backgrounds, tracking-in-Map-sheet, second status component per surface.
