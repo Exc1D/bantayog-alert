@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useReportWizard } from './useReportWizard.js'
+import type { WizardSnapshot } from '../../services/wizard-snapshot.js'
 
 const snapshotLoadMock = vi.hoisted(() => vi.fn())
 const snapshotSaveMock = vi.hoisted(() => vi.fn())
@@ -50,6 +51,23 @@ const step2 = {
   nearestLandmark: 'Town plaza',
 }
 
+function makeSnapshot({
+  step,
+  step1,
+  step2: persistedStep2,
+}: {
+  step: WizardSnapshot['step']
+  step1: WizardSnapshot['step1']
+  step2: WizardSnapshot['step2']
+}): WizardSnapshot {
+  return {
+    step,
+    step1,
+    step2: persistedStep2,
+    updatedAt: Date.now(),
+  }
+}
+
 function WizardHarness({ onNavigateHome = vi.fn() }: { onNavigateHome?: () => void }) {
   const wizard = useReportWizard({ onNavigateHome })
 
@@ -57,7 +75,17 @@ function WizardHarness({ onNavigateHome = vi.fn() }: { onNavigateHome?: () => vo
     <div>
       <p data-testid="loaded">{String(wizard.hasLoadedSnapshot)}</p>
       <p data-testid="step">{wizard.step}</p>
+      <p data-testid="has-step1">{String(Boolean(wizard.formData.step1))}</p>
+      <p data-testid="has-step2">{String(Boolean(wizard.formData.step2))}</p>
       <p data-testid="report-type">{wizard.formData.step1?.reportType ?? ''}</p>
+      <p data-testid="step2-name">{wizard.formData.step2?.reporterName ?? ''}</p>
+      <p data-testid="step2-phone">{wizard.formData.step2?.reporterMsisdn ?? ''}</p>
+      <p data-testid="step2-location">
+        {wizard.formData.step2
+          ? `${String(wizard.formData.step2.location.lat)},${String(wizard.formData.step2.location.lng)}`
+          : ''}
+      </p>
+      <p data-testid="step2-confidence">{wizard.formData.step2?.locationConfidence ?? ''}</p>
       <p data-testid="municipality">{wizard.formData.step2?.municipalityLabel ?? ''}</p>
       <p data-testid="draft-ref">{wizard.draft?.publicRef ?? ''}</p>
       <button
@@ -164,6 +192,105 @@ describe('useReportWizard', () => {
     await waitFor(() => {
       expect(snapshotSaveMock).toHaveBeenCalledWith({ step: 1, step1: null, step2: null })
     })
+  })
+
+  it('restores a valid step 3 snapshot with sanitized step2 values', async () => {
+    snapshotLoadMock.mockResolvedValue(
+      makeSnapshot({
+        step: 3,
+        step1: {
+          reportType: ' flood ',
+          description: '  Water is rising near the bridge  ',
+          peopleInjured: true,
+          peopleTrapped: false,
+          urgencyReason: '  child trapped nearby  ',
+        },
+        step2: {
+          location: { lat: 14.1122, lng: 122.9553 },
+          reporterName: ' Ana ',
+          reporterMsisdn: '+639171234567 ',
+          locationMethod: 'gps',
+          locationConfidence: 'exact',
+          municipalityId: ' daet ',
+          municipalityLabel: ' Daet ',
+          barangayId: ' Barangay 1 ',
+          nearestLandmark: ' Town plaza ',
+        },
+      }),
+    )
+
+    await renderLoadedWizard()
+
+    expect(screen.getByTestId('step')).toHaveTextContent('3')
+    expect(screen.getByTestId('has-step1')).toHaveTextContent('true')
+    expect(screen.getByTestId('has-step2')).toHaveTextContent('true')
+    expect(screen.getByTestId('report-type')).toHaveTextContent('flood')
+    expect(screen.getByTestId('step2-name')).toHaveTextContent('Ana')
+    expect(screen.getByTestId('step2-phone')).toHaveTextContent('+639171234567')
+    expect(screen.getByTestId('step2-location')).toHaveTextContent('14.1122,122.9553')
+    expect(screen.getByTestId('step2-confidence')).toHaveTextContent('exact')
+    expect(screen.getByTestId('municipality')).toHaveTextContent('Daet')
+  })
+
+  it('clamps a step 3 snapshot to step 1 when step1 data is missing', async () => {
+    snapshotLoadMock.mockResolvedValue(
+      makeSnapshot({
+        step: 3,
+        step1: null,
+        step2,
+      }),
+    )
+
+    await renderLoadedWizard()
+
+    expect(screen.getByTestId('step')).toHaveTextContent('1')
+    expect(screen.getByTestId('has-step1')).toHaveTextContent('false')
+    expect(screen.getByTestId('has-step2')).toHaveTextContent('false')
+  })
+
+  it('clamps a step 3 snapshot to step 2 when step2 location is invalid', async () => {
+    snapshotLoadMock.mockResolvedValue(
+      makeSnapshot({
+        step: 3,
+        step1,
+        step2: {
+          ...step2,
+          location: { lat: 999, lng: 122.9553 },
+        },
+      }),
+    )
+
+    await renderLoadedWizard()
+
+    expect(screen.getByTestId('step')).toHaveTextContent('2')
+    expect(screen.getByTestId('has-step1')).toHaveTextContent('true')
+    expect(screen.getByTestId('has-step2')).toHaveTextContent('false')
+  })
+
+  it('sanitizes malformed step2 primitive values without dropping a valid snapshot', async () => {
+    const corruptedStep2 = {
+      ...step2,
+      locationMethod: 'unknown',
+      locationConfidence: 'unknown',
+      municipalityId: 123,
+      barangayId: 42,
+    } as unknown as WizardSnapshot['step2']
+
+    snapshotLoadMock.mockResolvedValue(
+      makeSnapshot({
+        step: 3,
+        step1,
+        step2: corruptedStep2,
+      }),
+    )
+
+    await renderLoadedWizard()
+
+    expect(screen.getByTestId('step')).toHaveTextContent('3')
+    expect(screen.getByTestId('has-step1')).toHaveTextContent('true')
+    expect(screen.getByTestId('has-step2')).toHaveTextContent('true')
+    expect(screen.getByTestId('step2-confidence')).toHaveTextContent('manual')
+    expect(screen.getByTestId('municipality')).toHaveTextContent('Daet')
   })
 
   it('submits the final wizard state as the draft payload', async () => {

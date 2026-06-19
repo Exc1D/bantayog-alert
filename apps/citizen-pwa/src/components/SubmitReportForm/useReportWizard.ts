@@ -53,6 +53,27 @@ export interface ReviewReportData {
 
 export type WizardStep = 1 | 2 | 3
 
+type ValidReportType =
+  | 'flood'
+  | 'fire'
+  | 'accident'
+  | 'typhoon'
+  | 'landslide'
+  | 'structural'
+  | 'public_disturbance'
+  | 'other'
+
+const VALID_REPORT_TYPES = new Set<ValidReportType>([
+  'flood',
+  'fire',
+  'accident',
+  'typhoon',
+  'landslide',
+  'structural',
+  'public_disturbance',
+  'other',
+] as const)
+
 export interface UseReportWizardOptions {
   onNavigateHome: () => void
 }
@@ -203,23 +224,45 @@ export function useReportWizard({ onNavigateHome }: UseReportWizardOptions) {
 
 function hydrateWizardSnapshot(snapshot: WizardSnapshot): { step: WizardStep; formData: FormData } {
   const legacyPatientCount = readLegacyPatientCount(snapshot.step2)
+  const step1 = snapshot.step1
+    ? buildStep1DataFromSnapshot(snapshot.step1, legacyPatientCount)
+    : null
+  const step2 = snapshot.step2 && step1 ? buildStep2DataFromSnapshot(snapshot.step2) : null
+
   return {
-    step: snapshot.step,
+    step: clampRestoredStep(snapshot.step, step1, step2),
     formData: {
-      step1: snapshot.step1 ? buildStep1DataFromSnapshot(snapshot.step1, legacyPatientCount) : null,
-      step2: snapshot.step2 ? buildStep2DataFromSnapshot(snapshot.step2) : null,
+      step1,
+      step2,
     },
   }
+}
+
+function clampRestoredStep(
+  snapshotStep: unknown,
+  step1: Step1Data | null,
+  step2: Step2Data | null,
+): WizardStep {
+  const restoredStep = snapshotStep === 3 ? 3 : snapshotStep === 2 ? 2 : 1
+  const maxRestorableStep = step1 && step2 ? 3 : step1 ? 2 : 1
+  return Math.min(restoredStep, maxRestorableStep) as WizardStep
 }
 
 function buildStep1DataFromSnapshot(
   step1: NonNullable<WizardSnapshot['step1']>,
   legacyPatientCount: number,
-): Step1Data {
+): Step1Data | null {
+  const reportType = readNonEmptyString(step1.reportType)
+  const description = readNonEmptyString(step1.description)
   const urgencyReason = readNonEmptyString(step1.urgencyReason)
+
+  if (!reportType || !description || !isValidReportType(reportType)) {
+    return null
+  }
+
   return {
-    reportType: step1.reportType,
-    description: readSnapshotString(step1.description) ?? '',
+    reportType,
+    description,
     peopleInjured: readSnapshotBoolean(step1.peopleInjured) ?? legacyPatientCount > 0,
     peopleTrapped: readSnapshotBoolean(step1.peopleTrapped) ?? false,
     ...(urgencyReason ? { urgencyReason } : {}),
@@ -227,17 +270,29 @@ function buildStep1DataFromSnapshot(
   }
 }
 
-function buildStep2DataFromSnapshot(step2: NonNullable<WizardSnapshot['step2']>): Step2Data {
+function buildStep2DataFromSnapshot(step2: NonNullable<WizardSnapshot['step2']>): Step2Data | null {
+  const location = readSnapshotLocation(step2.location)
+  const reporterName = readNonEmptyString(step2.reporterName)
+  const reporterMsisdn = readNonEmptyString(step2.reporterMsisdn)
+  const municipalityId = readNonEmptyString(step2.municipalityId)
+  const municipalityLabel = readNonEmptyString(step2.municipalityLabel)
+  const barangayId = readNonEmptyString(step2.barangayId)
+  const nearestLandmark = readNonEmptyString(step2.nearestLandmark)
+
+  if (!location || !reporterName || !reporterMsisdn) {
+    return null
+  }
+
   return {
-    location: step2.location,
-    reporterName: step2.reporterName,
-    reporterMsisdn: step2.reporterMsisdn,
-    locationMethod: step2.locationMethod,
-    locationConfidence: readLocationConfidence(step2),
-    ...(step2.municipalityId ? { municipalityId: step2.municipalityId } : {}),
-    ...(step2.municipalityLabel ? { municipalityLabel: step2.municipalityLabel } : {}),
-    ...(step2.barangayId ? { barangayId: step2.barangayId } : {}),
-    ...(step2.nearestLandmark ? { nearestLandmark: step2.nearestLandmark } : {}),
+    location,
+    reporterName,
+    reporterMsisdn,
+    locationMethod: readLocationMethod(step2.locationMethod),
+    locationConfidence: readLocationConfidence(step2.locationConfidence),
+    ...(municipalityId ? { municipalityId } : {}),
+    ...(municipalityLabel ? { municipalityLabel } : {}),
+    ...(barangayId ? { barangayId } : {}),
+    ...(nearestLandmark ? { nearestLandmark } : {}),
   }
 }
 
@@ -290,35 +345,63 @@ function buildDraftTriage(
 }
 
 function readSnapshotString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined
+  return typeof value === 'string' ? value.trim() : undefined
 }
 
 function readNonEmptyString(value: unknown): string | undefined {
   const text = readSnapshotString(value)
-  return text?.trim() ? text : undefined
+  if (text === undefined || text === '') return undefined
+  return text
 }
 
 function readSnapshotBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined
 }
 
+function isValidReportType(value: string): value is ValidReportType {
+  return VALID_REPORT_TYPES.has(value as ValidReportType)
+}
+
+function readSnapshotLocation(value: unknown): { lat: number; lng: number } | null {
+  if (value === null || typeof value !== 'object' || !hasLatAndLng(value)) {
+    return null
+  }
+
+  const { lat, lng } = value
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    return null
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return null
+  }
+
+  return { lat, lng }
+}
+
+function hasLatAndLng(value: object): value is { lat: unknown; lng: unknown } {
+  return 'lat' in value && 'lng' in value
+}
+
+function readLocationMethod(value: unknown): Step2Data['locationMethod'] {
+  return value === 'gps' || value === 'manual' ? value : 'manual'
+}
+
+function readLocationConfidence(value: unknown): LocationConfidence {
+  if (value === 'exact' || value === 'approximate' || value === 'manual') {
+    return value
+  }
+  return 'manual'
+}
+
 function readLegacyPatientCount(step2: unknown): number {
   if (step2 === null || typeof step2 !== 'object' || !('patientCount' in step2)) {
     return 0
   }
-  const patientCount = step2.patientCount
+  const { patientCount } = step2 as { patientCount?: unknown }
   return typeof patientCount === 'number' ? patientCount : 0
-}
-
-function readLocationConfidence(step2: unknown): LocationConfidence {
-  if (step2 === null || typeof step2 !== 'object' || !('locationConfidence' in step2)) {
-    return 'manual'
-  }
-  const confidence = step2.locationConfidence
-  if (confidence === 'exact' || confidence === 'approximate' || confidence === 'manual') {
-    return confidence
-  }
-  return 'manual'
 }
 
 function buildReviewReportData(formData: FormData): ReviewReportData | null {
