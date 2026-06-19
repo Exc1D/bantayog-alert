@@ -3,12 +3,14 @@
 ## 2026-06-19 - CI Security and Code Quality Hardening
 
 - Reviewed current CI against GitHub Actions security guidance: least-privilege
-  token defaults, Dependency Review for newly introduced vulnerable packages,
-  CodeQL security-and-quality queries, and Actions workflow analysis.
+  token defaults, production dependency auditing, CodeQL security-and-quality
+  queries, and Actions workflow analysis.
 - Hardened `.github/workflows/ci.yml` with default `contents: read`
   permissions and a `Supply Chain` job that runs
-  `pnpm audit --audit-level high --prod` plus PR-only
-  `actions/dependency-review-action@v4` with `fail-on-severity: high`.
+  `pnpm audit --audit-level high --prod`.
+- Removed the PR-only `actions/dependency-review-action@v4` gate from CI because
+  this repository does not have GitHub Dependency Graph enabled, and the action
+  fails before it can compare introduced vulnerabilities.
 - Extended `.github/workflows/codeql.yml` to include the `actions` CodeQL
   language so workflow files are scanned for CI/CD security issues alongside
   JavaScript/TypeScript.
