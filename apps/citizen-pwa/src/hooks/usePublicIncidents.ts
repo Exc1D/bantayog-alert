@@ -3,30 +3,10 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { PublicIncident, Filters } from '../components/MapTab/types.js'
+import { isPublicIncidentData } from './public-incident-guard.js'
 
 // Always load the last 30 days — municipality filter is applied client-side.
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
-
-function isPublicIncidentData(value: unknown): value is Omit<PublicIncident, 'id'> {
-  if (!value || typeof value !== 'object') return false
-  const data = value as Record<string, unknown>
-  const location = data.publicLocation
-  return (
-    typeof data.reportType === 'string' &&
-    typeof data.severity === 'string' &&
-    typeof data.status === 'string' &&
-    typeof data.barangayId === 'string' &&
-    typeof data.municipalityLabel === 'string' &&
-    typeof data.submittedAt === 'number' &&
-    Number.isFinite(data.submittedAt) &&
-    !!location &&
-    typeof location === 'object' &&
-    typeof (location as Record<string, unknown>).lat === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lat) &&
-    typeof (location as Record<string, unknown>).lng === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lng)
-  )
-}
 
 export function usePublicIncidents(filters: Filters): {
   incidents: PublicIncident[]

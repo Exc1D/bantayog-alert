@@ -840,3 +840,9 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
+
+## 2026-06-18 - RF-02 Dedupe Citizen Public Incident Guard
+
+- Extracted the duplicated Citizen PWA `isPublicIncidentData` logic into `apps/citizen-pwa/src/hooks/public-incident-guard.ts` and consumed it from both `usePublicIncidents` and `useIncident`.
+- Preserved the stricter detail-view boundary for both surfaces: malformed report type, severity, status, coordinates, and `verifiedAt` are rejected consistently instead of letting the list and detail hooks drift.
+- Verification: red-first guard test failed on the missing module, then `pnpm --dir apps/citizen-pwa exec vitest run src/hooks/public-incident-guard.test.ts src/hooks/usePublicIncidents.test.ts` passed 19/19; `pnpm --dir apps/citizen-pwa exec tsc --noEmit` and `pnpm --dir apps/citizen-pwa exec eslint src` passed.

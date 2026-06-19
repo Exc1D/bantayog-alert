@@ -113,6 +113,7 @@
 - `React.lazy()` components fail offline. Eager-import offline states.
 - Citizen report history has four visible states: loading, genuinely empty, stale-but-visible, and failed. If Firestore and callable lookup both fail, surface the failure with retry and keep cached rows visible instead of falling through to "No reports yet."
 - Citizen map interpretive copy must be truth-gated. Hide situational headlines while alert, incident, own-report, offline, or error states are unresolved so "calm" never means "still loading" or "failed to refresh."
+- Public incident validation must stay single-source across list and detail reads. The list hook once accepted any string enum while the detail hook rejected malformed report type/severity/status; use the shared guard so bad public documents are filtered consistently.
 
 ## Dispatch / Responder / Monitor
 
