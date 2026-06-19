@@ -8,7 +8,8 @@ interface Props {
   children?: ReactNode
   confirmLabel: string
   confirmVariant?: 'danger' | 'primary'
-  onConfirm: () => void
+  confirmLoading?: boolean
+  onConfirm: () => void | Promise<void>
   onCancel: () => void
 }
 
@@ -19,6 +20,7 @@ export function ConfirmationModal({
   children,
   confirmLabel,
   confirmVariant = 'danger',
+  confirmLoading,
   onConfirm,
   onCancel,
 }: Props) {
@@ -30,13 +32,19 @@ export function ConfirmationModal({
     }
   }, [open])
 
+  const handleCancel = useCallback(() => {
+    if (!confirmLoading) {
+      onCancel()
+    }
+  }, [confirmLoading, onCancel])
+
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target === e.currentTarget) {
-        onCancel()
+        handleCancel()
       }
     },
-    [onCancel],
+    [handleCancel],
   )
 
   if (!open) return null
@@ -51,7 +59,7 @@ export function ConfirmationModal({
       onClick={handleBackdropClick}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
-          onCancel()
+          handleCancel()
         }
       }}
     >
@@ -68,8 +76,9 @@ export function ConfirmationModal({
             {title}
           </h2>
           <button
-            onClick={onCancel}
-            className="rounded p-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            onClick={handleCancel}
+            disabled={confirmLoading}
+            className="rounded p-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Close"
           >
             <X className="h-4 w-4 text-[var(--color-text-secondary)]" />
@@ -79,16 +88,20 @@ export function ConfirmationModal({
         {children}
         <div className="mt-6 flex justify-end gap-3">
           <button
-            onClick={onCancel}
-            className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            onClick={handleCancel}
+            disabled={confirmLoading}
+            className="rounded-md px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
-            onClick={onConfirm}
-            className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50`}
+            onClick={() => {
+              void onConfirm()
+            }}
+            disabled={confirmLoading}
+            className={`rounded-md px-4 py-2 text-sm text-white ${confirmBg} hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            {confirmLabel}
+            {confirmLoading ? 'Processing...' : confirmLabel}
           </button>
         </div>
       </div>

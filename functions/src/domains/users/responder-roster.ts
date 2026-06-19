@@ -53,7 +53,7 @@ interface SuspendRevokeDeps {
 interface ResponderStatusDoc {
   agencyId?: string
   municipalityId?: string | null
-  mfaEnrolled?: boolean
+  mfaEnrolled?: unknown
 }
 
 function buildResponderStatusClaims(
@@ -72,7 +72,7 @@ function buildResponderStatusClaims(
     ...(typeof responder.agencyId === 'string' && { agencyId: responder.agencyId }),
     ...(municipalityId && { municipalityId }),
     ...(municipalityId && { permittedMunicipalityIds: [municipalityId] }),
-    mfaEnrolled: responder.mfaEnrolled ?? false,
+    mfaEnrolled: typeof responder.mfaEnrolled === 'boolean' ? responder.mfaEnrolled : false,
     lastClaimIssuedAt: nowMillis,
   }
 }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { MapPin, Navigation, ArrowLeft } from 'lucide-react'
 import { Button } from '../ui/Button'
-import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { isQuotaExceededError, isSecurityError } from '../../utils/storage-errors'
 import { useGpsLocation } from '../../hooks/useGpsLocation'
 import { useMunicipalityBarangays } from '../../hooks/useMunicipalityBarangays'
@@ -9,21 +8,14 @@ import { getAutoLocationEnabled } from '../../lib/userSettings'
 import { MunicipalitySelector } from './MunicipalitySelector'
 import { BarangaySelector } from './BarangaySelector'
 import { ContactFields } from './ContactFields'
-
-type LocationConfidence = 'exact' | 'approximate' | 'manual'
+import {
+  validateStep2WhoWhere,
+  type LocationConfidence,
+  type Step2WhoWhereNextData,
+} from './step2-policy'
 
 interface Step2WhoWhereProps {
-  onNext: (data: {
-    location: { lat: number; lng: number }
-    reporterName: string
-    reporterMsisdn: string
-    locationMethod: 'gps' | 'manual'
-    locationConfidence: LocationConfidence
-    municipalityId?: string
-    municipalityLabel?: string
-    barangayId?: string
-    nearestLandmark?: string
-  }) => void
+  onNext: (data: Step2WhoWhereNextData) => void
   onBack: () => void
   isSubmitting?: boolean
   initialValues?: {
@@ -152,29 +144,21 @@ export function Step2WhoWhere({
     setPhoneError(null)
     setMunicipalityError(null)
 
-    if (locationMethod === 'manual' && !selectedMunicipalityId) {
-      setMunicipalityError('Please select a municipality.')
+    const policy = validateStep2WhoWhere({
+      location,
+      locationMethod,
+      selectedMunicipalityId,
+      selectedBarangayId,
+      nearestLandmark,
+      reporterName,
+      reporterMsisdn,
+      locationConfidence,
+    })
+    if (policy.status === 'error') {
+      setMunicipalityError(policy.errors.municipality ?? null)
+      setNameError(policy.errors.reporterName ?? null)
+      setPhoneError(policy.errors.reporterMsisdn ?? null)
       return
-    }
-    if (!reporterName.trim()) {
-      setNameError('Please enter your name.')
-      return
-    }
-    if (!reporterMsisdn.trim()) {
-      setPhoneError('Please enter your phone number.')
-      return
-    }
-
-    let finalLocation = location
-    let municipalityLabel: string | undefined
-    if (locationMethod === 'manual' && selectedMunicipalityId) {
-      const muni = CAMARINES_NORTE_MUNICIPALITIES.find((m) => m.id === selectedMunicipalityId)
-      municipalityLabel = muni?.label
-      if (muni?.centroid) {
-        finalLocation = { lat: muni.centroid.lat, lng: muni.centroid.lng }
-      } else {
-        finalLocation ??= { lat: 0, lng: 0 }
-      }
     }
 
     try {
@@ -188,21 +172,7 @@ export function Step2WhoWhere({
       }
     }
 
-    onNext({
-      location: finalLocation ?? { lat: 0, lng: 0 },
-      reporterName,
-      reporterMsisdn,
-      locationMethod: locationMethod ?? 'manual',
-      locationConfidence,
-      ...(locationMethod === 'manual' && selectedMunicipalityId
-        ? {
-            municipalityId: selectedMunicipalityId,
-            ...(municipalityLabel ? { municipalityLabel } : {}),
-            ...(selectedBarangayId ? { barangayId: selectedBarangayId } : {}),
-            ...(nearestLandmark ? { nearestLandmark } : {}),
-          }
-        : {}),
-    })
+    onNext(policy.next)
   }
 
   const canProceed =

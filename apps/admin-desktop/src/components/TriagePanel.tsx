@@ -16,7 +16,7 @@ interface Props {
   responders?: ResponderEntry[]
   onClose: () => void
   onVerify: (id: string) => void
-  onReject: (id: string) => void
+  onReject: (id: string) => void | Promise<void>
   onDispatch: (id: string, agency: string, responder: string) => void
   onDeclareAlert?: (reportId: string) => void
 }
@@ -152,7 +152,9 @@ export function TriagePanel({
             {canReject && (
               <button
                 onClick={() => {
-                  onReject(report.id)
+                  void Promise.resolve(onReject(report.id)).catch((error: unknown) => {
+                    console.error('Report rejection failed', error)
+                  })
                 }}
                 className="w-full rounded-md border border-[var(--color-danger)] py-2 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
               >

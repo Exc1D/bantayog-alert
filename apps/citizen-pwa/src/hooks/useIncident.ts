@@ -2,70 +2,7 @@ import { useState, useEffect } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { PublicIncident } from '../components/MapTab/types.js'
-
-const VALID_REPORT_TYPES: readonly string[] = [
-  'flood',
-  'fire',
-  'earthquake',
-  'typhoon',
-  'landslide',
-  'storm_surge',
-  'medical',
-  'accident',
-  'structural',
-  'security',
-  'power_outage',
-  'other',
-]
-
-const VALID_SEVERITIES: readonly string[] = ['low', 'medium', 'high']
-
-const VALID_STATUSES: readonly string[] = [
-  'draft_inbox',
-  'new',
-  'awaiting_verify',
-  'verified',
-  'assigned',
-  'acknowledged',
-  'en_route',
-  'on_scene',
-  'resolved',
-  'closed',
-  'reopened',
-  'rejected',
-  'cancelled',
-  'cancelled_false_report',
-  'merged_as_duplicate',
-]
-
-function isPublicIncidentData(value: unknown): value is Omit<PublicIncident, 'id'> {
-  if (!value || typeof value !== 'object') return false
-  const data = value as Record<string, unknown>
-  const location = data.publicLocation
-  const verifiedAtValid =
-    data.verifiedAt === undefined ||
-    data.verifiedAt === null ||
-    (typeof data.verifiedAt === 'number' && Number.isFinite(data.verifiedAt))
-  return (
-    typeof data.reportType === 'string' &&
-    VALID_REPORT_TYPES.includes(data.reportType) &&
-    typeof data.severity === 'string' &&
-    VALID_SEVERITIES.includes(data.severity) &&
-    typeof data.status === 'string' &&
-    VALID_STATUSES.includes(data.status) &&
-    typeof data.barangayId === 'string' &&
-    typeof data.municipalityLabel === 'string' &&
-    typeof data.submittedAt === 'number' &&
-    Number.isFinite(data.submittedAt) &&
-    verifiedAtValid &&
-    !!location &&
-    typeof location === 'object' &&
-    typeof (location as Record<string, unknown>).lat === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lat) &&
-    typeof (location as Record<string, unknown>).lng === 'number' &&
-    Number.isFinite((location as Record<string, unknown>).lng)
-  )
-}
+import { isPublicIncidentData } from './public-incident-guard.js'
 
 export function useIncident(id: string): {
   incident: PublicIncident | null
