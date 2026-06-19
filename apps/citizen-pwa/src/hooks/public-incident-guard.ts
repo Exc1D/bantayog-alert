@@ -43,8 +43,7 @@ export function isPublicIncidentData(value: unknown): value is Omit<PublicIncide
   if (!value || typeof value !== 'object') return false
   const data = value as Record<string, unknown>
   const location = data.publicLocation
-  const verifiedAtValid =
-    data.verifiedAt === undefined || data.verifiedAt === null || isFiniteNumber(data.verifiedAt)
+  const verifiedAtValid = data.verifiedAt === undefined || isFiniteNumber(data.verifiedAt)
 
   return (
     typeof data.reportType === 'string' &&
