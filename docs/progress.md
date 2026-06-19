@@ -847,6 +847,7 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Kept transaction orchestration, idempotency, rate limiting, reads-before-writes order, event writes, and logging inside `redispatch-report.ts`.
 - Rebuilt Functions output so `functions/lib/domains/dispatches/redispatch-policy.*` and the updated redispatch core are present with the source change.
 - Verification: red-first policy test failed on the missing module, then focused redispatch unit tests passed 17/17. Dispatch-domain emulator gate passed (14 files passed, 1 skipped; 89 passed, 4 skipped). `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, `pnpm --dir functions build`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
 ## 2026-06-18 - RF-02 Dedupe Citizen Public Incident Guard
 
 - Extracted the duplicated Citizen PWA `isPublicIncidentData` logic into `apps/citizen-pwa/src/hooks/public-incident-guard.ts` and consumed it from both `usePublicIncidents` and `useIncident`.
