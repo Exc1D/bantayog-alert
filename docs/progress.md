@@ -863,7 +863,6 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
 
-## 2026-06-18 - RF-06 Wizard Container Decomposition
 ## 2026-06-18 - RF-05 Decompose merge-duplicates Policy
 
 - Extracted pure merge policy helpers into `functions/src/domains/reports/merge-duplicates-policy.ts`: id-set checks, actor/ops-row validation, primary media reconciliation, duplicate terminal update construction, and merge-event payload construction.
@@ -872,6 +871,27 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Verification: red-first policy test failed on the missing module, then focused merge unit/policy tests passed 15/15. Emulator-backed `merge-duplicates.test.ts` registered and passed 10/10 tests. `pnpm --dir packages/shared-validators build`, `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, `pnpm --dir functions build`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 
 ## 2026-06-18 - RF-04 Decompose redispatch-report Policy
+
+- Extracted redispatch policy helpers into `functions/src/domains/dispatches/redispatch-policy.ts`: terminal-status validation, actor municipality scope derivation, severity deadline selection, and new-dispatch document construction.
+- Kept transaction orchestration, idempotency, rate limiting, reads-before-writes order, event writes, and logging inside `redispatch-report.ts`.
+- Rebuilt Functions output so `functions/lib/domains/dispatches/redispatch-policy.*` and the updated redispatch core are present with the source change.
+- Verification: red-first policy test failed on the missing module, then focused redispatch unit tests passed 17/17. Dispatch-domain emulator gate passed (14 files passed, 1 skipped; 89 passed, 4 skipped). `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, `pnpm --dir functions build`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+
+## 2026-06-18 - RF-02 Dedupe Citizen Public Incident Guard
+
+- Extracted the duplicated Citizen PWA `isPublicIncidentData` logic into `apps/citizen-pwa/src/hooks/public-incident-guard.ts` and consumed it from both `usePublicIncidents` and `useIncident`.
+- Preserved the stricter detail-view boundary for both surfaces: malformed report type, severity, status, coordinates, and `verifiedAt` are rejected consistently instead of letting the list and detail hooks drift.
+- Verification: red-first guard test failed on the missing module, then `pnpm --dir apps/citizen-pwa exec vitest run src/hooks/public-incident-guard.test.ts src/hooks/usePublicIncidents.test.ts` passed 19/19; `pnpm --dir apps/citizen-pwa exec tsc --noEmit` and `pnpm --dir apps/citizen-pwa exec eslint src` passed.
+
+## 2026-06-18 - RF-03 Decompose buildIncidents Mapping
+
+- Extracted Citizen public-incident mapping helpers into `apps/citizen-pwa/src/hooks/public-incident-mapping.ts`: raw data to `PublicIncident`, media candidate selection, and municipality filtering.
+- Slimmed `usePublicIncidents` so `buildIncidents` now orchestrates validation, media URL resolution, filtering, and stale-snapshot guarding instead of owning every branch inline.
+- Preserved the no-media snapshot timing by avoiding async media resolution when no candidate refs exist.
+- Tightened the shared public-incident guard to reject `verifiedAt: null`, and made `usePublicIncidents` assign a fresh snapshot version inside each snapshot callback so stale async media resolution cannot overwrite newer data.
+- Verification: red-first regression tests failed before the fixes, then `pnpm --dir apps/citizen-pwa exec vitest run ./src/hooks/public-incident-guard.test.ts ./src/hooks/usePublicIncidents.test.ts ./src/hooks/public-incident-mapping.test.ts` passed 28/28; `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, Prettier check on touched files, `fallow audit --base origin/main --gate new-only`, and `git diff --check` passed.
+
+## 2026-06-18 - RF-06 Wizard Container Decomposition
 
 - Extracted report-wizard state, snapshot hydration, draft creation, and post-submit local-save side effects from `SubmitReportForm/index.tsx` into `useReportWizard`.
 - Kept `SubmitReportForm` as a thin render shell plus small step panels; `SubmissionPanel` behavior stayed in place and was not broadened.
