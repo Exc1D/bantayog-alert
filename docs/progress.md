@@ -1,5 +1,25 @@
 # Progress
 
+## 2026-06-19 - CI Security and Code Quality Hardening
+
+- Reviewed current CI against GitHub Actions security guidance: least-privilege
+  token defaults, Dependency Review for newly introduced vulnerable packages,
+  CodeQL security-and-quality queries, and Actions workflow analysis.
+- Hardened `.github/workflows/ci.yml` with default `contents: read`
+  permissions and a `Supply Chain` job that runs
+  `pnpm audit --audit-level high --prod` plus PR-only
+  `actions/dependency-review-action@v4` with `fail-on-severity: high`.
+- Extended `.github/workflows/codeql.yml` to include the `actions` CodeQL
+  language so workflow files are scanned for CI/CD security issues alongside
+  JavaScript/TypeScript.
+- Did not wire the existing local secret/`any` shell scripts into CI: recon
+  showed `check-secrets.sh` currently scans generated artifacts/worktrees and
+  needs a separate cleanup before it can be a trustworthy gate.
+- Verification: `pnpm audit --audit-level high --prod` passed with 3 existing
+  moderate advisories below the gate threshold; scoped Prettier check, YAML
+  parse check, and `git diff --check` passed. No deploy; no Firestore rules,
+  RTDB rules, indexes, or schema/migration files changed.
+
 ## 2026-06-18 - RF-01 Backend-only callable runbook
 
 - Documented the remaining RF-01 Bucket B/C Admin callable wrappers as intentionally backend-only for the pilot after Bucket A removals landed on `main`: `cancelDispatch`, `closeReport`, `mergeDuplicates`, `suspendResponder`, `revokeResponder`, `bulkAvailabilityOverride`, `setRetentionExempt`, `setErasureLegalHold`, `approveErasureRequest`, `suspendUser`, `revokeUser`, `resetUserTotp`, `createUser`, and `reopenReport`.

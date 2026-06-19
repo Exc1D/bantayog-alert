@@ -78,6 +78,11 @@
 
 ## Security / Privacy / Abuse
 
+- Do not promote `scripts/check-secrets.sh` into CI until it excludes generated
+  `dist`/mobile artifacts and nested worktrees, and uses `grep -e` for patterns
+  that can start with `-`. The current repo-wide scan reports built Firebase
+  config in generated bundles and can trip on the private-key pattern itself.
+
 - PR #212 hotline hardening: shared callable schemas should normalize and validate at the boundary. Use `.trim()` on labels/hotlines, require a real digit count for hotlines after regex validation, and store the parsed/normalized value. Punctuation-only strings such as `(((((((` and `+------` pass broad phone regexes unless digit-count refinement is added. The Admin UI should reuse `mdrrmoLabelSchema.maxLength` and show the exact digit-count failure as `Enter a valid phone number, for example (054) 721-1216`, not a raw max-length message.
 
 - Auth guards must check active accounts, not just roles. `requireAuth` should enforce `accountStatus === 'active'`; handlers without it must do the same manually.

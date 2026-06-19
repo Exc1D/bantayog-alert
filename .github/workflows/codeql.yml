@@ -19,13 +19,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript-typescript']
+        include:
+          - language: javascript-typescript
+            queries: security-and-quality
+          - language: actions
+            queries: security-extended
     steps:
       - uses: actions/checkout@v6
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          queries: security-and-quality
+          queries: ${{ matrix.queries }}
       - uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}
