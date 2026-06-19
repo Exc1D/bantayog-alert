@@ -7,28 +7,28 @@ import { withIdempotency } from '../../idempotency/guard.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import {
+  assertRedispatchResponderData,
+  assertRedispatchTerminalStatus,
+  assertReportInActorMunicipality,
+  assertResponderInReportMunicipality,
+  assertVerifiedReportStatus,
+  buildRedispatchDispatchData,
+  getActorMunicipalityIds,
+  getRedispatchDeadlineMs,
+} from './redispatch-policy.js'
+
+const redispatchIdSchema = z.string().min(1).max(128)
+const redispatchReasonSchema = z.string().trim().min(1).max(500)
 
 export const redispatchReportSchema = z
   .object({
-    oldDispatchId: z.string().min(1).max(128),
-    newResponderUid: z.string().min(1).max(128),
-    reason: z.string().trim().min(1).max(500),
+    oldDispatchId: redispatchIdSchema,
+    newResponderUid: redispatchIdSchema,
+    reason: redispatchReasonSchema,
     idempotencyKey: z.uuid(),
   })
   .strict()
-
-const TERMINAL_DISPATCH_STATES = ['declined', 'timed_out', 'cancelled'] as const
-
-const DEADLINE_BY_SEVERITY: Record<'critical' | 'high' | 'low' | 'medium', number> = {
-  critical: 5 * 60 * 1000,
-  high: 5 * 60 * 1000,
-  medium: 15 * 60 * 1000,
-  low: 30 * 60 * 1000,
-}
-
-function isValidSeverity(s: unknown): s is keyof typeof DEADLINE_BY_SEVERITY {
-  return typeof s === 'string' && Object.hasOwn(DEADLINE_BY_SEVERITY, s)
-}
 
 const log = logDimension('redispatchReport')
 
@@ -88,16 +88,7 @@ export async function redispatchReportCore(
           assignedTo?: { uid: string; agencyId: string; municipalityId: string }
         }
 
-        if (
-          !TERMINAL_DISPATCH_STATES.includes(
-            oldDispatch.status as (typeof TERMINAL_DISPATCH_STATES)[number],
-          )
-        ) {
-          throw new BantayogError(
-            BantayogErrorCode.FAILED_PRECONDITION,
-            `Cannot redispatch from status ${oldDispatch.status} (must be terminal)`,
-          )
-        }
+        assertRedispatchTerminalStatus(oldDispatch.status)
 
         const reportRef = db.collection('reports').doc(oldDispatch.reportId)
         const reportSnap = await tx.get(reportRef)
@@ -106,27 +97,10 @@ export async function redispatchReportCore(
         }
         const report = reportSnap.data() as Record<string, unknown>
 
-        const actorMuniIds: string[] = []
-        if (deps.actor.claims.municipalityId) {
-          actorMuniIds.push(deps.actor.claims.municipalityId)
-        }
-        if (deps.actor.claims.permittedMunicipalityIds?.length) {
-          actorMuniIds.push(...deps.actor.claims.permittedMunicipalityIds)
-        }
-        if (
-          actorMuniIds.length > 0 &&
-          typeof report.municipalityId === 'string' &&
-          !actorMuniIds.includes(report.municipalityId)
-        ) {
-          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
-        }
+        const actorMuniIds = getActorMunicipalityIds(deps.actor.claims)
+        assertReportInActorMunicipality(actorMuniIds, report.municipalityId)
 
-        if (report.status !== 'verified') {
-          throw new BantayogError(
-            BantayogErrorCode.FAILED_PRECONDITION,
-            `Report must be verified to redispatch (current: ${String(report.status)})`,
-          )
-        }
+        assertVerifiedReportStatus(report.status)
 
         const responderRef = db.collection('responders').doc(deps.newResponderUid)
         const responderSnap = await tx.get(responderRef)
@@ -135,29 +109,10 @@ export async function redispatchReportCore(
         }
         const responder = responderSnap.data() as Record<string, unknown>
 
-        if (typeof responder.municipalityId !== 'string' || !responder.municipalityId) {
-          throw new BantayogError(
-            BantayogErrorCode.INVALID_ARGUMENT,
-            'Responder missing municipalityId',
-          )
-        }
-        if (typeof responder.agencyId !== 'string' || !responder.agencyId) {
-          throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'Responder missing agencyId')
-        }
-        if (responder.isActive !== true) {
-          throw new BantayogError(
-            BantayogErrorCode.INVALID_STATUS_TRANSITION,
-            'Responder is not active',
-          )
-        }
+        assertRedispatchResponderData(responder)
 
         const reportMunicipalityId = report.municipalityId as string
-        if (responder.municipalityId !== reportMunicipalityId) {
-          throw new BantayogError(
-            BantayogErrorCode.FORBIDDEN,
-            'Responder not in report municipality',
-          )
-        }
+        assertResponderInReportMunicipality(responder.municipalityId, reportMunicipalityId)
 
         // Mark old dispatch as superseded.
         tx.update(oldDispatchRef, {
@@ -173,26 +128,19 @@ export async function redispatchReportCore(
         const newDispatchRef = db.collection('dispatches').doc(newDispatchId)
 
         const existingNewSnap = await tx.get(newDispatchRef)
-        const severity = isValidSeverity(report.severityDerived) ? report.severityDerived : 'medium'
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const deadlineMs = DEADLINE_BY_SEVERITY[severity] ?? DEADLINE_BY_SEVERITY.high
+        const deadlineMs = getRedispatchDeadlineMs(report.severityDerived)
 
-        const newDispatchData = {
-          dispatchId: newDispatchId,
+        const newDispatchData = buildRedispatchDispatchData({
+          newDispatchId,
           reportId: oldDispatch.reportId,
-          status: 'pending',
-          assignedTo: {
-            uid: deps.newResponderUid,
-            agencyId: responder.agencyId,
-            municipalityId: responder.municipalityId,
-          },
-          dispatchedAt: deps.now.toMillis(),
-          dispatchedBy: deps.actor.uid,
-          lastStatusAt: deps.now.toMillis(),
-          acknowledgementDeadlineAt: deps.now.toMillis() + deadlineMs,
+          newResponderUid: deps.newResponderUid,
+          responderAgencyId: responder.agencyId,
+          responderMunicipalityId: responder.municipalityId,
+          actorUid: deps.actor.uid,
+          nowMillis: deps.now.toMillis(),
+          deadlineMs,
           correlationId,
-          schemaVersion: 1,
-        }
+        })
 
         if (existingNewSnap.exists) {
           tx.update(newDispatchRef, newDispatchData)
