@@ -1,11 +1,6 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
-import type {
-  ReportStatus,
-  DispatchStatus,
-  ScopedOperationsMapIncidentPayload,
-  UserRole,
-} from '@bantayog/shared-types'
+import type { ReportStatus, DispatchStatus, UserRole } from '@bantayog/shared-types'
 import type {
   UpdateMunicipalityContactInput,
   UpdateMunicipalityContactOutput,
@@ -18,11 +13,6 @@ type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- P is the caller's contract
 function callable<P, R>(name: string) {
   return (payload: P) => httpsCallable<P, R>(functions, name)(payload).then((r) => r.data)
-}
-
-/** Build a no-payload callable wrapper: `callableVoid<Return>('functionName')` */
-function callableVoid<R>(name: string) {
-  return () => httpsCallable<Record<string, never>, R>(functions, name)({}).then((r) => r.data)
 }
 
 export const callables = {
@@ -86,29 +76,10 @@ export const callables = {
     { reportId: string; idempotencyKey: IdempotencyKey; closureSummary?: string },
     { status: ReportStatus; reportId: string }
   >('closeReport'),
-  shareReport: callable<
-    {
-      reportId: string
-      targetMunicipalityId: string
-      reason?: string
-      idempotencyKey: IdempotencyKey
-    },
-    { status: 'shared' }
-  >('shareReport'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   mergeDuplicates: callable<
     { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
     { success: true; mergedCount: number } | { success: false; errorCode: string }
   >('mergeDuplicates'),
-  acceptAgencyAssistance: callable<
-    { requestId: string; idempotencyKey: IdempotencyKey },
-    { status: 'accepted' }
-  >('acceptAgencyAssistance'),
-  declineAgencyAssistance: callable<
-    { requestId: string; reason: string; idempotencyKey: IdempotencyKey },
-    { status: 'declined' }
-  >('declineAgencyAssistance'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   suspendResponder: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
@@ -157,10 +128,6 @@ export const callables = {
     { erasureRequestId: string; approved: boolean; reason?: string },
     unknown
   >('approveErasureRequest'),
-  toggleMutualAidVisibility: callable<{ agencyId: string; visible: boolean }, unknown>(
-    'toggleMutualAidVisibility',
-  ),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   suspendUser: callable<
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; status: 'suspended' }
@@ -175,21 +142,6 @@ export const callables = {
     { uid: string; idempotencyKey: IdempotencyKey },
     { uid: string; reset: true }
   >('resetUserTotp'),
-  requestAgencyAssistance: callable<
-    {
-      reportId: string
-      agencyId: string
-      requestType: string
-      priority: 'routine' | 'urgent' | 'emergency'
-      message: string
-      idempotencyKey: string
-    },
-    { requestId: string }
-  >('requestAgencyAssistance'),
-  listScopedOperationsMap: callableVoid<{ incidents: ScopedOperationsMapIncidentPayload[] }>(
-    'listScopedOperationsMap',
-  ),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
   createUser: callable<
     {
       displayName: string
