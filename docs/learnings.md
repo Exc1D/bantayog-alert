@@ -83,6 +83,12 @@
   that can start with `-`. The current repo-wide scan reports built Firebase
   config in generated bundles and can trip on the private-key pattern itself.
 
+- GitHub Dependency Review requires the repository Dependency Graph setting. If
+  Dependency Graph is disabled, `actions/dependency-review-action@v4` fails with
+  “Dependency review is not supported on this repository”; keep the local
+  `pnpm audit --audit-level high --prod` gate instead until the setting is
+  enabled deliberately.
+
 - PR #212 hotline hardening: shared callable schemas should normalize and validate at the boundary. Use `.trim()` on labels/hotlines, require a real digit count for hotlines after regex validation, and store the parsed/normalized value. Punctuation-only strings such as `(((((((` and `+------` pass broad phone regexes unless digit-count refinement is added. The Admin UI should reuse `mdrrmoLabelSchema.maxLength` and show the exact digit-count failure as `Enter a valid phone number, for example (054) 721-1216`, not a raw max-length message.
 
 - Auth guards must check active accounts, not just roles. `requireAuth` should enforce `accountStatus === 'active'`; handlers without it must do the same manually.

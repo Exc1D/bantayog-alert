@@ -3,12 +3,14 @@
 ## 2026-06-19 - CI Security and Code Quality Hardening
 
 - Reviewed current CI against GitHub Actions security guidance: least-privilege
-  token defaults, Dependency Review for newly introduced vulnerable packages,
-  CodeQL security-and-quality queries, and Actions workflow analysis.
+  token defaults, production dependency auditing, CodeQL security-and-quality
+  queries, and Actions workflow analysis.
 - Hardened `.github/workflows/ci.yml` with default `contents: read`
   permissions and a `Supply Chain` job that runs
-  `pnpm audit --audit-level high --prod` plus PR-only
-  `actions/dependency-review-action@v4` with `fail-on-severity: high`.
+  `pnpm audit --audit-level high --prod`.
+- Removed the PR-only `actions/dependency-review-action@v4` gate from CI because
+  this repository does not have GitHub Dependency Graph enabled, and the action
+  fails before it can compare introduced vulnerabilities.
 - Extended `.github/workflows/codeql.yml` to include the `actions` CodeQL
   language so workflow files are scanned for CI/CD security issues alongside
   JavaScript/TypeScript.
@@ -860,6 +862,13 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
+
+## 2026-06-18 - RF-04 Decompose redispatch-report Policy
+
+- Extracted redispatch policy helpers into `functions/src/domains/dispatches/redispatch-policy.ts`: terminal-status validation, actor municipality scope derivation, severity deadline selection, and new-dispatch document construction.
+- Kept transaction orchestration, idempotency, rate limiting, reads-before-writes order, event writes, and logging inside `redispatch-report.ts`.
+- Rebuilt Functions output so `functions/lib/domains/dispatches/redispatch-policy.*` and the updated redispatch core are present with the source change.
+- Verification: red-first policy test failed on the missing module, then focused redispatch unit tests passed 17/17. Dispatch-domain emulator gate passed (14 files passed, 1 skipped; 89 passed, 4 skipped). `pnpm --dir functions exec tsc --noEmit`, `pnpm --dir functions exec eslint src`, `pnpm --dir functions build`, scoped Prettier, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 
 ## 2026-06-18 - RF-02 Dedupe Citizen Public Incident Guard
 
