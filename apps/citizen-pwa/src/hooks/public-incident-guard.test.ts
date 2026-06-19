@@ -58,4 +58,8 @@ describe('isPublicIncidentData', () => {
   it('rejects a malformed verifiedAt value', () => {
     expect(isPublicIncidentData({ ...validIncident, verifiedAt: 'now' })).toBe(false)
   })
+
+  it('rejects a null verifiedAt value', () => {
+    expect(isPublicIncidentData({ ...validIncident, verifiedAt: null })).toBe(false)
+  })
 })

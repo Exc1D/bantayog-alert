@@ -65,10 +65,11 @@ export function usePublicIncidents(filters: Filters): {
       limit(100),
     )
 
-    const currentVersion = ++versionRef.current
     const unsub = onSnapshot(
       q,
       (snap) => {
+        const snapshotVersion = ++versionRef.current
+
         async function buildIncidents() {
           const all: PublicIncident[] = []
           for (const d of snap.docs) {
@@ -93,7 +94,7 @@ export function usePublicIncidents(filters: Filters): {
           }
           const filtered = filterPublicIncidentsByMunicipality(all, filters.municipality)
           // Ignore stale snapshots
-          if (versionRef.current !== currentVersion) return
+          if (versionRef.current !== snapshotVersion) return
           setError(null)
           setIncidents(filtered)
           setLoading(false)
@@ -101,7 +102,7 @@ export function usePublicIncidents(filters: Filters): {
         void buildIncidents()
       },
       (err) => {
-        if (versionRef.current !== currentVersion) return
+        versionRef.current += 1
         setError(err)
         setLoading(false)
       },
