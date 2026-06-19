@@ -57,24 +57,33 @@ export async function mergeDuplicatesCore(
   correlationId = crypto.randomUUID(),
 ): Promise<MergeDuplicatesResult> {
   const actorPolicy = validateMergeActorClaims(actor.claims)
-  if (!actorPolicy.success && actorPolicy.reason === 'role') {
-    log({
-      severity: 'ERROR',
-      code: 'merge.permission_denied',
-      message: 'Caller role not allowed',
-      data: { role: actor.claims.role, correlationId },
-    })
-    return { success: false, errorCode: 'permission-denied' }
-  }
-
-  if (!actorPolicy.success && actorPolicy.reason === 'inactive') {
-    log({
-      severity: 'ERROR',
-      code: 'merge.permission_denied',
-      message: 'Caller account is not active',
-      data: { correlationId },
-    })
-    return { success: false, errorCode: 'permission-denied' }
+  if (!actorPolicy.success) {
+    switch (actorPolicy.reason) {
+      case 'role':
+        log({
+          severity: 'ERROR',
+          code: 'merge.permission_denied',
+          message: 'Caller role not allowed',
+          data: { role: actor.claims.role, correlationId },
+        })
+        return { success: false, errorCode: 'permission-denied' }
+      case 'inactive':
+        log({
+          severity: 'ERROR',
+          code: 'merge.permission_denied',
+          message: 'Caller account is not active',
+          data: { correlationId },
+        })
+        return { success: false, errorCode: 'permission-denied' }
+      default:
+        log({
+          severity: 'ERROR',
+          code: 'merge.permission_denied',
+          message: 'Unknown actor policy failure',
+          data: { correlationId },
+        })
+        return { success: false, errorCode: 'permission-denied' }
+    }
   }
 
   const { primaryReportId, duplicateReportIds, idempotencyKey } = input

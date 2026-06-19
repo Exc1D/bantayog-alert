@@ -64,23 +64,24 @@ export function validateMergeOpsRows(
   opsData: MergeOpsRow[],
   actorClaims: Pick<MergeActorClaims, 'role' | 'municipalityId'>,
 ): MergePolicyResult<{ municipalityId: string; duplicateClusterId: string }> {
-  const missingMunicipality = opsData.some((row) => !row.municipalityId)
+  const municipalityIds = opsData.map((row) => row.municipalityId?.trim())
+  const missingMunicipality = municipalityIds.some((municipalityId) => !municipalityId)
   if (missingMunicipality) {
     return { success: false, errorCode: 'failed-precondition' }
   }
 
-  const municipalities = new Set(opsData.map((row) => row.municipalityId))
+  const municipalities = new Set(municipalityIds)
   if (municipalities.size !== 1) {
     return { success: false, errorCode: 'invalid-argument' }
   }
 
-  const municipalityId = opsData[0]?.municipalityId
+  const municipalityId = municipalityIds[0]
   if (!municipalityId) {
     return { success: false, errorCode: 'failed-precondition' }
   }
 
   const clusterIds = opsData
-    .map((row) => row.duplicateClusterId)
+    .map((row) => row.duplicateClusterId?.trim())
     .filter((id): id is string => typeof id === 'string' && id.length > 0)
   if (clusterIds.length !== opsData.length) {
     return { success: false, errorCode: 'failed-precondition' }

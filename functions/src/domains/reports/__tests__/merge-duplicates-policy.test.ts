@@ -6,6 +6,7 @@ import {
   buildPrimaryMergeReportUpdate,
   excludesPrimaryReportId,
   hasUniqueDuplicateReportIds,
+  validateMergeActorClaims,
   validateMergeOpsRows,
 } from '../merge-duplicates-policy.js'
 
@@ -15,6 +16,20 @@ describe('merge duplicates policy', () => {
     expect(hasUniqueDuplicateReportIds(['r2', 'r2'])).toBe(false)
     expect(excludesPrimaryReportId('r1', ['r2', 'r3'])).toBe(true)
     expect(excludesPrimaryReportId('r1', ['r1'])).toBe(false)
+  })
+
+  it('rejects merge actors by role or inactive status', () => {
+    expect(validateMergeActorClaims({ role: 'citizen', active: true })).toEqual({
+      success: false,
+      errorCode: 'permission-denied',
+      reason: 'role',
+    })
+
+    expect(validateMergeActorClaims({ role: 'municipal_admin', active: false })).toEqual({
+      success: false,
+      errorCode: 'permission-denied',
+      reason: 'inactive',
+    })
   })
 
   it('rejects invalid merge ops rows with stable error codes', () => {
@@ -57,6 +72,26 @@ describe('merge duplicates policy', () => {
         { role: 'municipal_admin', municipalityId: 'basud' },
       ),
     ).toEqual({ success: false, errorCode: 'permission-denied' })
+
+    expect(
+      validateMergeOpsRows(
+        [
+          { id: 'r1', municipalityId: ' ', duplicateClusterId: 'cluster-1' },
+          { id: 'r2', municipalityId: ' ', duplicateClusterId: 'cluster-1' },
+        ],
+        { role: 'provincial_superadmin' },
+      ),
+    ).toEqual({ success: false, errorCode: 'failed-precondition' })
+
+    expect(
+      validateMergeOpsRows(
+        [
+          { id: 'r1', municipalityId: 'daet', duplicateClusterId: ' ' },
+          { id: 'r2', municipalityId: 'daet', duplicateClusterId: ' ' },
+        ],
+        { role: 'provincial_superadmin' },
+      ),
+    ).toEqual({ success: false, errorCode: 'failed-precondition' })
   })
 
   it('reconciles survivor media and loser terminal updates without undefined fields', () => {
