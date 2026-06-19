@@ -30,6 +30,19 @@ describe('redispatch policy', () => {
             permittedMunicipalityIds: ['basud', 'mercedes'],
         })).toEqual(['daet', 'basud', 'mercedes']);
     });
+    it('rejects invalid report municipality ids before scope comparison', () => {
+        const invalidValues = [null, undefined, '', 123];
+        for (const reportMunicipalityId of invalidValues) {
+            try {
+                assertReportInActorMunicipality(['daet'], reportMunicipalityId);
+            }
+            catch (err) {
+                expect(err).toBeInstanceOf(BantayogError);
+                expect(err.code).toBe(BantayogErrorCode.INVALID_ARGUMENT);
+                expect(err.message).toContain('Report missing municipalityId');
+            }
+        }
+    });
     it('rejects reports and responders outside the permitted redispatch scope', () => {
         expect(() => {
             assertReportInActorMunicipality(['daet'], 'basud');

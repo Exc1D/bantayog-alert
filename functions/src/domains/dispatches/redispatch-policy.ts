@@ -46,11 +46,11 @@ export function assertReportInActorMunicipality(
   actorMunicipalityIds: string[],
   reportMunicipalityId: unknown,
 ): void {
-  if (
-    actorMunicipalityIds.length > 0 &&
-    typeof reportMunicipalityId === 'string' &&
-    !actorMunicipalityIds.includes(reportMunicipalityId)
-  ) {
+  if (typeof reportMunicipalityId !== 'string' || !reportMunicipalityId) {
+    throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'Report missing municipalityId')
+  }
+
+  if (actorMunicipalityIds.length > 0 && !actorMunicipalityIds.includes(reportMunicipalityId)) {
     throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality')
   }
 }

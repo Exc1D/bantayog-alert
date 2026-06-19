@@ -13,9 +13,10 @@ export function assertRedispatchTerminalStatus(status) {
     throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, `Cannot redispatch from status ${status} (must be terminal)`);
 }
 export function assertReportInActorMunicipality(actorMunicipalityIds, reportMunicipalityId) {
-    if (actorMunicipalityIds.length > 0 &&
-        typeof reportMunicipalityId === 'string' &&
-        !actorMunicipalityIds.includes(reportMunicipalityId)) {
+    if (typeof reportMunicipalityId !== 'string' || !reportMunicipalityId) {
+        throw new BantayogError(BantayogErrorCode.INVALID_ARGUMENT, 'Report missing municipalityId');
+    }
+    if (actorMunicipalityIds.length > 0 && !actorMunicipalityIds.includes(reportMunicipalityId)) {
         throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Report not in your municipality');
     }
 }
