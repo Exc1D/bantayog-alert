@@ -4,6 +4,8 @@ import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
 import { incidentLabel, statusMeta, severityDotColor } from '../utils/incident-meta.js'
 import { useState, useRef, useCallback, useMemo } from 'react'
+import { useOptionalHomeData } from './HomeTab/HomeDataContext.js'
+import type { MyReport } from './MapTab/types.js'
 
 const NON_TERMINAL: ReadonlySet<string> = new Set([...ACTIVE_REPORT_STATUSES, 'reopened'])
 const RESPONDERS_ON_WAY_STATUSES: ReadonlySet<string> = new Set([
@@ -24,13 +26,28 @@ interface DragStart {
   el: HTMLElement
 }
 
-export function ReportStatusPill({
-  suppressResponderNotice = false,
-}: {
+interface ReportStatusPillProps {
   suppressResponderNotice?: boolean
-}) {
-  const navigate = useNavigate()
+}
+
+export function ReportStatusPill(props: ReportStatusPillProps) {
+  const homeData = useOptionalHomeData()
+  if (homeData) return <ReportStatusPillView {...props} reports={homeData.reports} />
+  return <ReportStatusPillWithReportsFromHook {...props} />
+}
+
+function ReportStatusPillWithReportsFromHook(props: ReportStatusPillProps) {
   const { reports } = useMyActiveReports()
+  return <ReportStatusPillView {...props} reports={reports} />
+}
+
+// CPWA-03 preserves this inherited render path while splitting data ownership.
+// fallow-ignore-next-line complexity
+function ReportStatusPillView({
+  reports,
+  suppressResponderNotice = false,
+}: ReportStatusPillProps & { reports: MyReport[] }) {
+  const navigate = useNavigate()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showPulse, setShowPulse] = useState(() => {
     try {

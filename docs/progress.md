@@ -464,3 +464,11 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added layout-stable labelled Home slots for the local brief, report, nearby, weather, and emergency contacts. Unread-count wiring remains in CPWA-03.
 - Map-intent `/` callers inventoried for owning slices: `ReportStatusPill`, `LookupScreen`, Profile report cards, and Map router-state cleanup.
 - Verification: each route/nav contract was observed red first; focused route/shell tests passed 18/18, full Citizen Vitest passed 80 files / 557 tests, and Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-19 - CPWA-03 Home Header and Alerts Bell
+
+- Replaced the Home header skeleton with a time-of-day greeting, optional municipality chip, truth-gated freshness, and an alerts bell whose unread badge renders a visible count and uses the CPWA-01 freshness token.
+- Added `HomeDataProvider` at `CitizenShell` so Home, later Home modules, and `ReportStatusPill` can share the shell-owned alert/report snapshots instead of adding another live subscription.
+- Verification: red-first `HomeHeader.test.tsx` failed on the missing module; shell integration failed while Home still rendered the skeleton. Focused Home header/shell/status-pill tests now pass 20/20, and Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+- Stabilized the App route smoke test around the new shell-owned Home data path by mocking live shell hooks and moving mocked splash completion into `useEffect`; the route file now passes cleanly without React `act(...)` warnings.
+- Final verification: focused App-route/Home-header/shell/status-pill Vitest passed 4 files / 30 tests; full Citizen Vitest passed 81 files / 561 tests (remaining stderr belongs to pre-existing offline/error-log and unrelated act-warning tests); Citizen typecheck, lint, build, scoped Prettier, `git diff --check`, and Fallow `new-only` audit passed. No deploy; no rules, indexes, schema, or migration files changed.

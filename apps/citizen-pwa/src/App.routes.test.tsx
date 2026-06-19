@@ -34,13 +34,17 @@ vi.mock('./pages/SettingsPage.js', () => ({
   SettingsPage: () => <div>Settings page</div>,
 }))
 
-vi.mock('./pages/SplashScreen.js', () => ({
-  SplashScreen: ({ onDone }: { onDone?: () => void }) => {
-    // Defer onDone to microtask so it doesn't trigger setState during render.
-    void Promise.resolve().then(() => onDone?.())
-    return null
-  },
-}))
+vi.mock('./pages/SplashScreen.js', async () => {
+  const { useEffect } = await import('react')
+  return {
+    SplashScreen: ({ onDone }: { onDone?: () => void }) => {
+      useEffect(() => {
+        onDone?.()
+      }, [onDone])
+      return null
+    },
+  }
+})
 
 vi.mock('./pages/Onboarding.js', () => ({
   Onboarding: () => <div>Onboarding</div>,
@@ -54,6 +58,40 @@ vi.mock('./lib/store.js', () => ({
       setNavDirection: () => void
     }) => unknown,
   ) => sel({ hasCompletedOnboarding: true, navDirection: 'forward', setNavDirection: vi.fn() }),
+}))
+
+vi.mock('./hooks/useOfflineQueueCount.js', () => ({
+  useOfflineQueueCount: () => ({ isOnline: true, queueCount: 0 }),
+}))
+
+vi.mock('./hooks/useAlerts.js', () => ({
+  useAlerts: () => ({ alerts: [], loading: false, error: null }),
+}))
+
+vi.mock('./hooks/useMyActiveReports.js', () => ({
+  useMyActiveReports: () => ({ reports: [], loading: false, status: 'empty', error: null }),
+}))
+
+vi.mock('./hooks/useAlertReadState.js', () => ({
+  useAlertReadState: () => ({
+    markAsRead: vi.fn(),
+    unreadCount: () => 0,
+  }),
+}))
+
+vi.mock('./hooks/useReducedMotion.js', () => ({
+  useReducedMotion: () => false,
+}))
+
+vi.mock('./hooks/useResumeRegistration.js', () => ({
+  useResumeRegistration: () => undefined,
+}))
+
+vi.mock('./services/wizard-snapshot.js', () => ({
+  wizardSnapshot: {
+    clear: () => Promise.resolve(),
+    load: () => Promise.resolve(null),
+  },
 }))
 
 async function renderAppAt(pathname: string) {

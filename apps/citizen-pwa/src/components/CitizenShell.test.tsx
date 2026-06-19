@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { CitizenShell } from './CitizenShell.js'
+import { HomeTab } from './HomeTab/index.js'
 
 const mockUseOfflineQueueCount = vi.fn()
 const mockUseUIStore = vi.fn()
@@ -67,8 +68,10 @@ beforeEach(() => {
 function renderShell(
   pathname = '/',
   opts?: {
+    home?: boolean
     offline?: boolean
     queueCount?: number
+    unreadAlerts?: number
     alerts?: {
       id: string
       title: string
@@ -89,20 +92,29 @@ function renderShell(
     }[]
   },
 ) {
+  const {
+    activeReports = [],
+    alerts = [],
+    home = false,
+    offline = false,
+    queueCount = 0,
+    unreadAlerts = 0,
+  } = opts ?? {}
+
   mockUseOfflineQueueCount.mockReturnValue({
-    isOnline: opts?.offline ? false : true,
-    queueCount: opts?.queueCount ?? 0,
+    isOnline: !offline,
+    queueCount,
   })
   mockUseUIStore.mockReturnValue({
     navDirection: 'forward' as const,
     setNavDirection: vi.fn(),
   })
-  mockUseMyActiveReports.mockReturnValue({ reports: opts?.activeReports ?? [], loading: false })
+  mockUseMyActiveReports.mockReturnValue({ reports: activeReports, loading: false })
   mockUseAlertReadState.mockReturnValue({
-    unreadCount: () => 0,
+    unreadCount: () => unreadAlerts,
     markAsRead: vi.fn(),
   })
-  mockUseAlerts.mockReturnValue({ alerts: opts?.alerts ?? [] })
+  mockUseAlerts.mockReturnValue({ alerts })
   mockUseReducedMotion.mockReturnValue(false)
 
   const router = createMemoryRouter(
@@ -115,7 +127,7 @@ function renderShell(
           </CitizenShell>
         ),
         children: [
-          { index: true, element: <div>Map content</div> },
+          { index: true, element: home ? <HomeTab /> : <div>Map content</div> },
           { path: 'report', element: <div>Report content</div> },
           { path: 'feed', element: <div>Feed content</div> },
         ],
@@ -132,6 +144,39 @@ describe('CitizenShell', () => {
     renderShell('/')
     expect(screen.getByRole('navigation')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /home/i })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('feeds Home header from the shell-owned alert and report sources', () => {
+    renderShell('/', {
+      alerts: [
+        {
+          id: 'alert-1',
+          title: 'Flood alert',
+          body: 'Stay alert near waterways.',
+          severity: 'high',
+          publishedAt: Date.now() - 60_000,
+          publishedBy: 'admin-1',
+        },
+      ],
+      activeReports: [
+        {
+          publicRef: 'a1b2c3d4',
+          reportType: 'flood',
+          severity: 'high',
+          lat: 14.11,
+          lng: 122.95,
+          submittedAt: Date.now() - 120_000,
+          status: 'awaiting_verify',
+          municipalityLabel: 'Daet',
+        },
+      ],
+      home: true,
+      unreadAlerts: 1,
+    })
+
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('Daet')).toBeInTheDocument()
+    expect(screen.getByText(/^Updated /)).toBeInTheDocument()
   })
 
   it('navigates to report and feed tabs', async () => {

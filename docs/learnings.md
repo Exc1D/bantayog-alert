@@ -192,3 +192,9 @@
 
 - Once `/` becomes Home, audit navigation intent instead of globally replacing paths. Home-return callers stay on `/`; Map-intent callers (`ReportStatusPill`, lookup result state, Profile report cards, and Map state cleanup) move only in their owning CPWA slices.
 - A generic import insertion patch on the new `HomeTab` matched the file tail and placed imports after the component. The required post-edit reread caught it before typecheck; anchor new imports against the first declaration, not an empty hunk.
+
+## Citizen PWA Home Data
+
+- CPWA Home slices should consume alert/report snapshots through the shell-owned `HomeDataProvider`; calling `useAlerts` or `useMyActiveReports` again inside Home modules adds duplicate live subscriptions.
+- React Compiler purity flags `Date.now()` in render defaults. Capture a stable timestamp through a lazy state initializer or pass it as an explicit prop; keep presentational components deterministic.
+- App route wiring tests that mount `CitizenShell` must mock shell-owned live hooks (`useAlerts`, `useMyActiveReports`, offline queue/read-state hooks) and `wizardSnapshot`; mocked splash completion should call back from `useEffect`, not a free microtask, or React 19 emits `act(...)` noise and route assertions can turn order-sensitive.

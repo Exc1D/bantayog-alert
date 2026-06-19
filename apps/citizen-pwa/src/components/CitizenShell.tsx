@@ -7,9 +7,11 @@ import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import { ReportStatusPill } from './ReportStatusPill.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
 import { useAlerts } from '../hooks/useAlerts.js'
+import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
 import { useUIStore } from '../lib/store.js'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
 import { wizardSnapshot } from '../services/wizard-snapshot.js'
+import { HomeDataProvider } from './HomeTab/HomeDataContext.js'
 import '../styles/design-tokens.css'
 
 const TAB_PATHS = ['/', '/map', '/report', '/feed', '/profile'] as const
@@ -29,16 +31,35 @@ const PAGE_VARIANTS = {
   exit: (dir: 'forward' | 'backward') => ({ x: dir === 'forward' ? '-10%' : '10%', opacity: 0 }),
 }
 
+function bannerMotionProps(prefersReducedMotion: boolean) {
+  if (prefersReducedMotion) {
+    return {
+      initial: false as const,
+      animate: { y: 0, opacity: 1 },
+      exit: { y: 0, opacity: 0 },
+      transition: { duration: 0 },
+    }
+  }
+  return {
+    initial: { y: -40, opacity: 0 },
+    animate: { y: 0, opacity: 1 },
+    exit: { y: -40, opacity: 0 },
+    transition: { duration: 0.3 },
+  }
+}
+
 export function CitizenShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { isOnline, queueCount } = useOfflineQueueCount()
   const { alerts } = useAlerts()
-  const { markAsRead } = useAlertReadState()
+  const { reports } = useMyActiveReports()
+  const { markAsRead, unreadCount } = useAlertReadState()
   const navDirection = useUIStore((s) => s.navDirection)
   const setNavDirection = useUIStore((s) => s.setNavDirection)
   const showOfflineBanner = !isOnline
   const prefersReducedMotion = useReducedMotion()
+  const bannerMotion = bannerMotionProps(prefersReducedMotion)
   const [hasDraft, setHasDraft] = useState(false)
   const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false)
   const [dismissedModalAlertId, setDismissedModalAlertId] = useState<string | null>(null)
@@ -63,6 +84,12 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const newestAlert = useMemo(
     () => [...alerts].sort((a, b) => b.publishedAt - a.publishedAt)[0] ?? null,
     [alerts],
+  )
+  const alertIds = useMemo(() => alerts.map((alert) => alert.id), [alerts])
+  const unreadAlertCount = unreadCount(alertIds)
+  const homeData = useMemo(
+    () => ({ alerts, reports, unreadAlertCount }),
+    [alerts, reports, unreadAlertCount],
   )
   const modalAlert = newestAlert?.id === dismissedModalAlertId ? null : newestAlert
 
@@ -144,262 +171,260 @@ export function CitizenShell({ children }: { children: ReactNode }) {
       {/* h-[100dvh] flex-col gives every child a definite height so absolute
         descendants (MapTab, motion.div) can resolve inset-0 correctly.
         overflow-x-hidden clips the horizontal page-transition slide. */}
-      <div className="h-[100dvh] flex flex-col overflow-x-hidden bg-surface-100">
-        {modalAlert && (
-          <div className="fixed inset-0 z-[10000] bg-surface-900/60">
-            <div
-              ref={modalAlertRef}
-              tabIndex={-1}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="foreground-alert-title"
-              className="absolute left-1/2 top-1/2 w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-5 shadow-2xl"
-            >
-              <div className="mb-3 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-600/10 text-danger-600">
-                  <Siren size={20} aria-hidden="true" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2
-                    id="foreground-alert-title"
-                    className="m-0 text-lg font-bold text-surface-900"
+      <HomeDataProvider value={homeData}>
+        <div className="h-[100dvh] flex flex-col overflow-x-hidden bg-surface-100">
+          {modalAlert && (
+            <div className="fixed inset-0 z-[10000] bg-surface-900/60">
+              <div
+                ref={modalAlertRef}
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="foreground-alert-title"
+                className="absolute left-1/2 top-1/2 w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-5 shadow-2xl"
+              >
+                <div className="mb-3 flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-600/10 text-danger-600">
+                    <Siren size={20} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2
+                      id="foreground-alert-title"
+                      className="m-0 text-lg font-bold text-surface-900"
+                    >
+                      {modalAlert.title}
+                    </h2>
+                    <p className="mt-1 text-sm leading-relaxed text-surface-700">
+                      {modalAlert.body}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Dismiss alert notification"
+                    className="rounded-full p-2 text-surface-500 active:bg-surface-100"
+                    onClick={() => {
+                      markAsRead(modalAlert.id)
+                      setDismissedModalAlertId(modalAlert.id)
+                    }}
                   >
-                    {modalAlert.title}
-                  </h2>
-                  <p className="mt-1 text-sm leading-relaxed text-surface-700">{modalAlert.body}</p>
+                    <X size={18} />
+                  </button>
                 </div>
                 <button
                   type="button"
-                  aria-label="Dismiss alert notification"
-                  className="rounded-full p-2 text-surface-500 active:bg-surface-100"
+                  className="mt-2 h-11 w-full rounded-lg border-none bg-brand-600 text-sm font-bold text-white"
                   onClick={() => {
                     markAsRead(modalAlert.id)
                     setDismissedModalAlertId(modalAlert.id)
+                    handleNav('/alerts')
                   }}
                 >
-                  <X size={18} />
+                  View alert
                 </button>
               </div>
-              <button
-                type="button"
-                className="mt-2 h-11 w-full rounded-lg border-none bg-brand-600 text-sm font-bold text-white"
-                onClick={() => {
-                  markAsRead(modalAlert.id)
-                  setDismissedModalAlertId(modalAlert.id)
-                  handleNav('/alerts')
-                }}
-              >
-                View alert
-              </button>
             </div>
-          </div>
-        )}
-
-        {/* Offline banner — shrinks the flex-1 main area when visible */}
-        <AnimatePresence>
-          {showOfflineBanner && (
-            <motion.div
-              initial={prefersReducedMotion ? false : { y: -40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={prefersReducedMotion ? { y: 0, opacity: 0 } : { y: -40, opacity: 0 }}
-              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
-              className="shrink-0 z-toast bg-warning-400/10 border-b border-warning-400/30 px-4 py-2 flex items-center justify-center gap-2"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <WifiOff size={16} className="text-warning-500" />
-              <span className="text-sm font-medium text-warning-500">
-                {queueCount > 0
-                  ? `Offline. ${String(queueCount)} report${queueCount !== 1 ? 's' : ''} queued`
-                  : "You're offline. Reports saved on device."}
-              </span>
-            </motion.div>
           )}
-        </AnimatePresence>
 
-        {/* Draft resume banner — shows when an in-progress wizard snapshot exists
-          and the user is not already on /report. */}
-        <AnimatePresence>
-          {showDraftBanner && (
-            <motion.div
-              initial={prefersReducedMotion ? false : { y: -40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={prefersReducedMotion ? { y: 0, opacity: 0 } : { y: -40, opacity: 0 }}
-              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
-              className="shrink-0 z-toast bg-brand-50 border-b border-brand-200 px-4 py-2 flex flex-wrap items-center gap-2"
-              role="status"
-              aria-label="Draft report available"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <FileText size={16} className="text-brand-600 shrink-0" aria-hidden="true" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-surface-900 m-0">
-                  {isConfirmingDiscard
-                    ? 'Discard this unfinished report?'
-                    : 'Resume unfinished report'}
-                </p>
-                <p className="text-xs text-surface-600 italic m-0">
-                  {isConfirmingDiscard ? 'This cannot be undone.' : 'Hindi pa natapos ang ulat'}
-                </p>
-              </div>
-              {isConfirmingDiscard ? (
-                <div className="basis-full flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsConfirmingDiscard(false)
-                    }}
-                    className="text-xs font-semibold text-brand-700 px-2 py-1.5 rounded-md min-h-11"
-                  >
-                    Keep report
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDiscardDraft}
-                    className="text-xs font-semibold text-white bg-danger-600 px-3 py-1.5 rounded-md min-h-11"
-                  >
-                    Discard report
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleResumeDraft}
-                    className="text-xs font-semibold text-white bg-brand-600 px-3 py-1.5 rounded-md min-h-11"
-                  >
-                    Resume
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsConfirmingDiscard(true)
-                    }}
-                    className="text-xs font-medium text-surface-600 px-2 py-1.5 rounded-md min-h-11"
-                    aria-label="Discard draft"
-                  >
-                    Discard
-                  </button>
-                </>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Page content — flex-1 min-h-0 gives a definite height; relative makes
-          it the containing block for the absolute motion.div inside */}
-        <main id="main-content" className="flex-1 relative min-h-0">
-          <AnimatePresence mode="wait" custom={navDirection}>
-            <motion.div
-              key={pathname}
-              custom={navDirection}
-              {...(prefersReducedMotion
-                ? {}
-                : {
-                    variants: PAGE_VARIANTS,
-                    initial: 'initial' as const,
-                    exit: 'exit' as const,
-                  })}
-              animate={prefersReducedMotion ? { opacity: 1 } : 'animate'}
-              transition={
-                prefersReducedMotion
-                  ? { duration: 0 }
-                  : {
-                      duration: 0.3,
-                      ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
-                    }
-              }
-              className="absolute inset-0"
-            >
-              {children}
-            </motion.div>
+          {/* Offline banner — shrinks the flex-1 main area when visible */}
+          <AnimatePresence>
+            {showOfflineBanner && (
+              <motion.div
+                {...bannerMotion}
+                className="shrink-0 z-toast bg-warning-400/10 border-b border-warning-400/30 px-4 py-2 flex items-center justify-center gap-2"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <WifiOff size={16} className="text-warning-500" />
+                <span className="text-sm font-medium text-warning-500">
+                  {queueCount > 0
+                    ? `Offline. ${String(queueCount)} report${queueCount !== 1 ? 's' : ''} queued`
+                    : "You're offline. Reports saved on device."}
+                </span>
+              </motion.div>
+            )}
           </AnimatePresence>
-        </main>
 
-        <ReportStatusPill suppressResponderNotice={modalAlert !== null} />
-
-        {/* Bottom nav — in flex flow so its height is subtracted from main.
-          The FAB's -mt-6 intentionally overlaps into main; that's fine since
-          main has no overflow:hidden. */}
-        <nav
-          aria-label="Main navigation"
-          className="shrink-0 z-nav bg-surface-50 border-t border-surface-200"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        >
-          <div className="flex items-center justify-around h-16 max-w-lg mx-auto relative">
-            {TABS.map(({ path, label, Icon, isCenter }) => {
-              const isActive = pathname === path
-
-              if (isCenter) {
-                return (
-                  <div key={path} className="relative h-16 w-16 flex items-center justify-center">
+          {/* Draft resume banner — shows when an in-progress wizard snapshot exists
+          and the user is not already on /report. */}
+          <AnimatePresence>
+            {showDraftBanner && (
+              <motion.div
+                {...bannerMotion}
+                className="shrink-0 z-toast bg-brand-50 border-b border-brand-200 px-4 py-2 flex flex-wrap items-center gap-2"
+                role="status"
+                aria-label="Draft report available"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <FileText size={16} className="text-brand-600 shrink-0" aria-hidden="true" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-surface-900 m-0">
+                    {isConfirmingDiscard
+                      ? 'Discard this unfinished report?'
+                      : 'Resume unfinished report'}
+                  </p>
+                  <p className="text-xs text-surface-600 italic m-0">
+                    {isConfirmingDiscard ? 'This cannot be undone.' : 'Hindi pa natapos ang ulat'}
+                  </p>
+                </div>
+                {isConfirmingDiscard ? (
+                  <div className="basis-full flex justify-end gap-2">
                     <button
                       type="button"
-                      aria-label={label}
                       onClick={() => {
-                        handleNav(path)
+                        setIsConfirmingDiscard(false)
                       }}
-                      className="fab-breathe absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
+                      className="text-xs font-semibold text-brand-700 px-2 py-1.5 rounded-md min-h-11"
                     >
-                      <motion.div
-                        whileHover={prefersReducedMotion ? {} : { rotate: -8, scale: 1.05 }}
-                        whileTap={{ scale: 0.92 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                      >
-                        <Icon size={30} strokeWidth={1.5} className="text-white" />
-                      </motion.div>
+                      Keep report
                     </button>
-                    <span className="absolute bottom-[14px] text-[10px] font-medium leading-none text-surface-600">
+                    <button
+                      type="button"
+                      onClick={handleDiscardDraft}
+                      className="text-xs font-semibold text-white bg-danger-600 px-3 py-1.5 rounded-md min-h-11"
+                    >
+                      Discard report
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleResumeDraft}
+                      className="text-xs font-semibold text-white bg-brand-600 px-3 py-1.5 rounded-md min-h-11"
+                    >
+                      Resume
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsConfirmingDiscard(true)
+                      }}
+                      className="text-xs font-medium text-surface-600 px-2 py-1.5 rounded-md min-h-11"
+                      aria-label="Discard draft"
+                    >
+                      Discard
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Page content — flex-1 min-h-0 gives a definite height; relative makes
+          it the containing block for the absolute motion.div inside */}
+          <main id="main-content" className="flex-1 relative min-h-0">
+            <AnimatePresence mode="wait" custom={navDirection}>
+              <motion.div
+                key={pathname}
+                custom={navDirection}
+                {...(prefersReducedMotion
+                  ? {}
+                  : {
+                      variants: PAGE_VARIANTS,
+                      initial: 'initial' as const,
+                      exit: 'exit' as const,
+                    })}
+                animate={prefersReducedMotion ? { opacity: 1 } : 'animate'}
+                transition={
+                  prefersReducedMotion
+                    ? { duration: 0 }
+                    : {
+                        duration: 0.3,
+                        ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
+                      }
+                }
+                className="absolute inset-0"
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </main>
+
+          <ReportStatusPill suppressResponderNotice={modalAlert !== null} />
+
+          {/* Bottom nav — in flex flow so its height is subtracted from main.
+          The FAB's -mt-6 intentionally overlaps into main; that's fine since
+          main has no overflow:hidden. */}
+          <nav
+            aria-label="Main navigation"
+            className="shrink-0 z-nav bg-surface-50 border-t border-surface-200"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          >
+            <div className="flex items-center justify-around h-16 max-w-lg mx-auto relative">
+              {TABS.map(({ path, label, Icon, isCenter }) => {
+                const isActive = pathname === path
+
+                if (isCenter) {
+                  return (
+                    <div key={path} className="relative h-16 w-16 flex items-center justify-center">
+                      <button
+                        type="button"
+                        aria-label={label}
+                        onClick={() => {
+                          handleNav(path)
+                        }}
+                        className="fab-breathe absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
+                      >
+                        <motion.div
+                          whileHover={prefersReducedMotion ? {} : { rotate: -8, scale: 1.05 }}
+                          whileTap={{ scale: 0.92 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                        >
+                          <Icon size={30} strokeWidth={1.5} className="text-white" />
+                        </motion.div>
+                      </button>
+                      <span className="absolute bottom-[14px] text-[10px] font-medium leading-none text-surface-600">
+                        {label}
+                      </span>
+                    </div>
+                  )
+                }
+
+                return (
+                  <button
+                    key={path}
+                    type="button"
+                    onClick={() => {
+                      handleNav(path)
+                    }}
+                    {...(isActive ? { 'aria-current': 'page' as const } : {})}
+                    className="relative flex flex-col items-center justify-center w-16 h-16 gap-1 min-w-[44px] min-h-[44px] border-none bg-transparent cursor-pointer"
+                  >
+                    <motion.div
+                      animate={isActive ? { scale: prefersReducedMotion ? 1 : 1.1 } : { scale: 1 }}
+                      transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+                    >
+                      <Icon
+                        size={22}
+                        strokeWidth={isActive ? 2.5 : 1.5}
+                        className={isActive ? 'text-brand-500' : 'text-surface-600'}
+                      />
+                    </motion.div>
+                    <span
+                      className={`text-[10px] font-medium leading-none ${isActive ? 'text-brand-500' : 'text-surface-600'}`}
+                    >
                       {label}
                     </span>
-                  </div>
+                    {isActive && (
+                      <motion.div
+                        layoutId="navbar-indicator"
+                        className="absolute top-0 w-8 h-0.5 bg-brand-500 rounded-full"
+                        transition={
+                          prefersReducedMotion
+                            ? { duration: 0 }
+                            : { type: 'spring', stiffness: 500, damping: 30 }
+                        }
+                      />
+                    )}
+                  </button>
                 )
-              }
-
-              return (
-                <button
-                  key={path}
-                  type="button"
-                  onClick={() => {
-                    handleNav(path)
-                  }}
-                  {...(isActive ? { 'aria-current': 'page' as const } : {})}
-                  className="relative flex flex-col items-center justify-center w-16 h-16 gap-1 min-w-[44px] min-h-[44px] border-none bg-transparent cursor-pointer"
-                >
-                  <motion.div
-                    animate={isActive ? { scale: prefersReducedMotion ? 1 : 1.1 } : { scale: 1 }}
-                    transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
-                  >
-                    <Icon
-                      size={22}
-                      strokeWidth={isActive ? 2.5 : 1.5}
-                      className={isActive ? 'text-brand-500' : 'text-surface-600'}
-                    />
-                  </motion.div>
-                  <span
-                    className={`text-[10px] font-medium leading-none ${isActive ? 'text-brand-500' : 'text-surface-600'}`}
-                  >
-                    {label}
-                  </span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="navbar-indicator"
-                      className="absolute top-0 w-8 h-0.5 bg-brand-500 rounded-full"
-                      transition={
-                        prefersReducedMotion
-                          ? { duration: 0 }
-                          : { type: 'spring', stiffness: 500, damping: 30 }
-                      }
-                    />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </nav>
-      </div>
+              })}
+            </div>
+          </nav>
+        </div>
+      </HomeDataProvider>
     </>
   )
 }
