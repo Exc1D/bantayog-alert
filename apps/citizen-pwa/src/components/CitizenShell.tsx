@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Map, Rss, CirclePlus, Bell, User, WifiOff, FileText, X, Siren } from 'lucide-react'
+import { House, Map, Rss, CirclePlus, User, WifiOff, FileText, X, Siren } from 'lucide-react'
 import { useOfflineQueueCount } from '../hooks/useOfflineQueueCount.js'
 import { ReportStatusPill } from './ReportStatusPill.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
@@ -12,14 +12,14 @@ import { useReducedMotion } from '../hooks/useReducedMotion.js'
 import { wizardSnapshot } from '../services/wizard-snapshot.js'
 import '../styles/design-tokens.css'
 
-const TAB_PATHS = ['/', '/feed', '/report', '/alerts', '/profile'] as const
+const TAB_PATHS = ['/', '/map', '/report', '/feed', '/profile'] as const
 type TabPath = (typeof TAB_PATHS)[number]
 
 const TABS = [
-  { label: 'Map', path: '/', Icon: Map, isCenter: false },
-  { label: 'Feed', path: '/feed', Icon: Rss, isCenter: false },
+  { label: 'Home', path: '/', Icon: House, isCenter: false },
+  { label: 'Map', path: '/map', Icon: Map, isCenter: false },
   { label: 'Report', path: '/report', Icon: CirclePlus, isCenter: true },
-  { label: 'Alerts', path: '/alerts', Icon: Bell, isCenter: false },
+  { label: 'Feed', path: '/feed', Icon: Rss, isCenter: false },
   { label: 'Profile', path: '/profile', Icon: User, isCenter: false },
 ] as const
 
@@ -34,7 +34,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
   const { isOnline, queueCount } = useOfflineQueueCount()
   const { alerts } = useAlerts()
-  const { unreadCount, markAsRead } = useAlertReadState()
+  const { markAsRead } = useAlertReadState()
   const navDirection = useUIStore((s) => s.navDirection)
   const setNavDirection = useUIStore((s) => s.setNavDirection)
   const showOfflineBanner = !isOnline
@@ -60,9 +60,6 @@ export function CitizenShell({ children }: { children: ReactNode }) {
       })
   }, [pathname])
 
-  // Calculate unread alerts count
-  const alertIds = useMemo(() => alerts.map((a) => a.id), [alerts])
-  const unreadAlerts = unreadCount(alertIds)
   const newestAlert = useMemo(
     () => [...alerts].sort((a, b) => b.publishedAt - a.publishedAt)[0] ?? null,
     [alerts],
@@ -386,14 +383,6 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                   >
                     {label}
                   </span>
-                  {unreadAlerts > 0 && label === 'Alerts' && (
-                    <span
-                      className="badge-shake absolute top-1 right-2 w-5 h-5 bg-error-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
-                      aria-hidden="true"
-                    >
-                      {unreadAlerts > 9 ? '9+' : String(unreadAlerts)}
-                    </span>
-                  )}
                   {isActive && (
                     <motion.div
                       layoutId="navbar-indicator"

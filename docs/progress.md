@@ -457,3 +457,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added one pure registry for severity, public operational stage, hazard type, and freshness presentations; every entry exposes a color token, icon, and label with defined unknown-value fallbacks.
 - Re-pointed `getSeverityStyle` to the registry without changing its public shape or rendered values.
 - Verification: red-first missing-module and missing-axis failures were observed; focused Vitest passed 2 files / 9 tests, then Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-19 - CPWA-02 Citizen IA and Routing Spine
+
+- Moved Home to `/`, Map to `/map`, added a hidden-nav `/track/:id` placeholder, and changed the bottom nav to Home, Map, Report, Feed, Profile while preserving `/alerts` through a working Home-header bell.
+- Added layout-stable labelled Home slots for the local brief, report, nearby, weather, and emergency contacts. Unread-count wiring remains in CPWA-03.
+- Map-intent `/` callers inventoried for owning slices: `ReportStatusPill`, `LookupScreen`, Profile report cards, and Map router-state cleanup.
+- Verification: each route/nav contract was observed red first; focused route/shell tests passed 18/18, full Citizen Vitest passed 80 files / 557 tests, and Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.

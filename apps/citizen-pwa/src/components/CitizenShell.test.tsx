@@ -131,7 +131,7 @@ describe('CitizenShell', () => {
   it('renders the fixed chrome and active tab', () => {
     renderShell('/')
     expect(screen.getByRole('navigation')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /map/i })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: /home/i })).toHaveAttribute('aria-current', 'page')
   })
 
   it('navigates to report and feed tabs', async () => {

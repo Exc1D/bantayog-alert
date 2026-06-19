@@ -187,3 +187,8 @@
 ## Citizen PWA Status Vocabulary
 
 - The CPWA task text names `AlertsTab` as the hazard-category source, but that surface has severity filters only. Build the shared hazard registry from the union of `incident-meta.tsx` `INCIDENT_TYPES` and `situation-updates.ts` `SITUATION_HAZARD_TYPES`; do not silently drop categories unique to either public surface.
+
+## Citizen PWA Route Migration
+
+- Once `/` becomes Home, audit navigation intent instead of globally replacing paths. Home-return callers stay on `/`; Map-intent callers (`ReportStatusPill`, lookup result state, Profile report cards, and Map state cleanup) move only in their owning CPWA slices.
+- A generic import insertion patch on the new `HomeTab` matched the file tail and placed imports after the component. The required post-edit reread caught it before typecheck; anchor new imports against the first declaration, not an empty hunk.
