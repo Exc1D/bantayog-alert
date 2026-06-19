@@ -427,6 +427,13 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added a runtime guard to `renderSelectedMapReport` so missing or invalid `report.id` values fail fast instead of stringifying to bad selected-report ids in test setup. The guard now narrows `report.id` to `string | number` before `String(...)` to satisfy the repo lint rule.
 - Verification: focused `map-firestore-wiring.test.tsx` and `MapPage.ux-completeness.test.tsx` passed 17/17, then `pnpm --dir apps/admin-desktop run typecheck` and `pnpm --dir apps/admin-desktop run lint` passed.
 
+## 2026-06-18 - RF-09 Remove Leftover shared-sms-parser Package
+
+- Removed the stale `packages/shared-sms-parser` workspace package after recon confirmed it had no consumers outside its own manifest.
+- Removed the package's lint-baseline row and regenerated `pnpm-lock.yaml` so the workspace inventory no longer includes `@bantayog/shared-sms-parser`.
+- Corrected the earlier progress record by append-only note rather than rewriting history. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
+- Verification: `pnpm typecheck`, `pnpm lint`, `pnpm test` (26 files / 228 tests), `pnpm build`, scoped Prettier check, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed.
+
 ## 2026-06-18 - RF-07 Step2WhoWhere Policy Extraction
 
 - Extracted `Step2WhoWhere.handleNext` validation and next-payload derivation into pure `step2-policy.ts`, using the shared Camarines Norte municipality constants for manual centroid/label lookup.
