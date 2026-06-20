@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import type { PublicIncident, MyReport } from '../../MapTab/types.js'
-import { NearbyCard, YourReportCard } from './SecondaryStack.js'
+import { EmergencyContactsCard, NearbyCard, YourReportCard } from './SecondaryStack.js'
 
 const report = {
   id: 'report-1',
@@ -98,5 +98,16 @@ describe('Home secondary stack modules', () => {
     fireEvent.click(screen.getByRole('button', { name: /retry nearby/i }))
 
     expect(retry).toHaveBeenCalledOnce()
+  })
+
+  it('renders the emergency contact hotline as a real phone link', () => {
+    render(<EmergencyContactsCard contact={{ label: 'Daet MDRRMO', hotline: '(054) 721-1216' }} />)
+
+    expect(screen.getByText('Daet MDRRMO')).toBeInTheDocument()
+    expect(screen.getByText('(054) 721-1216')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /call daet mdrrmo/i })).toHaveAttribute(
+      'href',
+      'tel:0547211216',
+    )
   })
 })

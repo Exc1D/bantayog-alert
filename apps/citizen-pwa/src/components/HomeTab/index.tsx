@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { AlertDoc } from '@bantayog/shared-types'
 import { usePublicIncidents } from '../../hooks/usePublicIncidents.js'
+import { useMunicipalityContact } from '../../hooks/useMunicipalityContact.js'
 import { useReducedMotion } from '../../hooks/useReducedMotion.js'
 import type { PublicIncident } from '../MapTab/types.js'
+import { MUNI_LABELS_SORTED } from '../SubmitReportForm/location-constants.js'
 import { HomeHeader } from './HomeHeader.js'
 import { HomeHero } from './HomeHero.js'
 import { useHomeData } from './HomeDataContext.js'
-import { NearbyCard, YourReportCard } from './modules/SecondaryStack.js'
+import { EmergencyContactsCard, NearbyCard, YourReportCard } from './modules/SecondaryStack.js'
 
 interface LocationPoint {
   lat: number
@@ -83,6 +85,14 @@ function secondaryMotionProps(prefersReducedMotion: boolean, isEmergency: boolea
     transition: { type: 'spring' as const, stiffness: 260, damping: 30, delay },
     whileTap: { scale: 0.97 },
   }
+}
+
+function municipalityIdFromLabel(label: string | undefined): string | undefined {
+  const normalized = label?.trim().toLocaleLowerCase()
+  if (!normalized) return undefined
+  return MUNI_LABELS_SORTED.find((municipality) => {
+    return municipality.label.toLocaleLowerCase() === normalized
+  })?.id
 }
 
 function HomeBriefContent({
@@ -208,6 +218,8 @@ export function HomeTab() {
   const locationLabel = reports.find((report) =>
     report.municipalityLabel?.trim(),
   )?.municipalityLabel
+  const municipalityId = municipalityIdFromLabel(locationLabel)
+  const emergencyContact = useMunicipalityContact(municipalityId)
   const knownLocation = reports.find(
     (report) => Number.isFinite(report.lat) && Number.isFinite(report.lng),
   )
@@ -263,13 +275,12 @@ export function HomeTab() {
           <p className="mt-3 text-sm text-surface-600">Weather unavailable.</p>
         </motion.section>
 
-        <motion.section
-          data-home-slot="Emergency contacts"
-          className="px-5 py-5"
+        <motion.div
+          data-testid="home-motion-emergency-contacts"
           {...secondaryMotionProps(prefersReducedMotion, isEmergency, 0.31)}
         >
-          <p className="m-0 text-sm font-semibold text-surface-600">Emergency contacts</p>
-        </motion.section>
+          <EmergencyContactsCard contact={emergencyContact} />
+        </motion.div>
       </div>
     </div>
   )

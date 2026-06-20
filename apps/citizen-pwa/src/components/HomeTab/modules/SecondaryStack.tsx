@@ -4,6 +4,7 @@ import {
   getOperationalStagePresentation,
   getSeverityPresentation,
 } from '../../../utils/status-registry.js'
+import type { MunicipalityContact } from '../../../hooks/useMunicipalityContact.js'
 import type { MyReport, PublicIncident } from '../../MapTab/types.js'
 
 interface LocationPoint {
@@ -24,6 +25,10 @@ interface NearbyCardProps {
   loading: boolean
   onRetry?: () => void
   userLocation?: LocationPoint
+}
+
+interface EmergencyContactsCardProps {
+  contact: MunicipalityContact
 }
 
 const REPORT_STAGE_BY_STATUS: Record<MyReport['status'], string> = {
@@ -77,6 +82,12 @@ function distanceBand(km: number): string {
   if (km < 5) return '1-5 km away'
   if (km < 15) return '5-15 km away'
   return '15+ km away'
+}
+
+function phoneHref(hotline: string): string | undefined {
+  const normalized = hotline.replace(/[^\d+]/g, '')
+  if (!/\d/.test(normalized)) return undefined
+  return `tel:${normalized}`
 }
 
 function CardSkeleton({ label, minHeight }: { label: string; minHeight: string }) {
@@ -259,6 +270,37 @@ export function NearbyCard({ error, incidents, loading, onRetry, userLocation }:
           )
         })}
       </ul>
+    </section>
+  )
+}
+
+export function EmergencyContactsCard({ contact }: EmergencyContactsCardProps) {
+  const href = phoneHref(contact.hotline)
+
+  return (
+    <section data-home-slot="Emergency contacts" className="min-h-24 px-5 py-5">
+      <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-surface-600">
+        Emergency contacts
+      </p>
+      <div className="mt-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="m-0 text-base font-bold text-surface-900">{contact.label}</p>
+          <p className="mt-1 text-sm text-surface-600">{contact.hotline}</p>
+        </div>
+        {href ? (
+          <a
+            href={href}
+            aria-label={`Call ${contact.label}`}
+            className="shrink-0 rounded-full bg-brand-600 px-3 py-1.5 text-xs font-bold text-white active:bg-brand-700"
+          >
+            Call
+          </a>
+        ) : (
+          <p role="alert" className="m-0 text-xs font-semibold text-danger-600">
+            Hotline unavailable
+          </p>
+        )}
+      </div>
     </section>
   )
 }

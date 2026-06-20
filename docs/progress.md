@@ -521,3 +521,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Removed dead freshness registry states, test-only registry exports, and the test-only `NearbyCardFromSource` wrapper from the CPWA stack.
 - Collapsed `getSeverityStyle` to return the shared severity registry presentation directly while preserving the existing compatibility type for callers.
 - Verification: focused status-registry, severity-style, and secondary-stack Vitest passed 3 files / 13 tests; Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-04b Home Emergency Contacts
+
+- Wired the empty Home "Emergency contacts" slot to the existing `useMunicipalityContact` hook: `HomeTab` maps the resolved location label to a municipality id (`municipalityIdFromLabel` using the shared `MUNI_LABELS_SORTED` constants), subscribes for `{ label, hotline }`, and renders an `EmergencyContactsCard` with a real `tel:` call link.
+- `phoneHref` strips formatting to a dialable `tel:` value and returns `undefined` when no digits remain, in which case the card shows a `role="alert"` "Hotline unavailable" fallback instead of a dead link. The hook always falls back to `DEFAULT_CONTACT` (Daet MDRRMO) so the slot is never empty.
+- Applied on top of the Ponytail Cleanup base, so the now-removed `usePublicIncidents`/`NearbyCardFromSource` wrapper was not reintroduced.
+- Verification: focused `secondary-stack` Vitest covers the `tel:0547211216` link from `(054) 721-1216`; Citizen typecheck and lint passed. No deploy; no rules, indexes, schema, or migration files changed.
