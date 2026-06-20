@@ -1,15 +1,9 @@
 import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PublicIncident, MyReport } from '../../MapTab/types.js'
-import { NearbyCard, NearbyCardFromSource, YourReportCard } from './SecondaryStack.js'
-
-const usePublicIncidentsMock = vi.hoisted(() => vi.fn())
-
-vi.mock('../../../hooks/usePublicIncidents.js', () => ({
-  usePublicIncidents: usePublicIncidentsMock,
-}))
+import { NearbyCard, YourReportCard } from './SecondaryStack.js'
 
 const report = {
   id: 'report-1',
@@ -43,10 +37,6 @@ const fartherIncident = {
 } satisfies PublicIncident
 
 describe('Home secondary stack modules', () => {
-  beforeEach(() => {
-    usePublicIncidentsMock.mockReset()
-  })
-
   it('renders the active report stage with a registry icon and links to the current tracking surface', () => {
     render(
       <MemoryRouter>
@@ -108,14 +98,5 @@ describe('Home secondary stack modules', () => {
     fireEvent.click(screen.getByRole('button', { name: /retry nearby/i }))
 
     expect(retry).toHaveBeenCalledOnce()
-  })
-
-  it('does not subscribe to public incidents before Home has a known location', () => {
-    usePublicIncidentsMock.mockReturnValue({ error: null, incidents: [], loading: false })
-
-    render(<NearbyCardFromSource municipality="Daet" />)
-
-    expect(screen.getByText(/known report location/i)).toBeInTheDocument()
-    expect(usePublicIncidentsMock).not.toHaveBeenCalled()
   })
 })

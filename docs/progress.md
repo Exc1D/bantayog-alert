@@ -515,3 +515,9 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Aligned public-incident and own-report pin labels with the CPWA-01 hazard, severity, and operational-stage registry while preserving the existing marker layers, colors, listeners, and peek-to-detail routes.
 - Deferred alert/affected-area zones because the current alert documents expose municipality IDs but no geometry; no circle, polygon, or other affected area was fabricated.
 - Verification: the red-first Nearby test failed because no link existed, then focused coverage passed 1 file / 4 tests; full Citizen Vitest passed 85 files / 568 tests with inherited shared-validator source-map/offline/error-path and unrelated `act(...)` stderr. Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed with zero introduced findings. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA Ponytail Cleanup
+
+- Removed dead freshness registry states, test-only registry exports, and the test-only `NearbyCardFromSource` wrapper from the CPWA stack.
+- Collapsed `getSeverityStyle` to return the shared severity registry presentation directly while preserving the existing compatibility type for callers.
+- Verification: focused status-registry, severity-style, and secondary-stack Vitest passed 3 files / 13 tests; Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.

@@ -1,9 +1,6 @@
 import { AlertTriangle, ShieldAlert } from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 import {
-  FRESHNESS_STATES,
-  HAZARD_TYPES,
-  OPERATIONAL_STAGES,
   getFreshnessPresentation,
   getHazardTypePresentation,
   getOperationalStagePresentation,
@@ -12,7 +9,14 @@ import {
 
 describe('status registry', () => {
   it('provides an icon and label for every operational stage', () => {
-    for (const stage of OPERATIONAL_STAGES) {
+    for (const stage of [
+      'saved',
+      'received',
+      'being_reviewed',
+      'response_coordinated',
+      'addressed',
+      'not_accepted',
+    ]) {
       const presentation = getOperationalStagePresentation(stage)
 
       expect(presentation.label).not.toBe('')
@@ -36,11 +40,26 @@ describe('status registry', () => {
   })
 
   it('provides two-signal metadata for every known hazard and freshness state', () => {
-    for (const hazard of HAZARD_TYPES) {
+    for (const hazard of [
+      'fire',
+      'flood',
+      'earthquake',
+      'typhoon',
+      'landslide',
+      'storm_surge',
+      'medical',
+      'accident',
+      'structural',
+      'security',
+      'public_disturbance',
+      'power_outage',
+      'road_blocked',
+      'other',
+    ]) {
       expect(getHazardTypePresentation(hazard).label).not.toBe('')
       expect(getHazardTypePresentation(hazard).icon).toBeDefined()
     }
-    for (const state of FRESHNESS_STATES) {
+    for (const state of ['current', 'stale', 'unavailable', 'empty_confirmed']) {
       expect(getFreshnessPresentation(state).label).not.toBe('')
       expect(getFreshnessPresentation(state).icon).toBeDefined()
     }

@@ -10,12 +10,5 @@ export interface SeverityStyle {
 }
 
 export function getSeverityStyle(severity: string): SeverityStyle {
-  const presentation = getSeverityPresentation(severity)
-  return {
-    fg: presentation.fg,
-    bg: presentation.bg,
-    label: presentation.label,
-    dotHex: presentation.dotHex,
-    icon: presentation.icon,
-  }
+  return getSeverityPresentation(severity)
 }

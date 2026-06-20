@@ -5,7 +5,6 @@ import {
   Car,
   CheckCircle2,
   CircleX,
-  Clock3,
   CloudUpload,
   Flame,
   HeartPulse,
@@ -37,43 +36,6 @@ export interface SeverityPresentation extends StatusPresentation {
   bg: string
   dotHex: string
 }
-
-export const OPERATIONAL_STAGES = [
-  'saved',
-  'received',
-  'being_reviewed',
-  'response_coordinated',
-  'addressed',
-  'not_accepted',
-] as const
-
-export const HAZARD_TYPES = [
-  'fire',
-  'flood',
-  'earthquake',
-  'typhoon',
-  'landslide',
-  'storm_surge',
-  'medical',
-  'accident',
-  'structural',
-  'security',
-  'public_disturbance',
-  'power_outage',
-  'road_blocked',
-  'other',
-] as const
-
-export const FRESHNESS_STATES = [
-  'current',
-  'cached_current',
-  'live',
-  'recent',
-  'stale',
-  'unavailable',
-  'offline_no_cache',
-  'empty_confirmed',
-] as const
 
 const severity: Record<string, SeverityPresentation> = {
   critical: {
@@ -146,12 +108,8 @@ const hazardType: Record<string, StatusPresentation> = {
 
 const freshness: Record<string, StatusPresentation> = {
   current: { colorToken: 'var(--success-500)', icon: Radio, label: 'Current' },
-  cached_current: { colorToken: 'var(--brand-600)', icon: Clock3, label: 'Saved and current' },
-  live: { colorToken: 'var(--success-500)', icon: Radio, label: 'Live' },
-  recent: { colorToken: 'var(--brand-600)', icon: Clock3, label: 'Recent' },
   stale: { colorToken: 'var(--warning-500)', icon: AlertTriangle, label: 'Stale' },
   unavailable: { colorToken: 'var(--surface-600)', icon: CircleX, label: 'Unavailable' },
-  offline_no_cache: { colorToken: 'var(--surface-600)', icon: CloudUpload, label: 'Offline' },
   empty_confirmed: { colorToken: 'var(--brand-600)', icon: CheckCircle2, label: 'Checked' },
 }
 

@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   getHazardTypePresentation,
   getOperationalStagePresentation,
   getSeverityPresentation,
 } from '../../../utils/status-registry.js'
-import { usePublicIncidents } from '../../../hooks/usePublicIncidents.js'
 import type { MyReport, PublicIncident } from '../../MapTab/types.js'
 
 interface LocationPoint {
@@ -25,11 +23,6 @@ interface NearbyCardProps {
   incidents: PublicIncident[]
   loading: boolean
   onRetry?: () => void
-  userLocation?: LocationPoint
-}
-
-interface NearbyCardFromSourceProps {
-  municipality: string
   userLocation?: LocationPoint
 }
 
@@ -267,40 +260,5 @@ export function NearbyCard({ error, incidents, loading, onRetry, userLocation }:
         })}
       </ul>
     </section>
-  )
-}
-
-function NearbyCardSource({
-  municipality,
-  onRetry,
-  userLocation,
-}: NearbyCardFromSourceProps & {
-  onRetry: () => void
-}) {
-  const { incidents, loading, error } = usePublicIncidents({ municipality })
-  return (
-    <NearbyCard
-      error={error}
-      incidents={incidents}
-      loading={loading}
-      onRetry={onRetry}
-      {...(userLocation ? { userLocation } : {})}
-    />
-  )
-}
-
-export function NearbyCardFromSource({ municipality, userLocation }: NearbyCardFromSourceProps) {
-  const [retryKey, setRetryKey] = useState(0)
-  if (!userLocation) return <NearbyCard incidents={[]} loading={false} />
-
-  return (
-    <NearbyCardSource
-      key={retryKey}
-      municipality={municipality}
-      onRetry={() => {
-        setRetryKey((value) => value + 1)
-      }}
-      userLocation={userLocation}
-    />
   )
 }
