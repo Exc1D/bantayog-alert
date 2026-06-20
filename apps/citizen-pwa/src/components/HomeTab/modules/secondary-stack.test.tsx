@@ -65,12 +65,14 @@ describe('Home secondary stack modules', () => {
 
   it('computes client-side nearby distance bands from a known user location', () => {
     render(
-      <NearbyCard
-        error={null}
-        incidents={[fartherIncident, nearbyIncident]}
-        loading={false}
-        userLocation={{ lat: 14.112, lng: 122.956 }}
-      />,
+      <MemoryRouter>
+        <NearbyCard
+          error={null}
+          incidents={[fartherIncident, nearbyIncident]}
+          loading={false}
+          userLocation={{ lat: 14.112, lng: 122.956 }}
+        />
+      </MemoryRouter>,
     )
 
     expect(screen.getByText('Within 1 km')).toBeInTheDocument()
@@ -78,6 +80,10 @@ describe('Home secondary stack modules', () => {
     const severity = screen.getByLabelText('Nearby severity: HIGH')
     expect(within(severity).getByText('HIGH')).toBeInTheDocument()
     expect(severity.querySelector('svg')).not.toBeNull()
+    expect(screen.getByRole('link', { name: /Flood/i })).toHaveAttribute(
+      'href',
+      '/map?municipality=Daet',
+    )
   })
 
   it('keeps sibling modules visible when one module owns an error', () => {

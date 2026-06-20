@@ -237,22 +237,31 @@ export function NearbyCard({ error, incidents, loading, onRetry, userLocation }:
           const hazard = getHazardTypePresentation(incident.reportType)
           const severity = getSeverityPresentation(incident.severity)
           const SeverityIcon = severity.icon
+          const municipality = incident.municipalityLabel.trim()
+          const mapHref =
+            municipality === '' ? '/map' : `/map?municipality=${encodeURIComponent(municipality)}`
           return (
-            <li key={incident.id} className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="m-0 text-sm font-bold text-surface-900">{hazard.label}</p>
-                <p className="mt-1 text-xs font-semibold text-surface-500">
-                  {distanceBand(distance)}
-                </p>
-              </div>
-              <span
-                aria-label={`Nearby severity: ${severity.label}`}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
-                style={{ backgroundColor: severity.bg, color: severity.fg }}
+            <li key={incident.id}>
+              <Link
+                to={mapHref}
+                aria-label={`View ${hazard.label} incidents${municipality === '' ? '' : ` in ${municipality}`} on map`}
+                className="flex min-h-11 items-start justify-between gap-3 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
               >
-                <SeverityIcon size={13} aria-hidden="true" />
-                {severity.label}
-              </span>
+                <div className="min-w-0">
+                  <p className="m-0 text-sm font-bold text-surface-900">{hazard.label}</p>
+                  <p className="mt-1 text-xs font-semibold text-surface-500">
+                    {distanceBand(distance)}
+                  </p>
+                </div>
+                <span
+                  aria-label={`Nearby severity: ${severity.label}`}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
+                  style={{ backgroundColor: severity.bg, color: severity.fg }}
+                >
+                  <SeverityIcon size={13} aria-hidden="true" />
+                  {severity.label}
+                </span>
+              </Link>
             </li>
           )
         })}

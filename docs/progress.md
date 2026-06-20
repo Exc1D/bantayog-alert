@@ -508,3 +508,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Removed the own-report sheet's embedded full timeline and page-like actions, then linked its status summary and tracking code to `/track/:id`.
 - Replaced the report status pill's color-only status signal with the shared icon-plus-label presentation and repointed its expanded state, responder notice, Home card, Profile card, and successful submission sheet to `/track/:id`.
 - Verification: red-first tests failed on the missing deep links, legacy status presentation, and embedded timeline; focused coverage passed 5 files / 40 tests, full Citizen Vitest passed 85 files / 568 tests with inherited shared-validator source-map/offline/error-path and unrelated `act(...)` stderr, Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed with zero introduced findings. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-09 Map Secondary Surface
+
+- Made each Home Nearby incident an accessible link to `/map?municipality=...`; Map applies that URL value once through its existing municipality filter, then leaves later chip selection under user control.
+- Aligned public-incident and own-report pin labels with the CPWA-01 hazard, severity, and operational-stage registry while preserving the existing marker layers, colors, listeners, and peek-to-detail routes.
+- Deferred alert/affected-area zones because the current alert documents expose municipality IDs but no geometry; no circle, polygon, or other affected area was fabricated.
+- Verification: the red-first Nearby test failed because no link existed, then focused coverage passed 1 file / 4 tests; full Citizen Vitest passed 85 files / 568 tests with inherited shared-validator source-map/offline/error-path and unrelated `act(...)` stderr. Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed with zero introduced findings. No deploy; no rules, indexes, schema, or migration files changed.
