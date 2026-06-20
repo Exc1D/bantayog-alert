@@ -18,6 +18,10 @@ const mockRedispatchReport = vi.hoisted(() =>
   }),
 )
 
+vi.mock('../providers/WindowSyncProvider', async () =>
+  (await import('../test-utils')).createWindowSyncProviderModuleMock(),
+)
+
 vi.mock('../services/callables', () => ({
   callables: {
     redispatchReport: mockRedispatchReport,

@@ -4,6 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 
+vi.mock('../providers/WindowSyncProvider', async () =>
+  (await import('../test-utils')).createWindowSyncProviderModuleMock(),
+)
+
 vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: () => ({
     loading: false,
