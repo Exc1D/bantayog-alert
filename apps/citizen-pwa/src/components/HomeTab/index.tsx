@@ -2,13 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HomeHeader } from './HomeHeader.js'
 import { useHomeData } from './HomeDataContext.js'
+import { NearbyCardFromSource, YourReportCard } from './modules/SecondaryStack.js'
 
-const MODULE_SLOTS = [
-  { label: 'Your local brief', height: 'min-h-40' },
-  { label: 'Your report', height: 'min-h-28' },
-  { label: 'Nearby', height: 'min-h-28' },
-  { label: "Today's weather", height: 'min-h-24' },
-] as const
+const MODULE_SLOTS = [{ label: 'Your local brief', height: 'min-h-40' }] as const
 
 export function HomeTab() {
   const navigate = useNavigate()
@@ -17,6 +13,12 @@ export function HomeTab() {
   const locationLabel = reports.find((report) =>
     report.municipalityLabel?.trim(),
   )?.municipalityLabel
+  const knownLocation = reports.find(
+    (report) => Number.isFinite(report.lat) && Number.isFinite(report.lng),
+  )
+  const userLocation = knownLocation
+    ? { lat: knownLocation.lat, lng: knownLocation.lng }
+    : undefined
   const updatedAt = Math.max(
     0,
     ...alerts.map((alert) => alert.publishedAt),
@@ -51,6 +53,22 @@ export function HomeTab() {
             <div className="mt-2 h-4 w-3/5 rounded bg-surface-200" />
           </section>
         ))}
+
+        <YourReportCard reports={reports} />
+        <NearbyCardFromSource
+          municipality={locationLabel ?? ''}
+          {...(userLocation ? { userLocation } : {})}
+        />
+
+        <section
+          data-home-slot="Today's weather"
+          className="min-h-24 border-b border-surface-200 px-5 py-5"
+        >
+          <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-surface-600">
+            Today&apos;s weather
+          </p>
+          <p className="mt-3 text-sm text-surface-600">Weather unavailable.</p>
+        </section>
 
         <section data-home-slot="Emergency contacts" className="px-5 py-5">
           <p className="m-0 text-sm font-semibold text-surface-600">Emergency contacts</p>
