@@ -25,7 +25,6 @@ type Props =
       sheetPhase: 'hidden' | 'peek' | 'expanded'
       onClose: () => void
       onCollapse: () => void
-      onCancelReport?: (publicRef: string, reportId?: string) => void
     }
 
 // This compact peek intentionally mirrors the public detail card's scan order.

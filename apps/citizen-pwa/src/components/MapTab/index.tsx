@@ -297,7 +297,6 @@ export function MapTab() {
           sheetPhase={sheetPhase}
           onClose={handleDismiss}
           onCollapse={handleCollapse}
-          onCancelReport={handleDeleteConfirm}
         />
       ) : null}
 
