@@ -528,3 +528,11 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - `phoneHref` strips formatting to a dialable `tel:` value and returns `undefined` when no digits remain, in which case the card shows a `role="alert"` "Hotline unavailable" fallback instead of a dead link. The hook always falls back to `DEFAULT_CONTACT` (Daet MDRRMO) so the slot is never empty.
 - Applied on top of the Ponytail Cleanup base, so the now-removed `usePublicIncidents`/`NearbyCardFromSource` wrapper was not reintroduced.
 - Verification: focused `secondary-stack` Vitest covers the `tel:0547211216` link from `(054) 721-1216`; Citizen typecheck and lint passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA Review Patch
+
+- Gated Home emergency motion and the shell Report FAB suppression on high/critical alerts instead of any alert, so low/info advisories keep ordinary Home motion.
+- Added a minute clock tick in Home so the greeting and "Updated X ago" copy refresh while the tab stays mounted.
+- Removed the dead `DetailSheet` own-report `onCancelReport` prop and stale Map call site; cancellation stays owned by `PeekSheet` to `DeleteSheet`.
+- Left first-run Home context seeding, weather data, bell usability review, and Alerts/Feed registry migration as follow-ups because they need product or wider slice decisions.
+- Verification: red-first Home motion and CitizenShell tests failed on low alerts triggering emergency mode, the Home clock test failed on the frozen timestamp, then focused Home/Shell/Map coverage passed 4 files / 27 tests; Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
