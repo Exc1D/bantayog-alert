@@ -57,7 +57,10 @@ describe('Home secondary stack modules', () => {
     const stage = screen.getByLabelText('Report status: Response coordinated')
     expect(within(stage).getByText('Response coordinated')).toBeInTheDocument()
     expect(stage.querySelector('svg')).not.toBeNull()
-    expect(screen.getByRole('link', { name: /view report/i })).toHaveAttribute('href', '/profile')
+    expect(screen.getByRole('link', { name: /view report/i })).toHaveAttribute(
+      'href',
+      '/track/ref-1234',
+    )
   })
 
   it('computes client-side nearby distance bands from a known user location', () => {

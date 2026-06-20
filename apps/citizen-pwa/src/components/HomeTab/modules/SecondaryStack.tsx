@@ -178,9 +178,8 @@ export function YourReportCard({ error, loading = false, onRetry, reports }: You
           {stage.label}
         </span>
       </div>
-      {/* cpwa: repoint to /track/:id once cpwa-07 lands */}
       <Link
-        to="/profile"
+        to={`/track/${encodeURIComponent(report.publicRef)}`}
         className="mt-4 inline-flex rounded-full bg-surface-900 px-3 py-1.5 text-xs font-bold text-white active:bg-surface-700"
       >
         View report
