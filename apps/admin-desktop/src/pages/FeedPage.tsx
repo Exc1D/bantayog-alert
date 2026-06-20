@@ -1,7 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '@bantayog/shared-ui'
-import { collection, getDocs } from 'firebase/firestore'
-import { getStorage, ref, getDownloadURL } from 'firebase/storage'
 import { CommandHeader } from '../components/CommandHeader'
 import { FeedCard } from '../components/FeedCard'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -18,12 +16,8 @@ import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { useOptimisticFeedActions } from '../hooks/useOptimisticFeedActions'
+import { resolveReportMedia, type MediaItem } from '../utils/media-fetch'
 import type { Report } from '../types'
-
-interface MediaItem {
-  uploadId: string
-  url: string
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -263,33 +257,19 @@ export default function FeedPage() {
   useEffect(() => {
     let cancelled = false
     async function fetchMedia() {
-      const urls: Record<string, MediaItem[]> = {}
-      for (const { report } of feedReports) {
-        try {
-          const mediaSnap = await getDocs(collection(db, 'reports', report.id, 'media'))
-          const results = await Promise.allSettled(
-            mediaSnap.docs.map(async (d) => {
-              const data = d.data()
-              if (typeof data.storagePath !== 'string') return null
-              try {
-                const url = await getDownloadURL(ref(getStorage(), data.storagePath))
-                return { uploadId: d.id, url }
-              } catch {
-                return null
-              }
-            }),
-          )
-          urls[report.id] = results
-            .filter((r): r is PromiseFulfilledResult<MediaItem | null> => r.status === 'fulfilled')
-            .map((r) => r.value)
-            .filter((v): v is MediaItem => v !== null)
-        } catch {
-          if (!cancelled)
-            setMediaError('Some photos failed to load. They will retry automatically.')
-          urls[report.id] = []
-        }
+      const reportIds = feedReports.map(({ report }) => report.id)
+      // Bounded concurrency: at most 6 reports' media resolve in parallel.
+      // Without this, a live feed re-key fires N+M reads all at once and stalls
+      // the UI. resolveReportMedia swallows per-report failures and returns an
+      // empty array for them, so a single bad report doesn't abort the batch.
+      const { byReport, failedCount } = await resolveReportMedia(db, reportIds)
+      if (cancelled) return
+      setMediaUrlsByReport(byReport)
+      if (failedCount > 0) {
+        setMediaError(
+          `${String(failedCount)} report${failedCount === 1 ? '' : 's'} had photos that failed to load. Reload the page to retry.`,
+        )
       }
-      if (!cancelled) setMediaUrlsByReport(urls)
     }
     void fetchMedia()
     return () => {
