@@ -52,8 +52,8 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { isOnline, queueCount } = useOfflineQueueCount()
-  const { alerts } = useAlerts()
-  const { reports } = useMyActiveReports()
+  const { alerts, loading: alertsLoading, error: alertsError } = useAlerts()
+  const { reports, loading: reportsLoading, error: reportsError } = useMyActiveReports()
   const { markAsRead, unreadCount } = useAlertReadState()
   const navDirection = useUIStore((s) => s.navDirection)
   const setNavDirection = useUIStore((s) => s.setNavDirection)
@@ -88,8 +88,16 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   const alertIds = useMemo(() => alerts.map((alert) => alert.id), [alerts])
   const unreadAlertCount = unreadCount(alertIds)
   const homeData = useMemo(
-    () => ({ alerts, reports, unreadAlertCount }),
-    [alerts, reports, unreadAlertCount],
+    () => ({
+      alerts,
+      alertsLoading,
+      alertsError,
+      reports,
+      reportsLoading,
+      reportsError,
+      unreadAlertCount,
+    }),
+    [alerts, alertsLoading, alertsError, reports, reportsLoading, reportsError, unreadAlertCount],
   )
   const modalAlert = newestAlert?.id === dismissedModalAlertId ? null : newestAlert
 

@@ -200,3 +200,4 @@
 - App route wiring tests that mount `CitizenShell` must mock shell-owned live hooks (`useAlerts`, `useMyActiveReports`, offline queue/read-state hooks) and `wizardSnapshot`; mocked splash completion should call back from `useEffect`, not a free microtask, or React 19 emits `act(...)` noise and route assertions can turn order-sensitive.
 - CPWA Nearby distance bands should use only an already-known citizen/report coordinate plus public incident coordinates. If Home has no known coordinate, render an empty state; do not prompt geolocation or fabricate distance in the secondary stack.
 - CPWA Weather currently has no Citizen PWA backing source. Keep the Home slot truth-gated as unavailable until a real weather endpoint/client lands.
+- Official alerts can be `critical`; keep that severity in the shared status registry. Otherwise Home/Alerts surfaces can silently fall through to the unknown `INFO` fallback while rendering the highest-risk state.

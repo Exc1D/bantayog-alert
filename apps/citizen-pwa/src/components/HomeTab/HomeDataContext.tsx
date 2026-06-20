@@ -4,13 +4,21 @@ import type { MyReport } from '../MapTab/types.js'
 
 export interface HomeDataContextValue {
   alerts: AlertDoc[]
+  alertsLoading: boolean
+  alertsError: Error | null
   reports: MyReport[]
+  reportsLoading: boolean
+  reportsError: string | null
   unreadAlertCount: number
 }
 
 const EMPTY_HOME_DATA: HomeDataContextValue = {
   alerts: [],
+  alertsLoading: false,
+  alertsError: null,
   reports: [],
+  reportsLoading: false,
+  reportsError: null,
   unreadAlertCount: 0,
 }
 

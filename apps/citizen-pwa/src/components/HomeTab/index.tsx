@@ -1,24 +1,149 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import type { AlertDoc } from '@bantayog/shared-types'
+import { usePublicIncidents } from '../../hooks/usePublicIncidents.js'
+import type { PublicIncident } from '../MapTab/types.js'
 import { HomeHeader } from './HomeHeader.js'
+import { HomeHero } from './HomeHero.js'
 import { useHomeData } from './HomeDataContext.js'
-import { NearbyCardFromSource, YourReportCard } from './modules/SecondaryStack.js'
+import { NearbyCard, YourReportCard } from './modules/SecondaryStack.js'
 
-const MODULE_SLOTS = [{ label: 'Your local brief', height: 'min-h-40' }] as const
+interface LocationPoint {
+  lat: number
+  lng: number
+}
+
+interface HomeBriefModulesProps {
+  alerts: AlertDoc[]
+  alertsError: Error | null
+  alertsLoading: boolean
+  locationLabel?: string
+  municipality: string
+  reports: ReturnType<typeof useHomeData>['reports']
+  reportsError: string | null
+  reportsLoading: boolean
+  updatedAt: number
+  userLocation?: LocationPoint
+}
+
+interface HomeBriefContentProps extends HomeBriefModulesProps {
+  hasKnownLocation: boolean
+  incidents: PublicIncident[]
+  incidentsError: unknown
+  incidentsLoading: boolean
+  onRetryNearby?: () => void
+}
+
+function HomeBriefContent({
+  alerts,
+  alertsError,
+  alertsLoading,
+  hasKnownLocation,
+  incidents,
+  incidentsError,
+  incidentsLoading,
+  locationLabel,
+  onRetryNearby,
+  reports,
+  reportsError,
+  reportsLoading,
+  updatedAt,
+  userLocation,
+}: HomeBriefContentProps) {
+  return (
+    <>
+      <HomeHero
+        alerts={alerts}
+        alertsError={alertsError}
+        alertsLoading={alertsLoading}
+        hasKnownLocation={hasKnownLocation}
+        incidents={incidents}
+        incidentsError={incidentsError}
+        incidentsLoading={incidentsLoading}
+        {...(locationLabel ? { locationLabel } : {})}
+        reportsError={reportsError}
+        reportsLoading={reportsLoading}
+        updatedAt={updatedAt}
+      />
+      <div data-testid="home-secondary-stack">
+        <YourReportCard error={reportsError} loading={reportsLoading} reports={reports} />
+        <NearbyCard
+          error={incidentsError}
+          incidents={incidents}
+          loading={incidentsLoading}
+          {...(onRetryNearby ? { onRetry: onRetryNearby } : {})}
+          {...(userLocation ? { userLocation } : {})}
+        />
+      </div>
+    </>
+  )
+}
+
+function HomeBriefIncidentSource({
+  onRetryNearby,
+  ...props
+}: HomeBriefModulesProps & { onRetryNearby: () => void; userLocation: LocationPoint }) {
+  const { incidents, loading, error } = usePublicIncidents({ municipality: props.municipality })
+
+  return (
+    <HomeBriefContent
+      {...props}
+      hasKnownLocation={true}
+      incidents={incidents}
+      incidentsError={error}
+      incidentsLoading={loading}
+      onRetryNearby={onRetryNearby}
+    />
+  )
+}
+
+function HomeBriefModules(props: HomeBriefModulesProps) {
+  const [retryKey, setRetryKey] = useState(0)
+
+  if (!props.userLocation) {
+    return (
+      <HomeBriefContent
+        {...props}
+        hasKnownLocation={false}
+        incidents={[]}
+        incidentsError={null}
+        incidentsLoading={false}
+      />
+    )
+  }
+
+  return (
+    <HomeBriefIncidentSource
+      key={retryKey}
+      {...props}
+      onRetryNearby={() => {
+        setRetryKey((value) => value + 1)
+      }}
+      userLocation={props.userLocation}
+    />
+  )
+}
 
 export function HomeTab() {
   const navigate = useNavigate()
   const [now] = useState(() => Date.now())
-  const { alerts, reports, unreadAlertCount } = useHomeData()
+  const {
+    alerts,
+    alertsError,
+    alertsLoading,
+    reports,
+    reportsError,
+    reportsLoading,
+    unreadAlertCount,
+  } = useHomeData()
   const locationLabel = reports.find((report) =>
     report.municipalityLabel?.trim(),
   )?.municipalityLabel
   const knownLocation = reports.find(
     (report) => Number.isFinite(report.lat) && Number.isFinite(report.lng),
   )
-  const userLocation = knownLocation
-    ? { lat: knownLocation.lat, lng: knownLocation.lng }
-    : undefined
+  const userLocation =
+    knownLocation && locationLabel ? { lat: knownLocation.lat, lng: knownLocation.lng } : undefined
   const updatedAt = Math.max(
     0,
     ...alerts.map((alert) => alert.publishedAt),
@@ -40,23 +165,16 @@ export function HomeTab() {
           {...(updatedAt > 0 ? { updatedAt } : {})}
         />
 
-        {MODULE_SLOTS.map(({ label, height }) => (
-          <section
-            key={label}
-            data-home-slot={label}
-            className={`${height} border-b border-surface-200 px-5 py-5`}
-          >
-            <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-surface-600">
-              {label}
-            </p>
-            <div className="mt-4 h-4 w-4/5 rounded bg-surface-200" />
-            <div className="mt-2 h-4 w-3/5 rounded bg-surface-200" />
-          </section>
-        ))}
-
-        <YourReportCard reports={reports} />
-        <NearbyCardFromSource
+        <HomeBriefModules
+          alerts={alerts}
+          alertsError={alertsError}
+          alertsLoading={alertsLoading}
           municipality={locationLabel ?? ''}
+          reports={reports}
+          reportsError={reportsError}
+          reportsLoading={reportsLoading}
+          updatedAt={updatedAt > 0 ? updatedAt : now}
+          {...(locationLabel ? { locationLabel } : {})}
           {...(userLocation ? { userLocation } : {})}
         />
 

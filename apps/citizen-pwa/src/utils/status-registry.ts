@@ -76,6 +76,14 @@ export const FRESHNESS_STATES = [
 ] as const
 
 const severity: Record<string, SeverityPresentation> = {
+  critical: {
+    colorToken: 'var(--color-severity-critical-fg)',
+    fg: 'var(--color-severity-critical-fg)',
+    bg: 'var(--color-severity-critical-bg)',
+    dotHex: '#dc2626',
+    icon: ShieldAlert,
+    label: 'CRITICAL',
+  },
   high: {
     colorToken: 'var(--color-severity-high-fg)',
     fg: 'var(--color-severity-high-fg)',

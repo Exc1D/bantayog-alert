@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ShieldAlert } from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 import {
   FRESHNESS_STATES,
@@ -25,6 +25,14 @@ describe('status registry', () => {
 
     expect(presentation.label).toBe('HIGH')
     expect(presentation.icon).toBe(AlertTriangle)
+  })
+
+  it('keeps critical severity out of the unknown fallback', () => {
+    const presentation = getSeverityPresentation('critical')
+
+    expect(presentation.label).toBe('CRITICAL')
+    expect(presentation.icon).toBe(ShieldAlert)
+    expect(presentation.fg).toBe('var(--color-severity-critical-fg)')
   })
 
   it('provides two-signal metadata for every known hazard and freshness state', () => {
