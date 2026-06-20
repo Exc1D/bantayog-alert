@@ -96,7 +96,7 @@ function navigateToTrackedReport(
   navigate: ReturnType<typeof useNavigate>,
   publicRef: string,
 ): void {
-  void navigate('/', {
+  void navigate('/map', {
     state: {
       selectedReportPublicRef: publicRef,
       lookupSuccessMessage: LOOKUP_SUCCESS_MESSAGE,

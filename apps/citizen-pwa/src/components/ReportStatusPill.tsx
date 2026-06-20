@@ -2,8 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Bell, X, Siren } from 'lucide-react'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
-import { incidentLabel, statusMeta, severityDotColor } from '../utils/incident-meta.js'
+import { incidentLabel } from '../utils/incident-meta.js'
+import { getOperationalStagePresentation } from '../utils/status-registry.js'
+import { buildTrackingTimeline } from '../utils/tracking-timeline.js'
 import { useState, useRef, useCallback, useMemo } from 'react'
+import { useOptionalHomeData } from './HomeTab/HomeDataContext.js'
+import type { MyReport } from './MapTab/types.js'
 
 const NON_TERMINAL: ReadonlySet<string> = new Set([...ACTIVE_REPORT_STATUSES, 'reopened'])
 const RESPONDERS_ON_WAY_STATUSES: ReadonlySet<string> = new Set([
@@ -24,13 +28,28 @@ interface DragStart {
   el: HTMLElement
 }
 
-export function ReportStatusPill({
-  suppressResponderNotice = false,
-}: {
+interface ReportStatusPillProps {
   suppressResponderNotice?: boolean
-}) {
-  const navigate = useNavigate()
+}
+
+export function ReportStatusPill(props: ReportStatusPillProps) {
+  const homeData = useOptionalHomeData()
+  if (homeData) return <ReportStatusPillView {...props} reports={homeData.reports} />
+  return <ReportStatusPillWithReportsFromHook {...props} />
+}
+
+function ReportStatusPillWithReportsFromHook(props: ReportStatusPillProps) {
   const { reports } = useMyActiveReports()
+  return <ReportStatusPillView {...props} reports={reports} />
+}
+
+// CPWA-03 preserves this inherited render path while splitting data ownership.
+// fallow-ignore-next-line complexity
+function ReportStatusPillView({
+  reports,
+  suppressResponderNotice = false,
+}: ReportStatusPillProps & { reports: MyReport[] }) {
+  const navigate = useNavigate()
   const [isExpanded, setIsExpanded] = useState(false)
   const [showPulse, setShowPulse] = useState(() => {
     try {
@@ -111,11 +130,11 @@ export function ReportStatusPill({
       }
       return
     }
-    // Expanded + click = navigate to map
+    // Expanded + click = open the primary report's Response Thread.
     const sorted = [...activeReports].sort((a, b) => b.submittedAt - a.submittedAt)
     const primary = sorted[0]
     if (primary) {
-      void navigate('/')
+      void navigate(`/track/${encodeURIComponent(primary.publicRef)}`)
     }
   }, [isExpanded, showPulse, activeReports, navigate])
 
@@ -125,8 +144,8 @@ export function ReportStatusPill({
   const primary = sorted[0]
   if (!primary) return null
   const extraCount = sorted.length - 1
-  const meta = statusMeta(primary.status)
-  const dotColor = severityDotColor(primary.severity)
+  const stage = getOperationalStagePresentation(buildTrackingTimeline(primary).currentStage)
+  const StageIcon = stage.icon
 
   return (
     <>
@@ -170,7 +189,7 @@ export function ReportStatusPill({
               className="mt-2 h-11 w-full rounded-lg border-none bg-brand-600 text-sm font-bold text-white"
               onClick={() => {
                 setDismissedResponderNoticeKey(responderNoticeKey)
-                void navigate('/')
+                void navigate(`/track/${encodeURIComponent(responderNotice.publicRef)}`)
               }}
             >
               View report
@@ -199,18 +218,16 @@ export function ReportStatusPill({
         >
           {isExpanded ? (
             <>
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: dotColor }}
-              />
               <span className="text-white text-sm font-medium whitespace-nowrap">
                 {incidentLabel(primary.reportType)}
                 {primary.municipalityLabel ? ` · ${primary.municipalityLabel}` : ''}
               </span>
               <span
-                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${meta.bg} ${meta.color}`}
+                className="flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold"
+                style={{ color: stage.colorToken }}
               >
-                {meta.label}
+                <StageIcon size={13} aria-hidden="true" />
+                {stage.label}
               </span>
               {extraCount > 0 && (
                 <span className="text-xs font-bold text-surface-300">+{String(extraCount)}</span>
@@ -226,9 +243,11 @@ export function ReportStatusPill({
                 </span>
               )}
               <span
-                className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white"
-                style={{ backgroundColor: dotColor }}
-              />
+                className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-surface-900"
+                style={{ color: stage.colorToken }}
+              >
+                <StageIcon size={11} aria-hidden="true" />
+              </span>
             </>
           )}
         </button>

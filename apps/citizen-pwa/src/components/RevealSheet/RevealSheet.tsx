@@ -291,8 +291,8 @@ export function RevealSheet({
   const timelineEvents = buildTimelineEvents(state, afterglowTime)
 
   const handleTrackReport = useCallback(() => {
-    void navigate('/')
-  }, [navigate])
+    void navigate(`/track/${encodeURIComponent(referenceCode)}`)
+  }, [navigate, referenceCode])
 
   const handleCallHotline = useCallback(() => {
     const telDigits = contact.hotline.replace(/[^\d+]/g, '')

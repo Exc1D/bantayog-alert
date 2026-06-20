@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 const {
   mockOnAuthStateChanged,
@@ -60,6 +60,24 @@ function renderProfileTab() {
   )
 }
 
+const activeReport = {
+  publicRef: 'ref-1',
+  reportType: 'flood',
+  severity: 'medium',
+  lat: 14.1,
+  lng: 122.9,
+  submittedAt: 1713350400000,
+  status: 'awaiting_verify',
+  id: 'report-1',
+} as const
+
+function setupRegisteredUser() {
+  mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
+    cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
+    return () => {}
+  })
+}
+
 describe('ProfileTab', () => {
   beforeEach(() => {
     mockOnAuthStateChanged.mockReset()
@@ -78,30 +96,41 @@ describe('ProfileTab', () => {
   })
 
   it('shows settings gear for registered user', () => {
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
-      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
-      return () => {}
-    })
+    setupRegisteredUser()
     renderProfileTab()
     expect(screen.getByText('Juan')).toBeInTheDocument()
     expect(screen.getByLabelText('Settings')).toBeInTheDocument()
   })
 
   it('shows report list for registered user', () => {
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
-      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
-      return () => {}
-    })
+    setupRegisteredUser()
     renderProfileTab()
     expect(screen.getByText('No reports yet')).toBeInTheDocument()
   })
 
+  it('opens a report card at its Response Thread route', () => {
+    setupRegisteredUser()
+    mockUseMyActiveReports.mockReturnValue({
+      loading: false,
+      reports: [activeReport],
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/profile']}>
+        <Routes>
+          <Route path="/profile" element={<ProfileTab />} />
+          <Route path="/track/:id" element={<div>Response thread destination</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Track' }))
+    expect(screen.getByText('Response thread destination')).toBeInTheDocument()
+  })
+
   it('shows a retryable error instead of the empty report list when report loading fails', () => {
     const retryReports = vi.fn()
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
-      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
-      return () => {}
-    })
+    setupRegisteredUser()
     mockUseMyActiveReports.mockReturnValue({
       loading: false,
       reports: [],
@@ -121,24 +150,10 @@ describe('ProfileTab', () => {
   })
 
   it('shows a withdraw action for unverified reports in the profile report list', () => {
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
-      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
-      return () => {}
-    })
+    setupRegisteredUser()
     mockUseMyActiveReports.mockReturnValue({
       loading: false,
-      reports: [
-        {
-          publicRef: 'ref-1',
-          reportType: 'flood',
-          severity: 'medium',
-          lat: 14.1,
-          lng: 122.9,
-          submittedAt: 1713350400000,
-          status: 'awaiting_verify',
-          id: 'report-1',
-        },
-      ],
+      reports: [activeReport],
     })
 
     renderProfileTab()
@@ -147,24 +162,10 @@ describe('ProfileTab', () => {
   })
 
   it('shows success toast when withdrawing a report from the profile tab', async () => {
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
-      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
-      return () => {}
-    })
+    setupRegisteredUser()
     mockUseMyActiveReports.mockReturnValue({
       loading: false,
-      reports: [
-        {
-          publicRef: 'ref-1',
-          reportType: 'flood',
-          severity: 'medium',
-          lat: 14.1,
-          lng: 122.9,
-          submittedAt: 1713350400000,
-          status: 'awaiting_verify',
-          id: 'report-1',
-        },
-      ],
+      reports: [activeReport],
     })
 
     renderProfileTab()
@@ -195,10 +196,7 @@ describe('ProfileTab', () => {
   })
 
   it('shows impact path progress from real report statuses', () => {
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
-      cb({ isAnonymous: false, uid: 'reg123', displayName: 'Juan' })
-      return () => {}
-    })
+    setupRegisteredUser()
     mockUseMyActiveReports.mockReturnValue({
       loading: false,
       reports: [
@@ -238,10 +236,7 @@ describe('ProfileTab', () => {
   })
 
   it('shows sign out button for registered user', () => {
-    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
-      cb({ isAnonymous: false, uid: 'reg123' })
-      return () => {}
-    })
+    setupRegisteredUser()
     renderProfileTab()
     expect(screen.getByText('Sign out')).toBeInTheDocument()
   })

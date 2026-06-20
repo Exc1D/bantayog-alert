@@ -16,8 +16,6 @@ vi.mock('../hooks/useMyActiveReports.js', () => ({
 
 vi.mock('../utils/incident-meta.js', () => ({
   incidentLabel: (type: string) => type,
-  statusMeta: () => ({ label: 'Pending', bg: 'bg-brand-100', color: 'text-brand-700' }),
-  severityDotColor: () => '#0F9488',
 }))
 
 vi.mock('../hooks/useReducedMotion.js', () => ({
@@ -86,18 +84,30 @@ describe('ReportStatusPill', () => {
     renderPill()
     const btn = screen.getByRole('button')
     fireEvent.click(btn)
-    // After expand, should show report type
     expect(screen.getByText(/flood/i)).toBeInTheDocument()
-    expect(screen.getByText('Pending')).toBeInTheDocument()
+    const statusLabel = screen.getByText('Being reviewed')
+    expect(statusLabel).toBeInTheDocument()
+    expect(statusLabel.querySelector('svg')).toBeInTheDocument()
   })
 
-  it('navigates on second tap when already expanded', () => {
+  it('navigates to the Response Thread on second tap when already expanded', () => {
     mockUseMyActiveReports.mockReturnValue({ reports: [baseReport], loading: false })
     renderPill()
     const btn = screen.getByRole('button')
     fireEvent.click(btn) // expand
     fireEvent.click(btn) // navigate
-    expect(mockNavigate).toHaveBeenCalledWith('/')
+    expect(mockNavigate).toHaveBeenCalledWith('/track/a1b2c3d4')
+  })
+
+  it('opens the responder notice at the same Response Thread route', () => {
+    mockUseMyActiveReports.mockReturnValue({
+      reports: [{ ...baseReport, status: 'assigned' }],
+      loading: false,
+    })
+    renderPill()
+
+    fireEvent.click(screen.getByRole('button', { name: 'View report' }))
+    expect(mockNavigate).toHaveBeenCalledWith('/track/a1b2c3d4')
   })
 
   it('renders nothing when all reports are terminal', () => {

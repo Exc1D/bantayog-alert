@@ -8,6 +8,7 @@ import {
 import { useState, useCallback, lazy, Suspense, type ComponentType } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { CitizenShell } from './components/CitizenShell.js'
+import { HomeTab } from './components/HomeTab/index.js'
 import { MapTab } from './components/MapTab/index.js'
 import { SubmitReportForm } from './components/SubmitReportForm/index.js'
 import { SplashScreen } from './pages/SplashScreen.js'
@@ -69,6 +70,9 @@ const NotFoundPage = lazyWithRetry(() =>
 const LoginPage = lazyWithRetry(() =>
   import('./pages/LoginPage.js').then((m) => ({ default: m.LoginPage })),
 )
+const ResponseThread = lazyWithRetry(() =>
+  import('./components/ResponseThread/index.js').then((m) => ({ default: m.ResponseThread })),
+)
 
 function RouteFallback() {
   return (
@@ -117,6 +121,14 @@ const router = createBrowserRouter([
         index: true,
         element: (
           <CitizenShell>
+            <HomeTab />
+          </CitizenShell>
+        ),
+      },
+      {
+        path: 'map',
+        element: (
+          <CitizenShell>
             <MapTab />
           </CitizenShell>
         ),
@@ -149,6 +161,15 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<RouteFallback />}>
             <IncidentDetailPage />
+          </Suspense>
+        ),
+        handle: { hideBottomNav: true },
+      },
+      {
+        path: 'track/:id',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <ResponseThread />
           </Suspense>
         ),
         handle: { hideBottomNav: true },

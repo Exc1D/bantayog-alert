@@ -112,6 +112,14 @@ describe('RevealSheet', () => {
     expect(screen.getByText('SECRET123')).toBeInTheDocument()
   })
 
+  it('opens the successful report at its Response Thread route', () => {
+    render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Track this report' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/track/BA-2026-001')
+  })
+
   it('does not show secret code section without secretCode', async () => {
     render(<RevealSheet state="success" referenceCode="BA-2026-001" />)
     await act(async () => {

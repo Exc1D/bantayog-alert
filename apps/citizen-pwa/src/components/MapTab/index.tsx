@@ -13,33 +13,16 @@ import { useAlerts } from '../../hooks/useAlerts.js'
 import type { PublicIncident, MyReport } from './types.js'
 import { LOOKUP_SUCCESS_MESSAGE } from '../LookupScreen.js'
 import { buildSituationalHeadline } from './situational-headline.js'
-
-const INCIDENT_LABELS: Record<string, string> = {
-  flood: 'Flood',
-  fire: 'Fire',
-  earthquake: 'Earthquake',
-  typhoon: 'Typhoon',
-  landslide: 'Landslide',
-  storm_surge: 'Storm Surge',
-  medical: 'Medical',
-  accident: 'Accidents/Rescue',
-  structural: 'Damages',
-  security: 'Security',
-  other: 'Others',
-}
+import {
+  getHazardTypePresentation,
+  getOperationalStagePresentation,
+  getSeverityPresentation,
+} from '../../utils/status-registry.js'
+import { buildTrackingTimeline } from '../../utils/tracking-timeline.js'
 
 interface LookupNavigationState {
   selectedReportPublicRef?: unknown
   lookupSuccessMessage?: unknown
-}
-
-function statusLabel(status: string): string {
-  return status.replace(/_/g, ' ')
-}
-
-function toMapProgressLabel(report: MyReport['status']): string {
-  if (report === 'queued' || report === 'draft_inbox' || report === 'new') return 'Awaiting Review'
-  return statusLabel(report)
 }
 
 function buildIncidentPin(incident: PublicIncident): {
@@ -48,24 +31,29 @@ function buildIncidentPin(incident: PublicIncident): {
   label: string
   severity: 'high' | 'medium' | 'low'
 } {
+  const hazard = getHazardTypePresentation(incident.reportType)
+  const severity = getSeverityPresentation(incident.severity)
   return {
     id: incident.id,
     type: 'incident',
     severity: incident.severity,
-    label: `${INCIDENT_LABELS[incident.reportType] ?? incident.reportType} · ${incident.severity} · ${incident.barangayId}, ${incident.municipalityLabel}`,
+    label: `${hazard.label} · ${severity.label} · ${incident.barangayId}, ${incident.municipalityLabel}`,
   }
 }
 
 function buildMyReportPin(report: MyReport): { id: string; type: 'myReport'; label: string } {
+  const hazard = getHazardTypePresentation(report.reportType)
+  const stage = getOperationalStagePresentation(buildTrackingTimeline(report).currentStage)
   return {
     id: report.publicRef,
     type: 'myReport',
-    label: `Your report: ${INCIDENT_LABELS[report.reportType] ?? report.reportType} · ${toMapProgressLabel(report.status)}`,
+    label: `Your report: ${hazard.label} · ${stage.label}`,
   }
 }
 
 export function MapTab() {
   const mapElRef = useRef<HTMLDivElement | null>(null)
+  const appliedMunicipalityRef = useRef<string | null>(null)
   const [searchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -80,6 +68,7 @@ export function MapTab() {
       : null
   const lookupReportRefFromUrl = searchParams.get('reportId')
   const lookupReportRef = lookupReportRefFromState ?? lookupReportRefFromUrl ?? null
+  const municipalityFocus = searchParams.get('municipality')?.trim() ?? ''
 
   const lookupMessage =
     typeof lookupState?.lookupSuccessMessage === 'string'
@@ -116,6 +105,13 @@ export function MapTab() {
     setSheetPhase,
   } = useMapTab(mapElRef)
   const { alerts, loading: alertsLoading, error: alertsError } = useAlerts()
+
+  useEffect(() => {
+    if (municipalityFocus === '' || appliedMunicipalityRef.current === municipalityFocus) return
+    appliedMunicipalityRef.current = municipalityFocus
+    // URL focus initializes the existing filter; later chip selections remain user-controlled.
+    setFilters({ municipality: municipalityFocus })
+  }, [municipalityFocus, setFilters])
 
   const lookupMatchedReport = lookupReportRef
     ? (myReports.find((entry) => entry.publicRef === lookupReportRef) ?? null)
@@ -301,7 +297,6 @@ export function MapTab() {
           sheetPhase={sheetPhase}
           onClose={handleDismiss}
           onCollapse={handleCollapse}
-          onCancelReport={handleDeleteConfirm}
         />
       ) : null}
 
@@ -309,9 +304,7 @@ export function MapTab() {
         open={deleteSheetOpen}
         publicRef={selectedMyReport?.publicRef ?? ''}
         reportType={
-          selectedMyReport
-            ? (INCIDENT_LABELS[selectedMyReport.reportType] ?? selectedMyReport.reportType)
-            : ''
+          selectedMyReport ? getHazardTypePresentation(selectedMyReport.reportType).label : ''
         }
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}

@@ -421,7 +421,7 @@ export function ProfileTab() {
                 key={report.publicRef}
                 report={report}
                 onTap={() => {
-                  void navigate('/')
+                  void navigate(`/track/${encodeURIComponent(report.publicRef)}`)
                 }}
                 {...(WITHDRAWABLE_STATUSES.has(report.status)
                   ? {

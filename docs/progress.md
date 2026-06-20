@@ -451,3 +451,93 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Added a hook-level regression test for step transitions, snapshot-load autosave gating, and final draft payload creation.
 - Verification: red-first `useReportWizard.test.tsx` failed on missing `./useReportWizard.js`, then passed 3/3 after implementation. The RF-06 Citizen PWA suite passed 10 files / 45 tests. `pnpm --dir apps/citizen-pwa exec tsc --noEmit`, `pnpm --dir apps/citizen-pwa exec eslint src`, scoped Prettier check, `git diff --check`, and `fallow audit --format json --quiet --base main --gate new-only` passed. No deploy; no Firestore rules, RTDB rules, indexes, or schema/migration files changed.
 - Turned the resolved `/grill-me` decisions for `docs/bantayog-alert-citizen-pwa-spec.md` (v2.0) into `cpwa-00` index + 9 slices. Resolved: bottom nav `Home · Map · Report · Feed · Profile` (Alerts→Home bell, `/alerts` route survives); Home `/` "Your Local Brief" hero; Map demotes to `/map`; §9 Response Thread becomes primary tracking at `/track/:id`; one shared status registry (cpwa-01); Home-only motion override (cpwa-06, reduced-motion fallback mandatory). P0: cpwa-01, cpwa-02 (IA/routing), cpwa-07 (Response Thread). Open seams: §6.14 ending copy (cpwa-05), weather as truth-gated empty slot (cpwa-04), Map alert-zone layer defers if alert docs lack geometry. Rejected: full-screen takeover, looping hazard backgrounds, tracking-in-Map-sheet, second status component per surface.
+
+## 2026-06-19 - CPWA-01 Shared Two-Signal Status Registry
+
+- Added one pure registry for severity, public operational stage, hazard type, and freshness presentations; every entry exposes a color token, icon, and label with defined unknown-value fallbacks.
+- Re-pointed `getSeverityStyle` to the registry without changing its public shape or rendered values.
+- Verification: red-first missing-module and missing-axis failures were observed; focused Vitest passed 2 files / 9 tests, then Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-19 - CPWA-02 Citizen IA and Routing Spine
+
+- Moved Home to `/`, Map to `/map`, added a hidden-nav `/track/:id` placeholder, and changed the bottom nav to Home, Map, Report, Feed, Profile while preserving `/alerts` through a working Home-header bell.
+- Added layout-stable labelled Home slots for the local brief, report, nearby, weather, and emergency contacts. Unread-count wiring remains in CPWA-03.
+- Map-intent `/` callers inventoried for owning slices: `ReportStatusPill`, `LookupScreen`, Profile report cards, and Map router-state cleanup.
+- Verification: each route/nav contract was observed red first; focused route/shell tests passed 18/18, full Citizen Vitest passed 80 files / 557 tests, and Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-19 - CPWA-03 Home Header and Alerts Bell
+
+- Replaced the Home header skeleton with a time-of-day greeting, optional municipality chip, truth-gated freshness, and an alerts bell whose unread badge renders a visible count and uses the CPWA-01 freshness token.
+- Added `HomeDataProvider` at `CitizenShell` so Home, later Home modules, and `ReportStatusPill` can share the shell-owned alert/report snapshots instead of adding another live subscription.
+- Verification: red-first `HomeHeader.test.tsx` failed on the missing module; shell integration failed while Home still rendered the skeleton. Focused Home header/shell/status-pill tests now pass 20/20, and Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+- Stabilized the App route smoke test around the new shell-owned Home data path by mocking live shell hooks and moving mocked splash completion into `useEffect`; the route file now passes cleanly without React `act(...)` warnings.
+- Final verification: focused App-route/Home-header/shell/status-pill Vitest passed 4 files / 30 tests; full Citizen Vitest passed 81 files / 561 tests (remaining stderr belongs to pre-existing offline/error-log and unrelated act-warning tests); Citizen typecheck, lint, build, scoped Prettier, `git diff --check`, and Fallow `new-only` audit passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-04a Home Secondary Stack: Report and Nearby
+
+- Replaced the Home `Your report` placeholder with a compact active-report card that maps existing report statuses through the CPWA-01 operational-stage registry, renders icon plus label, and links to the current Profile report surface until CPWA-07 owns `/track/:id`.
+- Replaced the Home `Nearby` placeholder with an independent public-incident card that reuses `usePublicIncidents` only after Home has a known coordinate, computes client-side distance bands from known report coordinates, and keeps module-scoped loading, empty, error, and retry states so sibling modules remain visible.
+- Kept `Today's weather` truth-gated as unavailable because Citizen PWA has no real weather source yet; emergency contacts remain a CPWA-04b follow-up to keep the slice bounded.
+- Verification: red-first secondary-stack Vitest failed on missing `SecondaryStack`; a follow-up red test caught the no-location Nearby wrapper still subscribing to public incidents; focused CPWA/Home route tests passed 5 files / 34 tests, Citizen typecheck, lint, and scoped Prettier passed, full Citizen Vitest passed 82 files / 565 tests with inherited shared-validator source-map/offline/error-path stderr, Citizen production build passed, `git diff --check` passed, and Fallow `new-only` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-05 Home Dynamic Hero
+
+- Replaced the Home `Your local brief` skeleton with a bounded dynamic hero that renders loading, stale/error, unknown-area, calm, nearby-incident, and official-alert states without taking over the full screen.
+- Propagated shell-owned alert/report loading and error status through `HomeDataProvider` so calm copy appears only after alert, report, and incident sources are settled.
+- Hoisted the Home public-incident subscription result once and fed both the hero and Nearby card from it; if Home lacks a known report coordinate, the hero withholds calm and Nearby stays empty instead of subscribing to all public incidents.
+- Extended the shared severity registry for `critical` official alerts so the hero keeps icon plus `CRITICAL` label instead of falling through to the unknown `INFO` fallback.
+- Verification: red-first `HomeHero.test.tsx` failed against the placeholder hero; a second red test caught critical severity falling through to `INFO`; a post-review red test caught empty municipality labels widening the public-incident subscription; focused hero/registry tests passed 2 files / 9 tests, full Citizen Vitest passed 83 files / 570 tests with inherited shared-validator source-map/offline/error-path stderr, Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-06 Home Motion Layer
+
+- Added stable Home-only Motion wrappers for the hero and secondary modules, with a one-shot entrance sequence that uses transform and opacity without changing reserved layout.
+- Added a mandatory reduced-motion branch that renders immediate opacity-only transitions with no transform, stagger, pulse, or press scaling.
+- Added a restrained official-alert entrance, receded secondary modules, and stopped the Home alert badge and Report FAB ambient motion while emergency content is active.
+- Verification: red-first `motion.test.tsx` failed on the missing Home motion wrappers, and the shell regression test failed while the emergency Report FAB still retained `fab-breathe`; focused motion/shell tests passed 2 files / 13 tests, full Citizen Vitest passed 84 files / 574 tests with inherited shared-validator source-map/offline/error-path and unrelated `act(...)` stderr, Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed with zero introduced findings. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-07 Response Thread
+
+- Replaced the `/track/:id` placeholder with a full-height Response Thread that reuses the existing active-report source and accepts either the report ID or public tracking reference.
+- Added a pure five-stage tracking model with a conservative unknown-status fallback, an explicit not-accepted path, non-fabricating cancellation and duplicate closure, and narrative events only when exact timestamps exist.
+- Added a sticky identity/current-stage header, icon-plus-label stepper, progressive stage disclosure, citizen-safe dated updates, and loading, retry, not-found, and back-navigation states without the main bottom navigation.
+- Verification: the red-first timeline test failed on the missing model and the route test failed against the placeholder; timeline coverage now passes 18/18, focused route/model coverage passes 2 files / 28 tests, and full Citizen Vitest passes 85 files / 592 tests with inherited shared-validator source-map/offline/error-path and unrelated `act(...)` stderr. Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed with zero introduced findings. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-08 Detail Sheet Peek and Deep Links
+
+- Demoted the Map detail sheet to compact public-incident and own-report peeks; own reports reuse the CPWA-07 timeline model and CPWA-01 operational-stage registry, while public incidents link to `/incidents/:id`.
+- Removed the own-report sheet's embedded full timeline and page-like actions, then linked its status summary and tracking code to `/track/:id`.
+- Replaced the report status pill's color-only status signal with the shared icon-plus-label presentation and repointed its expanded state, responder notice, Home card, Profile card, and successful submission sheet to `/track/:id`.
+- Verification: red-first tests failed on the missing deep links, legacy status presentation, and embedded timeline; focused coverage passed 5 files / 40 tests, full Citizen Vitest passed 85 files / 568 tests with inherited shared-validator source-map/offline/error-path and unrelated `act(...)` stderr, Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed with zero introduced findings. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-09 Map Secondary Surface
+
+- Made each Home Nearby incident an accessible link to `/map?municipality=...`; Map applies that URL value once through its existing municipality filter, then leaves later chip selection under user control.
+- Aligned public-incident and own-report pin labels with the CPWA-01 hazard, severity, and operational-stage registry while preserving the existing marker layers, colors, listeners, and peek-to-detail routes.
+- Deferred alert/affected-area zones because the current alert documents expose municipality IDs but no geometry; no circle, polygon, or other affected area was fabricated.
+- Verification: the red-first Nearby test failed because no link existed, then focused coverage passed 1 file / 4 tests; full Citizen Vitest passed 85 files / 568 tests with inherited shared-validator source-map/offline/error-path and unrelated `act(...)` stderr. Citizen typecheck, lint, scoped Prettier, production build, `git diff --check`, and Fallow `new-only` passed with zero introduced findings. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA Ponytail Cleanup
+
+- Removed dead freshness registry states, test-only registry exports, and the test-only `NearbyCardFromSource` wrapper from the CPWA stack.
+- Collapsed `getSeverityStyle` to return the shared severity registry presentation directly while preserving the existing compatibility type for callers.
+- Verification: focused status-registry, severity-style, and secondary-stack Vitest passed 3 files / 13 tests; Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA-04b Home Emergency Contacts
+
+- Wired the empty Home "Emergency contacts" slot to the existing `useMunicipalityContact` hook: `HomeTab` maps the resolved location label to a municipality id (`municipalityIdFromLabel` using the shared `MUNI_LABELS_SORTED` constants), subscribes for `{ label, hotline }`, and renders an `EmergencyContactsCard` with a real `tel:` call link.
+- `phoneHref` strips formatting to a dialable `tel:` value and returns `undefined` when no digits remain, in which case the card shows a `role="alert"` "Hotline unavailable" fallback instead of a dead link. The hook always falls back to `DEFAULT_CONTACT` (Daet MDRRMO) so the slot is never empty.
+- Applied on top of the Ponytail Cleanup base, so the now-removed `usePublicIncidents`/`NearbyCardFromSource` wrapper was not reintroduced.
+- Verification: focused `secondary-stack` Vitest covers the `tel:0547211216` link from `(054) 721-1216`; Citizen typecheck and lint passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA Review Patch
+
+- Gated Home emergency motion and the shell Report FAB suppression on high/critical alerts instead of any alert, so low/info advisories keep ordinary Home motion.
+- Added a minute clock tick in Home so the greeting and "Updated X ago" copy refresh while the tab stays mounted.
+- Removed the dead `DetailSheet` own-report `onCancelReport` prop and stale Map call site; cancellation stays owned by `PeekSheet` to `DeleteSheet`.
+- Left first-run Home context seeding, weather data, bell usability review, and Alerts/Feed registry migration as follow-ups because they need product or wider slice decisions.
+- Verification: red-first Home motion and CitizenShell tests failed on low alerts triggering emergency mode, the Home clock test failed on the frozen timestamp, then focused Home/Shell/Map coverage passed 4 files / 27 tests; Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA lookup route handoff fix
+
+- Fixed the citizen lookup success handoff after the `/` route split: `LookupScreen` now sends successful lookups to `/map`, which is where `MapTab` renders the `Report found — tracking enabled` banner. Updated the lookup navigation test to match the real destination.
+- Follow-up CI fix: removed the redundant optional clipboard guard in `MapTab/DetailSheet.tsx` after GitHub lint flagged `navigator.clipboard?.writeText` as an unnecessary conditional. Focused DetailSheet test and root lint passed.

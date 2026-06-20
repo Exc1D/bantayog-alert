@@ -183,3 +183,21 @@
 - Domain cores exercised through `@firebase/rules-unit-testing` use a client Firestore object even when cast to Admin types — prefer concrete transaction updates over Admin `FieldValue` transforms when the value is already in the snapshot.
 - Function tests import `@bantayog/shared-validators` via package exports (`lib/index.js`), not live `src` — rebuild the package after adding exports or the new schema is `undefined` at runtime.
 - Callable retry wrappers must generate idempotency keys before entering `withRetry`; generating inside the closure gives each attempt a fresh key and defeats idempotency.
+
+## Citizen PWA Status Vocabulary
+
+- The CPWA task text names `AlertsTab` as the hazard-category source, but that surface has severity filters only. Build the shared hazard registry from the union of `incident-meta.tsx` `INCIDENT_TYPES` and `situation-updates.ts` `SITUATION_HAZARD_TYPES`; do not silently drop categories unique to either public surface.
+
+## Citizen PWA Route Migration
+
+- Once `/` becomes Home, audit navigation intent instead of globally replacing paths. Home-return callers stay on `/`; Map-intent callers (`ReportStatusPill`, lookup result state, Profile report cards, and Map state cleanup) move only in their owning CPWA slices. `LookupScreen` must hand off successful lookups to `/map`, because `MapTab` owns the success banner.
+- A generic import insertion patch on the new `HomeTab` matched the file tail and placed imports after the component. The required post-edit reread caught it before typecheck; anchor new imports against the first declaration, not an empty hunk.
+
+## Citizen PWA Home Data
+
+- CPWA Home slices should consume alert/report snapshots through the shell-owned `HomeDataProvider`; calling `useAlerts` or `useMyActiveReports` again inside Home modules adds duplicate live subscriptions.
+- React Compiler purity flags `Date.now()` in render defaults. Capture a stable timestamp through a lazy state initializer or pass it as an explicit prop; keep presentational components deterministic.
+- App route wiring tests that mount `CitizenShell` must mock shell-owned live hooks (`useAlerts`, `useMyActiveReports`, offline queue/read-state hooks) and `wizardSnapshot`; mocked splash completion should call back from `useEffect`, not a free microtask, or React 19 emits `act(...)` noise and route assertions can turn order-sensitive.
+- CPWA Nearby distance bands should use only an already-known citizen/report coordinate plus public incident coordinates. If Home has no known coordinate, render an empty state; do not prompt geolocation or fabricate distance in the secondary stack.
+- CPWA Weather currently has no Citizen PWA backing source. Keep the Home slot truth-gated as unavailable until a real weather endpoint/client lands.
+- Official alerts can be `critical`; keep that severity in the shared status registry. Otherwise Home/Alerts surfaces can silently fall through to the unknown `INFO` fallback while rendering the highest-risk state.
