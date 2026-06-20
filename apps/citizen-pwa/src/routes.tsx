@@ -70,21 +70,9 @@ const NotFoundPage = lazyWithRetry(() =>
 const LoginPage = lazyWithRetry(() =>
   import('./pages/LoginPage.js').then((m) => ({ default: m.LoginPage })),
 )
-const ResponseThread = lazyWithRetry(() => Promise.resolve({ default: ResponseThreadPlaceholder }))
-
-function ResponseThreadPlaceholder() {
-  return (
-    <main
-      data-testid="response-thread-placeholder"
-      className="min-h-[100dvh] bg-surface-50 px-5 py-8 text-surface-900"
-    >
-      <div className="mx-auto max-w-lg">
-        <h1 className="m-0 text-xl font-bold">Report updates</h1>
-        <p className="mt-2 text-sm text-surface-600">Your report timeline will appear here.</p>
-      </div>
-    </main>
-  )
-}
+const ResponseThread = lazyWithRetry(() =>
+  import('./components/ResponseThread/index.js').then((m) => ({ default: m.ResponseThread })),
+)
 
 function RouteFallback() {
   return (
