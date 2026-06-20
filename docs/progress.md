@@ -540,3 +540,4 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 ## 2026-06-20 - CPWA lookup route handoff fix
 
 - Fixed the citizen lookup success handoff after the `/` route split: `LookupScreen` now sends successful lookups to `/map`, which is where `MapTab` renders the `Report found — tracking enabled` banner. Updated the lookup navigation test to match the real destination.
+- Follow-up CI fix: removed the redundant optional clipboard guard in `MapTab/DetailSheet.tsx` after GitHub lint flagged `navigator.clipboard?.writeText` as an unnecessary conditional. Focused DetailSheet test and root lint passed.

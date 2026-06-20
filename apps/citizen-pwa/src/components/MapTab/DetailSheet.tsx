@@ -56,7 +56,6 @@ export function DetailSheet(props: Props) {
 
   async function handleCopy(text: string) {
     try {
-      if (!navigator.clipboard?.writeText) throw new Error('Clipboard API is unavailable')
       await navigator.clipboard.writeText(text)
       setCopied(true)
       if (timer.current !== null) window.clearTimeout(timer.current)
