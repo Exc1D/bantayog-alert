@@ -1,8 +1,9 @@
 import '@testing-library/jest-dom/vitest'
 import type { HTMLAttributes, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
+import { act } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AlertDoc } from '@bantayog/shared-types'
 import type { MyReport } from '../MapTab/types.js'
 import { HomeDataProvider, type HomeDataContextValue } from './HomeDataContext.js'
@@ -115,6 +116,10 @@ describe('Home motion layer', () => {
     setReducedMotion(false)
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('uses immediate opacity-only motion when reduced motion is requested', () => {
     setReducedMotion(true)
     renderHome()
@@ -156,5 +161,38 @@ describe('Home motion layer', () => {
     expect(hero.dataset.motionAnimate).toBe(JSON.stringify({ opacity: 1, scale: 1 }))
     expect(reportCard.dataset.motionAnimate).toBe(JSON.stringify({ opacity: 0.68, y: 0 }))
     expect(nearbyCard.dataset.motionAnimate).toBe(JSON.stringify({ opacity: 0.68, y: 0 }))
+  })
+
+  it('keeps ordinary motion for non-emergency alerts', () => {
+    renderHome({
+      ...defaultHomeData,
+      alerts: [{ ...alert, severity: 'low' }],
+      unreadAlertCount: 1,
+    })
+
+    expect(screen.getByTestId('home-motion-hero').dataset.motionInitial).toBe(
+      JSON.stringify({ opacity: 0, y: 12 }),
+    )
+    expect(screen.getByTestId('home-motion-report').dataset.motionAnimate).toBe(
+      JSON.stringify({ opacity: 1, y: 0 }),
+    )
+  })
+
+  it('refreshes relative Home timestamps while mounted', () => {
+    const now = 1_713_350_400_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    renderHome({
+      ...defaultHomeData,
+      reports: [{ ...report, submittedAt: now - 60_000 }],
+    })
+
+    expect(screen.getByText('Updated 1 minute ago')).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+
+    expect(screen.getByText('Updated 2 minutes ago')).toBeInTheDocument()
   })
 })

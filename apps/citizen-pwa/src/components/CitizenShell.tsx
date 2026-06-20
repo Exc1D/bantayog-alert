@@ -11,6 +11,7 @@ import { useMyActiveReports } from '../hooks/useMyActiveReports.js'
 import { useUIStore } from '../lib/store.js'
 import { useReducedMotion } from '../hooks/useReducedMotion.js'
 import { wizardSnapshot } from '../services/wizard-snapshot.js'
+import { hasEmergencyAlert } from '../utils/emergency.js'
 import { HomeDataProvider } from './HomeTab/HomeDataContext.js'
 import '../styles/design-tokens.css'
 
@@ -115,7 +116,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
     [alerts, alertsLoading, alertsError, reports, reportsLoading, reportsError, unreadAlertCount],
   )
   const modalAlert = newestAlert?.id === dismissedModalAlertId ? null : newestAlert
-  const isHomeEmergency = pathname === '/' && alerts.length > 0
+  const isHomeEmergency = pathname === '/' && hasEmergencyAlert(alerts)
 
   // Focus trap + Escape handling for foreground alert modal
   useEffect(() => {

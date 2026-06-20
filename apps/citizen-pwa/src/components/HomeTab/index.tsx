@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { AlertDoc } from '@bantayog/shared-types'
 import { usePublicIncidents } from '../../hooks/usePublicIncidents.js'
 import { useMunicipalityContact } from '../../hooks/useMunicipalityContact.js'
 import { useReducedMotion } from '../../hooks/useReducedMotion.js'
+import { hasEmergencyAlert } from '../../utils/emergency.js'
 import type { PublicIncident } from '../MapTab/types.js'
 import { MUNI_LABELS_SORTED } from '../SubmitReportForm/location-constants.js'
 import { HomeHeader } from './HomeHeader.js'
@@ -204,7 +205,7 @@ function HomeBriefModules(props: HomeBriefModulesProps) {
 
 export function HomeTab() {
   const navigate = useNavigate()
-  const [now] = useState(() => Date.now())
+  const [now, setNow] = useState(() => Date.now())
   const prefersReducedMotion = useReducedMotion()
   const {
     alerts,
@@ -230,11 +231,20 @@ export function HomeTab() {
     ...alerts.map((alert) => alert.publishedAt),
     ...reports.map((report) => report.lastStatusAt ?? report.submittedAt),
   )
-  const isEmergency = alerts.length > 0
+  const isEmergency = hasEmergencyAlert(alerts)
 
   const openAlerts = () => {
     void navigate('/alerts')
   }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(Date.now())
+    }, 60_000)
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [])
 
   return (
     <div data-testid="home-tab" className="h-full overflow-y-auto bg-surface-50">

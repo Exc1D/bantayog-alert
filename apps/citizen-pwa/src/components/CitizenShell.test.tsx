@@ -197,6 +197,24 @@ describe('CitizenShell', () => {
     expect(screen.getByRole('button', { name: 'Report' })).not.toHaveClass('fab-breathe')
   })
 
+  it('keeps report FAB ambient motion for non-emergency Home alerts', () => {
+    renderShell('/', {
+      alerts: [
+        {
+          id: 'alert-1',
+          title: 'Weather advisory',
+          body: 'Expect light rain.',
+          severity: 'low',
+          publishedAt: Date.now() - 60_000,
+          publishedBy: 'admin-1',
+        },
+      ],
+      home: true,
+    })
+
+    expect(screen.getByRole('button', { name: 'Report' })).toHaveClass('fab-breathe')
+  })
+
   it('navigates to report and feed tabs', async () => {
     renderShell('/')
     fireEvent.click(screen.getByRole('button', { name: /report/i }))
