@@ -48,6 +48,21 @@ function bannerMotionProps(prefersReducedMotion: boolean) {
   }
 }
 
+function reportFabClassName(isHomeEmergency: boolean): string {
+  const ambientClass = isHomeEmergency ? '' : 'fab-breathe'
+  return `${ambientClass} absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600`
+}
+
+function reportIconMotionProps(prefersReducedMotion: boolean, isHomeEmergency: boolean) {
+  if (prefersReducedMotion || isHomeEmergency) {
+    return { whileHover: {}, whileTap: {} }
+  }
+  return {
+    whileHover: { rotate: -8, scale: 1.05 },
+    whileTap: { scale: 0.92 },
+  }
+}
+
 export function CitizenShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -100,6 +115,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
     [alerts, alertsLoading, alertsError, reports, reportsLoading, reportsError, unreadAlertCount],
   )
   const modalAlert = newestAlert?.id === dismissedModalAlertId ? null : newestAlert
+  const isHomeEmergency = pathname === '/' && alerts.length > 0
 
   // Focus trap + Escape handling for foreground alert modal
   useEffect(() => {
@@ -373,11 +389,10 @@ export function CitizenShell({ children }: { children: ReactNode }) {
                         onClick={() => {
                           handleNav(path)
                         }}
-                        className="fab-breathe absolute -top-8 flex items-center justify-center w-[64px] h-[64px] rounded-full bg-brand-600 shadow-lg active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
+                        className={reportFabClassName(isHomeEmergency)}
                       >
                         <motion.div
-                          whileHover={prefersReducedMotion ? {} : { rotate: -8, scale: 1.05 }}
-                          whileTap={{ scale: 0.92 }}
+                          {...reportIconMotionProps(prefersReducedMotion, isHomeEmergency)}
                           transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                         >
                           <Icon size={30} strokeWidth={1.5} className="text-white" />

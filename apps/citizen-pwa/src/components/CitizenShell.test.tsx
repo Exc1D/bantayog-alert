@@ -179,6 +179,24 @@ describe('CitizenShell', () => {
     expect(screen.getByText(/^Updated /)).toBeInTheDocument()
   })
 
+  it('pauses the report FAB ambient motion while Home shows an official alert', () => {
+    renderShell('/', {
+      alerts: [
+        {
+          id: 'alert-1',
+          title: 'Flood alert',
+          body: 'Stay alert near waterways.',
+          severity: 'high',
+          publishedAt: Date.now() - 60_000,
+          publishedBy: 'admin-1',
+        },
+      ],
+      home: true,
+    })
+
+    expect(screen.getByRole('button', { name: 'Report' })).not.toHaveClass('fab-breathe')
+  })
+
   it('navigates to report and feed tabs', async () => {
     renderShell('/')
     fireEvent.click(screen.getByRole('button', { name: /report/i }))

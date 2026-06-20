@@ -1,4 +1,5 @@
 import { Bell, MapPin } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { getFreshnessPresentation } from '../../utils/status-registry.js'
 
 const MINUTE_MS = 60_000
@@ -6,11 +7,30 @@ const HOUR_MS = 60 * MINUTE_MS
 const DAY_MS = 24 * HOUR_MS
 
 interface HomeHeaderProps {
+  isEmergency?: boolean
   locationLabel?: string
   now: number
   onOpenAlerts: () => void
+  prefersReducedMotion?: boolean
   unreadAlertCount: number
   updatedAt?: number
+}
+
+const HOME_EASE = [0.2, 0, 0, 1] as const
+
+function headerMotionProps(prefersReducedMotion: boolean, delay: number) {
+  if (prefersReducedMotion) {
+    return {
+      initial: { opacity: 0 },
+      animate: { opacity: 1 },
+      transition: { duration: 0 },
+    }
+  }
+  return {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    transition: { duration: 0.18, delay, ease: HOME_EASE },
+  }
 }
 
 function greeting(now: number): string {
@@ -35,9 +55,11 @@ function timeAgo(timestamp: number, now: number): string {
 }
 
 export function HomeHeader({
+  isEmergency = false,
   locationLabel,
   now,
   onOpenAlerts,
+  prefersReducedMotion = false,
   unreadAlertCount,
   updatedAt,
 }: HomeHeaderProps) {
@@ -51,15 +73,21 @@ export function HomeHeader({
         <div className="min-w-0">
           <p className="m-0 text-xl font-bold leading-tight text-surface-900">{greeting(now)}</p>
           {locationLabel ? (
-            <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-surface-700">
+            <motion.p
+              className="mt-2 flex items-center gap-1.5 text-sm font-medium text-surface-700"
+              {...headerMotionProps(prefersReducedMotion, 0.04)}
+            >
               <MapPin size={15} aria-hidden="true" />
               <span>{locationLabel}</span>
-            </p>
+            </motion.p>
           ) : null}
           {updatedAt ? (
-            <p className="mt-1 text-xs font-medium text-surface-500">
+            <motion.p
+              className="mt-1 text-xs font-medium text-surface-500"
+              {...headerMotionProps(prefersReducedMotion, 0.36)}
+            >
               Updated {timeAgo(updatedAt, now)}
-            </p>
+            </motion.p>
           ) : null}
         </div>
         <button
@@ -73,7 +101,7 @@ export function HomeHeader({
           {hasUnread ? (
             <span
               data-testid="home-alert-badge"
-              className="badge-shake absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+              className={`${isEmergency ? '' : 'badge-shake'} absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white`}
               style={{ backgroundColor: badgeColor }}
             >
               {unreadAlertCount > 9 ? '9+' : String(unreadAlertCount)}
