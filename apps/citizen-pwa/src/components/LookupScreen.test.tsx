@@ -118,7 +118,7 @@ describe('LookupScreen', () => {
   it('navigates to the selected report on successful lookup', async () => {
     const input = await submitSecretCode('mysecretcode')
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/', {
+      expect(mockNavigate).toHaveBeenCalledWith('/map', {
         state: {
           selectedReportPublicRef: 'a1b2c3d4',
           lookupSuccessMessage: 'Report found — tracking enabled',
@@ -224,7 +224,7 @@ describe('LookupScreen', () => {
     const input = await submitSecretCode('localsecret')
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/', {
+      expect(mockNavigate).toHaveBeenCalledWith('/map', {
         state: {
           selectedReportPublicRef: 'loc12345',
           lookupSuccessMessage: 'Report found — tracking enabled',

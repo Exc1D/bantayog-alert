@@ -536,3 +536,7 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Removed the dead `DetailSheet` own-report `onCancelReport` prop and stale Map call site; cancellation stays owned by `PeekSheet` to `DeleteSheet`.
 - Left first-run Home context seeding, weather data, bell usability review, and Alerts/Feed registry migration as follow-ups because they need product or wider slice decisions.
 - Verification: red-first Home motion and CitizenShell tests failed on low alerts triggering emergency mode, the Home clock test failed on the frozen timestamp, then focused Home/Shell/Map coverage passed 4 files / 27 tests; Citizen typecheck, lint, scoped Prettier, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-20 - CPWA lookup route handoff fix
+
+- Fixed the citizen lookup success handoff after the `/` route split: `LookupScreen` now sends successful lookups to `/map`, which is where `MapTab` renders the `Report found — tracking enabled` banner. Updated the lookup navigation test to match the real destination.

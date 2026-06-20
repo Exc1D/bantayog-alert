@@ -190,7 +190,7 @@
 
 ## Citizen PWA Route Migration
 
-- Once `/` becomes Home, audit navigation intent instead of globally replacing paths. Home-return callers stay on `/`; Map-intent callers (`ReportStatusPill`, lookup result state, Profile report cards, and Map state cleanup) move only in their owning CPWA slices.
+- Once `/` becomes Home, audit navigation intent instead of globally replacing paths. Home-return callers stay on `/`; Map-intent callers (`ReportStatusPill`, lookup result state, Profile report cards, and Map state cleanup) move only in their owning CPWA slices. `LookupScreen` must hand off successful lookups to `/map`, because `MapTab` owns the success banner.
 - A generic import insertion patch on the new `HomeTab` matched the file tail and placed imports after the component. The required post-edit reread caught it before typecheck; anchor new imports against the first declaration, not an empty hunk.
 
 ## Citizen PWA Home Data
