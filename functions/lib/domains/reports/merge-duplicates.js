@@ -48,7 +48,7 @@ export async function mergeDuplicatesCore(db, input, actor, correlationId = cryp
                     severity: 'ERROR',
                     code: 'merge.permission_denied',
                     message: 'Unknown actor policy failure',
-                    data: { correlationId },
+                    data: { correlationId, actorPolicyReason: actorPolicy.reason },
                 });
                 return { success: false, errorCode: 'permission-denied' };
         }

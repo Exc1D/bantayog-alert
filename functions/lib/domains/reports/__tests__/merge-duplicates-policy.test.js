@@ -44,6 +44,14 @@ describe('merge duplicates policy', () => {
             { id: 'r1', municipalityId: 'daet', duplicateClusterId: ' ' },
             { id: 'r2', municipalityId: 'daet', duplicateClusterId: ' ' },
         ], { role: 'provincial_superadmin' })).toEqual({ success: false, errorCode: 'failed-precondition' });
+        for (const malformedRow of [
+            { id: 'r1', municipalityId: 7, duplicateClusterId: 'cluster-1' },
+            { id: 'r1', municipalityId: 'daet', duplicateClusterId: 7 },
+        ]) {
+            expect(validateMergeOpsRows([malformedRow], {
+                role: 'provincial_superadmin',
+            })).toEqual({ success: false, errorCode: 'failed-precondition' });
+        }
     });
     it('reconciles survivor media and loser terminal updates without undefined fields', () => {
         const primaryUpdate = buildPrimaryMergeReportUpdate('r1', [

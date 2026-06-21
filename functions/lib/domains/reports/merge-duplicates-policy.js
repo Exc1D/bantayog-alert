@@ -14,7 +14,7 @@ export function validateMergeActorClaims(claims) {
     return { success: true };
 }
 export function validateMergeOpsRows(opsData, actorClaims) {
-    const municipalityIds = opsData.map((row) => row.municipalityId?.trim());
+    const municipalityIds = opsData.map((row) => typeof row.municipalityId === 'string' ? row.municipalityId.trim() : undefined);
     const missingMunicipality = municipalityIds.some((municipalityId) => !municipalityId);
     if (missingMunicipality) {
         return { success: false, errorCode: 'failed-precondition' };
@@ -28,7 +28,7 @@ export function validateMergeOpsRows(opsData, actorClaims) {
         return { success: false, errorCode: 'failed-precondition' };
     }
     const clusterIds = opsData
-        .map((row) => row.duplicateClusterId?.trim())
+        .map((row) => typeof row.duplicateClusterId === 'string' ? row.duplicateClusterId.trim() : undefined)
         .filter((id) => typeof id === 'string' && id.length > 0);
     if (clusterIds.length !== opsData.length) {
         return { success: false, errorCode: 'failed-precondition' };
