@@ -555,6 +555,12 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Fixed the citizen lookup success handoff after the `/` route split: `LookupScreen` now sends successful lookups to `/map`, which is where `MapTab` renders the `Report found — tracking enabled` banner. Updated the lookup navigation test to match the real destination.
 - Follow-up CI fix: removed the redundant optional clipboard guard in `MapTab/DetailSheet.tsx` after GitHub lint flagged `navigator.clipboard?.writeText` as an unnecessary conditional. Focused DetailSheet test and root lint passed.
 
+## 2026-06-21 - Admin Desktop Ponytail Cleanup
+
+- Removed five production-unreachable UI components, their four test-only suites, dead support files and anomaly types, the single-caller `useWindowSync` wrapper/test, and two README-only feature shells.
+- Removed `recharts` and `clsx` plus their unused transitive lockfile entries. Replaced twelve screenshot/log-oriented Playwright cases with four assertion-backed UI checks and deleted 136 KB of generated artifacts.
+- The first full Vitest run caught one stale dashboard wrapper mock; the focused regression then passed, followed by all 76 files / 591 tests. Admin typecheck, lint, production build, Playwright test discovery, scoped formatting, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
 ## 2026-06-21 - Citizen PWA Ponytail Audit Cleanup
 
 - Removed the unused React Query report lookup/cache stack (`useReport`, Firestore mappers, query client/provider, and tests) now that active report tracking is handled by the CPWA response-thread path.

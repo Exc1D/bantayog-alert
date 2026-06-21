@@ -10,14 +10,13 @@ import {
 
 const mockNavigate = vi.fn()
 
-vi.mock('../app/firebase', () => ({
-  db: {} as never,
-  getFirestoreInstance: () => ({}) as never,
-  auth: {} as never,
-  functions: {} as never,
-  rtdb: {} as never,
-  firebaseApp: {} as never,
-}))
+vi.mock('../app/firebase', async () =>
+  (await import('../test-utils')).createAdminFirebaseModuleMock(),
+)
+
+vi.mock('../providers/WindowSyncProvider', async () =>
+  (await import('../test-utils')).createWindowSyncProviderModuleMock(),
+)
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
@@ -27,13 +26,9 @@ vi.mock('react-router-dom', async (importOriginal) => {
   }
 })
 
-vi.mock('@bantayog/shared-ui', () => ({
-  useAuth: () => ({
-    signOut: vi.fn(),
-    loading: false,
-    claims: { role: 'provincial_superadmin' },
-  }),
-}))
+vi.mock('@bantayog/shared-ui', async () =>
+  (await import('../test-utils')).createProvincialSuperadminAuthModuleMock(),
+)
 
 vi.mock('../services/callables', () => ({
   callables: {
