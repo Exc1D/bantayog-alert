@@ -33,8 +33,8 @@ export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES, mdrrmoLabelSchem
 export type { MunicipalityDoc, UpdateMunicipalityContactInput, UpdateMunicipalityContactOutput, } from './municipalities.js';
 export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js';
 export type { BarangayEntry } from './barangays.js';
-export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, isValidDispatchTransition, } from '@bantayog/shared-state-machines';
-export type { ReportStatus, DispatchStatus } from '@bantayog/shared-state-machines';
+export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, isValidDispatchTransition, } from './state-machines/index.js';
+export type { ReportStatus, DispatchStatus } from './state-machines/index.js';
 export { BantayogErrorCode, isBantayogErrorCode, isTerminalReportStatus, isTerminalDispatchStatus, BantayogError, notFoundError, invalidTransitionError, } from './errors.js';
 export { logEvent, logDimension, LOG_DIMENSION_MAX } from './logging.js';
 export type { LogEntry, LogSeverity } from './logging.js';
