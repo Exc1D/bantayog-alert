@@ -99,8 +99,8 @@ export {
   DISPATCH_STATES,
   DISPATCH_TRANSITIONS,
   isValidDispatchTransition,
-} from '@bantayog/shared-state-machines'
-export type { ReportStatus, DispatchStatus } from '@bantayog/shared-state-machines'
+} from './state-machines/index.js'
+export type { ReportStatus, DispatchStatus } from './state-machines/index.js'
 export {
   BantayogErrorCode,
   isBantayogErrorCode,

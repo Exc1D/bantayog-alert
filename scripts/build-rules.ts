@@ -28,7 +28,7 @@ async function main() {
 
   const SHARED_VALIDATORS_PATH = resolve(
     import.meta.dirname,
-    '../packages/shared-state-machines/src/dispatch-states.ts',
+    '../packages/shared-validators/src/state-machines/dispatch-states.ts',
   )
   const source = readFileSync(SHARED_VALIDATORS_PATH, 'utf8')
 
