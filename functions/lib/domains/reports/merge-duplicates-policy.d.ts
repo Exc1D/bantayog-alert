@@ -14,8 +14,8 @@ export interface MergeActorClaims {
 }
 export interface MergeOpsRow {
     id: string;
-    municipalityId?: string;
-    duplicateClusterId?: string;
+    municipalityId?: unknown;
+    duplicateClusterId?: unknown;
 }
 export interface MergeReportRow {
     id: string;
