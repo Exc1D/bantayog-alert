@@ -34,7 +34,3 @@ export const T = {
   'empty.no_updates': 'No updates yet',
   'empty.no_updates_tl': 'Wala pang update',
 } as const
-
-export function t(key: keyof typeof T): string {
-  return T[key]
-}

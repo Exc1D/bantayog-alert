@@ -541,3 +541,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Fixed the citizen lookup success handoff after the `/` route split: `LookupScreen` now sends successful lookups to `/map`, which is where `MapTab` renders the `Report found — tracking enabled` banner. Updated the lookup navigation test to match the real destination.
 - Follow-up CI fix: removed the redundant optional clipboard guard in `MapTab/DetailSheet.tsx` after GitHub lint flagged `navigator.clipboard?.writeText` as an unnecessary conditional. Focused DetailSheet test and root lint passed.
+
+## 2026-06-21 - Citizen PWA Ponytail Dead-Code Cleanup
+
+- Deleted 18 unmounted, test-only, or mutually isolated Citizen PWA files and removed the unused `t()` translation wrapper: 1,497 source/test lines removed.
+- Removed the Citizen app's unused `@bantayog/shared-ui` dependency; Admin and Responder retain their own declarations.
+- Kept `lib/haptics.ts` after the pre-delete import check found live `Button` and `Toggle` consumers; kept `public/sw.js` because `main.tsx` registers it by URL.
+- Verification: Citizen Vitest passed 78 files / 526 tests; Citizen typecheck, lint, production build, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.

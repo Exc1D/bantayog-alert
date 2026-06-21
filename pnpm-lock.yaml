@@ -196,9 +196,6 @@ importers:
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
-      '@bantayog/shared-ui':
-        specifier: workspace:*
-        version: link:../../packages/shared-ui
       '@bantayog/shared-validators':
         specifier: workspace:*
         version: link:../../packages/shared-validators
