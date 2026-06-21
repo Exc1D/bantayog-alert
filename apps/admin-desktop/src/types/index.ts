@@ -212,16 +212,6 @@ export interface MunicipalPerformance {
   adminName?: string
 }
 
-export interface AnomalyAlert {
-  id: string
-  municipality: string
-  type: string
-  message: string
-  severity: Severity
-  detectedAt: string
-  dismissedAt?: string
-}
-
 export interface ActivityEvent {
   id: string
   timestamp: string

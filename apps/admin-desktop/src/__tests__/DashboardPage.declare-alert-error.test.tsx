@@ -19,6 +19,10 @@ vi.mock('../app/firebase', () => ({
   firebaseApp: {} as never,
 }))
 
+vi.mock('../providers/WindowSyncProvider', async () =>
+  (await import('../test-utils')).createWindowSyncProviderModuleMock(),
+)
+
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return {

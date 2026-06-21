@@ -201,3 +201,9 @@
 - CPWA Nearby distance bands should use only an already-known citizen/report coordinate plus public incident coordinates. If Home has no known coordinate, render an empty state; do not prompt geolocation or fabricate distance in the secondary stack.
 - CPWA Weather currently has no Citizen PWA backing source. Keep the Home slot truth-gated as unavailable until a real weather endpoint/client lands.
 - Official alerts can be `critical`; keep that severity in the shared status registry. Otherwise Home/Alerts surfaces can silently fall through to the unknown `INFO` fallback while rendering the highest-risk state.
+
+## Admin Desktop Dead-Code Audits
+
+- Entry-point import reachability catches test-only production modules that Fallow may miss in this repo; delete their dedicated tests and exclusive dependencies together.
+- When collapsing a wrapper hook into its provider hook, update isolated component tests that mocked the wrapper to mock the surviving provider boundary.
+- Keep Playwright's configured failure screenshots; checked-in manual screenshots, console dumps, and log-only specs are generated clutter rather than regression coverage.

@@ -26,7 +26,7 @@ import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
-import { useWindowSync } from '../hooks/useWindowSync'
+import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
@@ -603,7 +603,7 @@ export default function DashboardPage() {
   )
 
   const navigate = useNavigate()
-  const { sendSync } = useWindowSync()
+  const { sendSync } = useWindowSyncContext()
 
   const handleReDispatch = useCallback((dispatchId: string) => {
     setSelectedDispatchId(dispatchId)
