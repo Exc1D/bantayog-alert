@@ -6,7 +6,7 @@
  * resolution, or timeout → timed_out) live in Cloud Functions callables where
  * the full business logic is available.
  */
-import type { DispatchStatus } from '../dispatches.js';
+import type { DispatchStatus } from '@bantayog/shared-types';
 export declare const DISPATCH_STATES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene", "resolved", "declined", "timed_out", "cancelled", "superseded", "unable_to_complete", "needs_admin", "escalated"];
 /**
  * Valid dispatch state transitions.

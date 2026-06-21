@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-06-21 - Ponytail Cleanup: Remove shared-data Placeholder
+
+- Removed the dead `@bantayog/shared-data` workspace package after recon confirmed it had no live source importers; the real Camarines Norte constants already live in `@bantayog/shared-types`.
+- Removed the stale generated `functions/lib` copies that still imported `@bantayog/shared-data`; current generated output uses the `domains/*` layout.
+
+## 2026-06-21 - Ponytail Cleanup: Remove Dead Admin Widgets
+
+- Removed the unmounted Admin widgets `ActiveIncidentsTable`, `AnomalyAlertPanel`, `TrendAnalysisPanel`, and `ResponderLayer` plus their tests; `recharts` left Admin dependencies with `TrendAnalysisPanel`.
+
+## 2026-06-21 - Ponytail Cleanup: Merge shared-state-machines into validators
+
+- Moved report/dispatch transition helpers and tests into `@bantayog/shared-validators/src/state-machines`, kept the shared-validator public exports stable, and removed the separate `@bantayog/shared-state-machines` workspace/dependency.
+
 ## 2026-06-18 - RF-08 Dedupe Firestore emulator test context
 
 - Extracted the repeated `RulesTestEnvironment.withSecurityRulesDisabled` skip/cast wrapper from `functions/src/domains/reports/__tests__/reject-report.test.ts` into `functions/src/__tests__/helpers/firestore-emulator-context.ts`, with a small helper test covering the unavailable-emulator skip path.
@@ -547,3 +560,10 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Removed five production-unreachable UI components, their four test-only suites, dead support files and anomaly types, the single-caller `useWindowSync` wrapper/test, and two README-only feature shells.
 - Removed `recharts` and `clsx` plus their unused transitive lockfile entries. Replaced twelve screenshot/log-oriented Playwright cases with four assertion-backed UI checks and deleted 136 KB of generated artifacts.
 - The first full Vitest run caught one stale dashboard wrapper mock; the focused regression then passed, followed by all 76 files / 591 tests. Admin typecheck, lint, production build, Playwright test discovery, scoped formatting, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-21 - Citizen PWA Ponytail Audit Cleanup
+
+- Removed the unused React Query report lookup/cache stack (`useReport`, Firestore mappers, query client/provider, and tests) now that active report tracking is handled by the CPWA response-thread path.
+- Removed the unused legacy `useCitizenShell`, duplicate `components/ui/RadarRings`, and empty feature README stubs for reporting/tracking.
+- Dropped Citizen PWA TanStack Query dependencies and simplified the shared test wrapper to a `MemoryRouter` only.
+- Verification: `pnpm install --lockfile-only`, focused Citizen Vitest (4 files / 20 tests), serial full Citizen Vitest (82 files / 538 tests), Citizen typecheck, Citizen lint, scoped Prettier check, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.

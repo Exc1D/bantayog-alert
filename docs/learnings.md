@@ -193,6 +193,10 @@
 - Once `/` becomes Home, audit navigation intent instead of globally replacing paths. Home-return callers stay on `/`; Map-intent callers (`ReportStatusPill`, lookup result state, Profile report cards, and Map state cleanup) move only in their owning CPWA slices. `LookupScreen` must hand off successful lookups to `/map`, because `MapTab` owns the success banner.
 - A generic import insertion patch on the new `HomeTab` matched the file tail and placed imports after the component. The required post-edit reread caught it before typecheck; anchor new imports against the first declaration, not an empty hunk.
 
+## Citizen PWA Dead-Code Audits
+
+- Before deleting a Fallow unused-export candidate, search every exported entry point and its importers. `lib/haptics.ts` looked dead when only its individual helpers were checked, but its `useHaptics` export is live through `Button` and `Toggle`; keep runtime-import and URL-loaded surfaces out of deletion batches.
+
 ## Citizen PWA Home Data
 
 - CPWA Home slices should consume alert/report snapshots through the shell-owned `HomeDataProvider`; calling `useAlerts` or `useMyActiveReports` again inside Home modules adds duplicate live subscriptions.

@@ -20,8 +20,8 @@ export interface MergeActorClaims {
 
 export interface MergeOpsRow {
   id: string
-  municipalityId?: string
-  duplicateClusterId?: string
+  municipalityId?: unknown
+  duplicateClusterId?: unknown
 }
 
 export interface MergeReportRow {
@@ -64,7 +64,9 @@ export function validateMergeOpsRows(
   opsData: MergeOpsRow[],
   actorClaims: Pick<MergeActorClaims, 'role' | 'municipalityId'>,
 ): MergePolicyResult<{ municipalityId: string; duplicateClusterId: string }> {
-  const municipalityIds = opsData.map((row) => row.municipalityId?.trim())
+  const municipalityIds = opsData.map((row) =>
+    typeof row.municipalityId === 'string' ? row.municipalityId.trim() : undefined,
+  )
   const missingMunicipality = municipalityIds.some((municipalityId) => !municipalityId)
   if (missingMunicipality) {
     return { success: false, errorCode: 'failed-precondition' }
@@ -81,7 +83,9 @@ export function validateMergeOpsRows(
   }
 
   const clusterIds = opsData
-    .map((row) => row.duplicateClusterId?.trim())
+    .map((row) =>
+      typeof row.duplicateClusterId === 'string' ? row.duplicateClusterId.trim() : undefined,
+    )
     .filter((id): id is string => typeof id === 'string' && id.length > 0)
   if (clusterIds.length !== opsData.length) {
     return { success: false, errorCode: 'failed-precondition' }
