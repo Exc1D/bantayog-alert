@@ -46,7 +46,7 @@
     "@firebase/rules-unit-testing": "^5.0.0",
     "@types/ngeohash": "^0.6.8",
     "@types/node": "^20.12.0",
-    "firebase": "12.14.0",
+    "firebase": "^12.15.0",
     "tsx": "^4.21.0"
   }
 }

@@ -215,4 +215,4 @@
 
 ## Firebase JS SDK Compatibility
 
-- Firebase 12.15.0 does not register the compat `app.database()` API required by `@firebase/rules-unit-testing` 5.0.1. Keep the functions-only Firebase test peer pinned to 12.14.0 until upstream compatibility is restored; application packages can use 12.15.0.
+- Firebase grouped bumps must include every workspace peer. Leaving `shared-ui` on Firebase 12.13+ kept the 12.14 graph in pnpm's virtual hoist, mixing 0.14 and 0.15 app singletons and breaking both rules tests and Vite app startup. Search all manifests and prune the old lock graph after grouped updates.

@@ -574,5 +574,5 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 ## 2026-06-22 - PR #248 Firebase compatibility repair
 
-- Kept Firebase 12.15.0 for application packages and pinned the functions emulator harness to Firebase 12.14.0 because `@firebase/rules-unit-testing` 5.0.1 loses compat `app.database()` with 12.15.0.
-- Targeted RTDB rules passed 18/18; the full Firestore/RTDB/Storage functions gate passed on rerun after one transient hook timeout; root lint and typecheck passed. No deploy or rules/schema changes.
+- Aligned the missed `shared-ui` Firebase peer with 12.15.0 and regenerated the lockfile, removing the stale 12.14 dependency graph that mixed Firebase app singletons in rules tests and Vite.
+- Targeted RTDB rules passed 18/18 on Firebase 12.15.0; the full functions emulator gate, C00-C10 local proof, root lint/typecheck/build, frozen install, formatting, and Browser Admin startup/navigation checks passed. No deploy or rules/schema changes.
