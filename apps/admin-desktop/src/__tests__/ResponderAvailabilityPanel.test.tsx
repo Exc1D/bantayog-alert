@@ -11,6 +11,8 @@ const mockResponders: ResponderFleetMember[] = [
     availabilityStatus: 'available',
     lastActivityAt: Date.now(),
     onlineStatus: 'online',
+    agencyId: 'bfp-daet',
+    municipalityId: 'daet',
   },
   {
     uid: 'r2',
@@ -18,6 +20,8 @@ const mockResponders: ResponderFleetMember[] = [
     availabilityStatus: 'available',
     lastActivityAt: Date.now() - 10 * 60 * 1000,
     onlineStatus: 'away',
+    agencyId: 'mdrrmo-daet',
+    municipalityId: 'daet',
   },
   {
     uid: 'r3',
@@ -61,6 +65,24 @@ describe('ResponderAvailabilityPanel', () => {
     expect(screen.getByText('online')).toBeInTheDocument()
     expect(screen.getByText('away')).toBeInTheDocument()
     expect(screen.getByText('offline')).toBeInTheDocument()
+  })
+
+  it('shows jurisdiction at a glance and progressively reveals operational details', async () => {
+    const user = userEvent.setup()
+    render(<ResponderAvailabilityPanel responders={[mockResponders[0]!]} />)
+
+    expect(screen.getByText('bfp-daet')).toBeInTheDocument()
+    expect(screen.getByText('daet')).toBeInTheDocument()
+    expect(screen.queryByText('Last activity')).not.toBeInTheDocument()
+
+    const detailsButton = screen.getByRole('button', { name: /view Santos responder details/i })
+    expect(detailsButton).toHaveAttribute('aria-expanded', 'false')
+    await user.click(detailsButton)
+
+    expect(detailsButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Availability')).toBeInTheDocument()
+    expect(screen.getByText('Last activity')).toBeInTheDocument()
+    expect(screen.getByText('Just now')).toBeInTheDocument()
   })
 
   it('renders green dot for online status', () => {
