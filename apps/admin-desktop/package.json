@@ -19,7 +19,7 @@
     "react-leaflet": "^5.0.0",
     "@sentry/react": "^10.53.1",
     "react-window": "^2.2.7",
-    "firebase": "^12.14.0",
+    "firebase": "^12.15.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.18.0",
     "react-router-dom": "^7.14.1",

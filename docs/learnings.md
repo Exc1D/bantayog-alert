@@ -212,3 +212,7 @@
 - Entry-point import reachability catches test-only production modules that Fallow may miss in this repo; delete their dedicated tests and exclusive dependencies together.
 - When collapsing a wrapper hook into its provider hook, update isolated component tests that mocked the wrapper to mock the surviving provider boundary.
 - Keep Playwright's configured failure screenshots; checked-in manual screenshots, console dumps, and log-only specs are generated clutter rather than regression coverage.
+
+## Firebase JS SDK Compatibility
+
+- Firebase grouped bumps must include every workspace peer. Leaving `shared-ui` on Firebase 12.13+ kept the 12.14 graph in pnpm's virtual hoist, mixing 0.14 and 0.15 app singletons and breaking both rules tests and Vite app startup. Search all manifests and prune the old lock graph after grouped updates.
