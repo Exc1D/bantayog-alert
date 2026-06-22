@@ -17,7 +17,7 @@
     "@bantayog/shared-ui": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
     "@capacitor-community/background-geolocation": "^1.2.26",
-    "@capacitor/core": "^8.3.4",
+    "@capacitor/core": "^8.4.1",
     "@capacitor/device": "^8.0.0",
     "react-router-dom": "^7.14.2",
     "@capacitor/preferences": "^8.0.0",
@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "vitest": "^4.1.9",
-    "@capacitor/cli": "^8.3.4",
+    "@capacitor/cli": "^8.4.1",
     "vite": "^8.0.16",
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^16.0.0",
