@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-06-22 - Citizen PWA CSP Fix for Report Submission
+
+- Fixed the Citizen Firebase Hosting CSP so Firebase Auth/App Check can load the Google reCAPTCHA/Auth helper scripts and frames needed before `submitCitizenReport` runs. No deploy, no rules, no schema changes.
+
 ## 2026-06-21 - Ponytail Cleanup: Remove shared-data Placeholder
 
 - Removed the dead `@bantayog/shared-data` workspace package after recon confirmed it had no live source importers; the real Camarines Norte constants already live in `@bantayog/shared-types`.
