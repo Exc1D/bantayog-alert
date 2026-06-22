@@ -216,7 +216,9 @@ function ResponderRow({
             </span>
           )}
           {!responder.agencyId && !responder.municipalityId && (
-            <span className="text-[11px] text-[var(--color-text-muted)]">Jurisdiction not assigned</span>
+            <span className="text-[11px] text-[var(--color-text-muted)]">
+              Jurisdiction not assigned
+            </span>
           )}
         </span>
       </button>
@@ -290,7 +292,9 @@ export function ResponderAvailabilityPanel({
             responder={responder}
             expanded={expandedResponderId === responder.uid}
             onToggle={() => {
-              setExpandedResponderId((current) => (current === responder.uid ? null : responder.uid))
+              setExpandedResponderId((current) =>
+                current === responder.uid ? null : responder.uid,
+              )
             }}
           />
         ))}
