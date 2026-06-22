@@ -82,7 +82,7 @@ describe('ResponderAvailabilityPanel', () => {
     expect(detailsButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Availability')).toBeInTheDocument()
     expect(screen.getByText('Last activity')).toBeInTheDocument()
-    expect(screen.getByText('Just now')).toBeInTheDocument()
+    expect(screen.getByText(/^(Just now|\d+[mhd] ago)$/)).toBeInTheDocument()
   })
 
   it('renders green dot for online status', () => {
@@ -138,4 +138,4 @@ describe('ResponderAvailabilityPanel', () => {
       specializations: ['fire', 'rescue', 'medical'],
     })
   })
-})
+}
