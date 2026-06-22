@@ -212,3 +212,7 @@
 - Entry-point import reachability catches test-only production modules that Fallow may miss in this repo; delete their dedicated tests and exclusive dependencies together.
 - When collapsing a wrapper hook into its provider hook, update isolated component tests that mocked the wrapper to mock the surviving provider boundary.
 - Keep Playwright's configured failure screenshots; checked-in manual screenshots, console dumps, and log-only specs are generated clutter rather than regression coverage.
+
+## Firebase JS SDK Compatibility
+
+- Firebase 12.15.0 does not register the compat `app.database()` API required by `@firebase/rules-unit-testing` 5.0.1. Keep the functions-only Firebase test peer pinned to 12.14.0 until upstream compatibility is restored; application packages can use 12.15.0.

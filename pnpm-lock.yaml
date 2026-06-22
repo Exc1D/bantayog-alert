@@ -402,7 +402,7 @@ importers:
     devDependencies:
       '@firebase/rules-unit-testing':
         specifier: ^5.0.0
-        version: 5.0.1(firebase@12.15.0)
+        version: 5.0.1(firebase@12.14.0)
       '@types/ngeohash':
         specifier: ^0.6.8
         version: 0.6.8
@@ -410,8 +410,8 @@ importers:
         specifier: ^20.12.0
         version: 20.19.42
       firebase:
-        specifier: ^12.15.0
-        version: 12.15.0
+        specifier: 12.14.0
+        version: 12.14.0
       tsx:
         specifier: ^4.21.0
         version: 4.22.4
@@ -6120,9 +6120,9 @@ snapshots:
       '@firebase/util': 1.15.1
       tslib: 2.8.1
 
-  '@firebase/rules-unit-testing@5.0.1(firebase@12.15.0)':
+  '@firebase/rules-unit-testing@5.0.1(firebase@12.14.0)':
     dependencies:
-      firebase: 12.15.0
+      firebase: 12.14.0
 
   '@firebase/storage-compat@0.4.3(@firebase/app-compat@0.5.13)(@firebase/app-types@0.9.5)(@firebase/app@0.14.13)':
     dependencies:
