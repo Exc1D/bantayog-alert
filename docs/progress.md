@@ -571,3 +571,8 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Removed the unused legacy `useCitizenShell`, duplicate `components/ui/RadarRings`, and empty feature README stubs for reporting/tracking.
 - Dropped Citizen PWA TanStack Query dependencies and simplified the shared test wrapper to a `MemoryRouter` only.
 - Verification: `pnpm install --lockfile-only`, focused Citizen Vitest (4 files / 20 tests), serial full Citizen Vitest (82 files / 538 tests), Citizen typecheck, Citizen lint, scoped Prettier check, and `git diff --check` passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-22 - PR #248 Firebase compatibility repair
+
+- Aligned the missed `shared-ui` Firebase peer with 12.15.0 and regenerated the lockfile, removing the stale 12.14 dependency graph that mixed Firebase app singletons in rules tests and Vite.
+- Targeted RTDB rules passed 18/18 on Firebase 12.15.0; the full functions emulator gate, C00-C10 local proof, root lint/typecheck/build, frozen install, formatting, and Browser Admin startup/navigation checks passed. No deploy or rules/schema changes.
