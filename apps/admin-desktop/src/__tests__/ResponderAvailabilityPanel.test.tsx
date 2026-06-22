@@ -85,6 +85,11 @@ describe('ResponderAvailabilityPanel', () => {
     expect(screen.getByText(/^(Just now|\d+[mhd] ago)$/)).toBeInTheDocument()
   })
 
+  it('shows a fallback when jurisdiction metadata is missing', () => {
+    render(<ResponderAvailabilityPanel responders={[mockResponders[2]!]} />)
+    expect(screen.getByText('Jurisdiction not assigned')).toBeInTheDocument()
+  })
+
   it('renders green dot for online status', () => {
     const { container } = render(<ResponderAvailabilityPanel responders={[mockResponders[0]!]} />)
     const dot = container.querySelector('.bg-green-500')
@@ -138,4 +143,4 @@ describe('ResponderAvailabilityPanel', () => {
       specializations: ['fire', 'rescue', 'medical'],
     })
   })
-}
+})
