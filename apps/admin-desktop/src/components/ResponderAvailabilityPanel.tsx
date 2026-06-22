@@ -181,7 +181,7 @@ function ResponderRow({
         aria-controls={detailsId}
         aria-expanded={expanded}
         aria-label={`${expanded ? 'Hide' : 'View'} ${responder.displayName} responder details`}
-        title="Show responder operational details"
+        title={`${expanded ? 'Hide' : 'View'} responder operational details`}
         className="w-full rounded-md px-3 py-2 text-left hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-info)]"
         onClick={onToggle}
       >
@@ -230,7 +230,7 @@ function ResponderRow({
           <div>
             <dt className="text-[var(--color-text-muted)]">Availability</dt>
             <dd className="mt-0.5 font-medium capitalize text-[var(--color-text-primary)]">
-              {responder.availabilityStatus.replace('_', ' ')}
+              {responder.availabilityStatus.replaceAll('_', ' ')}
             </dd>
           </div>
           <div className="text-right">
