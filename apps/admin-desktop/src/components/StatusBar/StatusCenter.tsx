@@ -60,7 +60,7 @@ export function StatusCenter({
       <span className="text-xs text-[var(--color-text-muted)]">·</span>
       <SituationValue
         value={avgResponseTime ?? '—'}
-        unit={avgResponseTime == null ? undefined : 'm'}
+        {...(avgResponseTime == null ? {} : { unit: 'm' })}
         alert={responseAlert}
       />
       <span className="text-xs text-[var(--color-text-muted)]">avg response</span>
