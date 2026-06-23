@@ -33,12 +33,7 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
 
     for (const row of rows) {
       const raw = row.dispatchedAt
-      if (
-        typeof raw !== 'number' ||
-        !Number.isFinite(raw) ||
-        raw > now ||
-        raw < windowStart
-      ) {
+      if (typeof raw !== 'number' || !Number.isFinite(raw) || raw > now || raw < windowStart) {
         continue
       }
 
