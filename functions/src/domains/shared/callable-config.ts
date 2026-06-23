@@ -10,7 +10,11 @@
  */
 export function getAdminCallableCorsOrigins(): string[] {
   const isDev = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.NODE_ENV === 'development'
-  const base = ['https://bantayog-alert-staging.web.app', 'https://bantayog-alert.web.app']
+  const base = [
+    'https://bantayog-alert-staging.web.app',
+    'https://bantayogalert-staging.web.app',
+    'https://bantayog-alert.web.app',
+  ]
   if (isDev) {
     return ['http://localhost:5175', ...base]
   }
@@ -25,7 +29,12 @@ export function getAdminCallableCorsOrigins(): string[] {
  */
 export function getCitizenCallableCorsOrigins(): string[] {
   const isDev = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.NODE_ENV === 'development'
-  const base = ['https://bantayog-citizen-staging.web.app', 'https://bantayog-citizen-dev.web.app']
+  const base = [
+    'https://bantayog-citizen-staging.web.app',
+    'https://bantayogalert-citizen-stg.web.app',
+    'https://bantayog-citizen-dev.web.app',
+    'https://bantayog-citizen.web.app',
+  ]
   if (isDev) {
     return ['http://localhost:5173', ...base]
   }
@@ -40,7 +49,11 @@ export function getCitizenCallableCorsOrigins(): string[] {
  */
 export function getResponderCallableCorsOrigins(): string[] {
   const isDev = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.NODE_ENV === 'development'
-  const base = ['https://bantayog-responder-staging.web.app', 'https://bantayog-responder.web.app']
+  const base = [
+    'https://bantayog-responder-staging.web.app',
+    'https://bantayogalert-responder-stg.web.app',
+    'https://bantayog-responder.web.app',
+  ]
   if (isDev) {
     return ['http://localhost:5174', ...base]
   }
