@@ -15,7 +15,7 @@ import {
 
 const PUSH_DISMISSAL_STORAGE_PREFIX = 'bantayog.responder.push-warning-dismissed'
 
-type DismissedPermissionState = {
+interface DismissedPermissionState {
   uid: string
   permission: PushPermissionBannerPermission
 }
@@ -38,7 +38,7 @@ function getDismissalStorageKey(uid: string) {
 
 function readPersistedDismissal(uid: string): PushPermissionBannerPermission | null {
   try {
-    const value = globalThis.localStorage?.getItem(getDismissalStorageKey(uid))
+    const value = globalThis.localStorage.getItem(getDismissalStorageKey(uid))
     return value === 'default' || value === 'denied' ? value : null
   } catch {
     return null
@@ -47,7 +47,7 @@ function readPersistedDismissal(uid: string): PushPermissionBannerPermission | n
 
 function persistDismissal(uid: string, permission: PushPermissionBannerPermission) {
   try {
-    globalThis.localStorage?.setItem(getDismissalStorageKey(uid), permission)
+    globalThis.localStorage.setItem(getDismissalStorageKey(uid), permission)
   } catch {
     // The in-memory dismissal still prevents repeated warnings for this session.
   }
@@ -55,7 +55,7 @@ function persistDismissal(uid: string, permission: PushPermissionBannerPermissio
 
 function clearPersistedDismissal(uid: string) {
   try {
-    globalThis.localStorage?.removeItem(getDismissalStorageKey(uid))
+    globalThis.localStorage.removeItem(getDismissalStorageKey(uid))
   } catch {
     // Storage may be unavailable in private browsing or restricted webviews.
   }
