@@ -83,6 +83,7 @@ const distPkg = {
   ),
 }
 writeFileSync(resolve(DIST, 'package.json'), JSON.stringify(distPkg, null, 2) + '\n')
+writeFileSync(resolve(DIST, '.npmrc'), 'legacy-peer-deps=true\n')
 
 // Install published deps so Firebase CLI can analyze the bundle
 // Use --legacy-peer-deps to allow firebase-admin@14 with firebase-functions@7.2.5
