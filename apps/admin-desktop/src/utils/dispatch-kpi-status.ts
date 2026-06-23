@@ -4,7 +4,6 @@ export type DispatchKpiStatus = 'OK' | 'Watch' | 'Action required' | 'Unavailabl
 
 export const DISPATCH_KPI_TARGETS = {
   activeMax: 20,
-  stalledMax: 0,
   avgAcceptSecondsMax: 300,
   fcmSuccessRateMin: 0.9,
 } as const
