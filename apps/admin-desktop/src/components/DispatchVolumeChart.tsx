@@ -25,8 +25,8 @@ function formatHour(timestamp: number): string {
 }
 
 export function DispatchVolumeChart({ rows, isLoading }: Props) {
-  const { counts, maxCount, hasData, axisLabels, bucketLabels } = useMemo(() => {
-    const c: number[] = new Array(BUCKET_COUNT).fill(0)
+  const { buckets, maxCount, hasData, axisLabels } = useMemo(() => {
+    const counts: number[] = new Array(BUCKET_COUNT).fill(0)
     // eslint-disable-next-line react-hooks/purity -- chart buckets intentionally follow the current hour
     const now = Date.now()
     const windowStart = getHourStart(now) - (BUCKET_COUNT - 1) * HOUR_MS
@@ -39,15 +39,20 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
 
       const bucketIndex = Math.floor((raw - windowStart) / HOUR_MS)
       if (bucketIndex < 0 || bucketIndex >= BUCKET_COUNT) continue
-      c[bucketIndex] = (c[bucketIndex] ?? 0) + 1
+      counts[bucketIndex] = (counts[bucketIndex] ?? 0) + 1
     }
 
     return {
-      counts: c,
-      maxCount: Math.max(...c, 1),
-      hasData: c.some((count) => count > 0),
-      axisLabels: [...AXIS_BUCKETS.map((index) => formatHour(windowStart + index * HOUR_MS)), 'Now'],
-      bucketLabels: c.map((_, index) => formatHour(windowStart + index * HOUR_MS)),
+      buckets: counts.map((count, index) => ({
+        count,
+        label: formatHour(windowStart + index * HOUR_MS),
+      })),
+      maxCount: Math.max(...counts, 1),
+      hasData: counts.some((count) => count > 0),
+      axisLabels: [
+        ...AXIS_BUCKETS.map((index) => formatHour(windowStart + index * HOUR_MS)),
+        'Now',
+      ],
     }
   }, [rows])
 
@@ -82,16 +87,16 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
       ) : (
         <div className="rounded border border-white/10 bg-white/5 p-4">
           <div className="flex h-20 items-end gap-1">
-            {counts.map((count, index) => (
+            {buckets.map(({ count, label }) => (
               <div
-                key={bucketLabels[index]}
+                key={label}
                 className="flex-1 rounded-t bg-[var(--color-info)]/60"
                 style={{
                   height: `${String((count / maxCount) * 100)}%`,
                   minHeight: count > 0 ? '4px' : '0px',
                 }}
                 role="img"
-                aria-label={`${String(count)} dispatch${count === 1 ? '' : 'es'} at ${bucketLabels[index]}`}
+                aria-label={`${String(count)} dispatch${count === 1 ? '' : 'es'} at ${label}`}
               />
             ))}
           </div>
