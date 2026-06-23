@@ -1,9 +1,8 @@
 name: Responder Lint Diagnostics
 
 on:
-  push:
-    branches:
-      - fix/responder-enrollment-staging-bugs
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
