@@ -62,7 +62,7 @@ export function StatusBar({
 
         <StatusCenter
           activeIncidents={activeIncidents}
-          avgResponseTime={avgResponseTime}
+          avgResponseTime={avgAcceptSeconds == null ? null : avgResponseTime}
           pendingTriage={pendingTriage}
         />
 
