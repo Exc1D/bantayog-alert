@@ -140,6 +140,16 @@ describe('Citizen Delete Report Flow', () => {
     ]
   })
 
+  it('does not show the empty-incidents card when the user has an active report', () => {
+    render(
+      <MemoryRouter>
+        <MapTab />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByText(/No reported incidents in this area/i)).not.toBeInTheDocument()
+  })
+
   it('allows citizens to withdraw their own unverified reports from the map', async () => {
     render(
       <MemoryRouter>

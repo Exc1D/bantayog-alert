@@ -221,7 +221,7 @@ export function useMapTab(mapElRef: React.RefObject<HTMLDivElement | null>) {
     !incidentsLoading &&
     !incidentsError &&
     visibleIncidents.length === 0 &&
-    (myReports.length > 0 || filters.municipality !== '')
+    filters.municipality !== ''
 
   return {
     mapInstance,
