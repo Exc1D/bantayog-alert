@@ -29,3 +29,4 @@ jobs:
           name: responder-fallow-output
           path: .fallow-diagnostics
           if-no-files-found: error
+          include-hidden-files: true
