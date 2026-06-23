@@ -7,6 +7,7 @@ import { requireAuth, requireMfaAuth } from '../shared/https-error.js'
 import { PDRRMO, PROVINCIAL_SUPERADMIN } from '../../constants/roles.js'
 import { streamAuditEvent } from '../ops/audit-stream.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
 import { checkRateLimit } from '../shared/rate-limit.js'
 import { Timestamp } from 'firebase-admin/firestore'
 
@@ -151,6 +152,7 @@ export async function declareAlertCore(
 export const declareAlert = onCall(
   {
     region: 'asia-southeast1',
+    cors: getAdminCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,
     memory: '512MiB',

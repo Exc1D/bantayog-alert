@@ -4,6 +4,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
 
 export interface GetOpsMetricsCoreDeps {
   timeRange: '1h' | '24h' | '7d'
@@ -113,6 +114,7 @@ const ADMIN_ROLES = ['municipal_admin', 'agency_admin', 'provincial_superadmin']
 export const getOpsMetrics = onCall(
   {
     region: 'asia-southeast1',
+    cors: getAdminCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     memory: '512MiB',
     maxInstances: 100,
