@@ -576,3 +576,16 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Aligned the missed `shared-ui` Firebase peer with 12.15.0 and regenerated the lockfile, removing the stale 12.14 dependency graph that mixed Firebase app singletons in rules tests and Vite.
 - Targeted RTDB rules passed 18/18 on Firebase 12.15.0; the full functions emulator gate, C00-C10 local proof, root lint/typecheck/build, frozen install, formatting, and Browser Admin startup/navigation checks passed. No deploy or rules/schema changes.
+
+## 2026-06-23 - Staging staff login deployment repair
+
+- Repointed the staging Firebase alias and Citizen/Admin/Responder Hosting targets from the retired `bantayog-alert-staging` project to the live `bantayogalert-staging` sites, preserving the existing production mappings.
+- Built both apps with the authoritative staging web-app configs and confirmed Firebase 12.15.0, the Auth referrer-policy fix, the intended project/app IDs, and no emulator endpoints in either artifact. Aligned Admin and Responder Hosting CSP with the working Citizen App Check/reCAPTCHA policy.
+- Root tests passed 230/230; Citizen passed 514/514 in isolation after one parallel-load timeout; Admin passed 593/593; Responder passed 284/284; shared-package suites and the full Functions emulator gate passed. The root build passed 8/8 tasks with inherited chunk-size/dynamic-import warnings.
+- Deployed only Admin and Responder Hosting to `bantayogalert-staging`. Live browser proof reached Admin `/dashboard` and Responder `/totp-enroll`; the responder service worker required one reload to activate the new hashed bundle. Admin exposed a separate missing Firestore composite-index alert after login.
+
+## 2026-06-23 - Citizen map and withdrawal repair
+
+- Stopped the Map center empty-incidents card from rendering when an active own report is present; municipality-filter empty hints remain unchanged.
+- Allowed authenticated pseudonymous report owners through `cancelReportByCitizen` while preserving registered-role, active-account, report-status, ownership, App Check, and rate-limit enforcement.
+- Red-first Citizen and Functions regressions failed on the old behavior, then passed 6/6 and 11/11. Citizen and Functions typechecks and scoped lint passed. No deploy; no rules, indexes, schema, or migration files changed.

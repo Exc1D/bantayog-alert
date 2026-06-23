@@ -216,3 +216,10 @@
 ## Firebase JS SDK Compatibility
 
 - Firebase grouped bumps must include every workspace peer. Leaving `shared-ui` on Firebase 12.13+ kept the 12.14 graph in pnpm's virtual hoist, mixing 0.14 and 0.15 app singletons and breaking both rules tests and Vite app startup. Search all manifests and prune the old lock graph after grouped updates.
+- Staging project migrations must update the `.firebaserc` project alias and all Hosting target site IDs together. Verify the mapped IDs against `firebase hosting:sites:list` and assert the built bundle contains the intended project ID; ignored `.env.local` files can otherwise produce valid artifacts for a retired backend.
+- Web App Check requires reCAPTCHA script, frame, and connection origins in Hosting CSP. Keep Citizen, Admin, and Responder policies aligned, and verify a service-worker-backed app has loaded the new hashed bundle after deploy before treating an old SDK console error as current.
+
+## Citizen PWA Own Report State
+
+- Public-incident empty and filter hints must not use the presence of an own report as their trigger; own reports are valid map content and must suppress the calm empty card.
+- Citizen actions on reports created before registration must accept Firebase's authenticated `anonymous` provider, then enforce ownership in the transaction. Keep role and active-account checks for registered callers.
