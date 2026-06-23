@@ -2,7 +2,7 @@
   "projects": {
     "default": "bantayog-alert-dev",
     "dev": "bantayog-alert-dev",
-    "staging": "bantayog-alert-staging",
+    "staging": "bantayogalert-staging",
     "prod": "bantayog-alert"
   },
   "targets": {
@@ -12,11 +12,18 @@
         "admin": ["bantayog-admin-dev"]
       }
     },
-    "bantayog-alert-staging": {
+    "bantayogalert-staging": {
       "hosting": {
-        "citizen": ["bantayog-citizen-staging"],
-        "admin": ["bantayog-alert-staging"],
-        "responder": ["bantayog-responder-staging"]
+        "citizen": ["bantayogalert-citizen-stg"],
+        "admin": ["bantayogalert-staging"],
+        "responder": ["bantayogalert-responder-stg"]
+      }
+    },
+    "bantayog-alert": {
+      "hosting": {
+        "admin": ["bantayog-alert"],
+        "citizen": ["bantayog-citizen"],
+        "responder": ["bantayog-responder"]
       }
     }
   }
