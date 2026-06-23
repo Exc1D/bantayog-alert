@@ -4,6 +4,12 @@ import { DispatchVolumeChart } from './DispatchVolumeChart'
 import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
 import { makeRow } from '../test-utils'
 
+function getBar(bars: HTMLElement[], index: number): HTMLElement {
+  const bar = bars[index]
+  if (!bar) throw new Error(`Expected dispatch chart bar ${String(index)}`)
+  return bar
+}
+
 describe('DispatchVolumeChart', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -60,8 +66,8 @@ describe('DispatchVolumeChart', () => {
     )
 
     const bars = screen.getAllByRole('img')
-    expect(bars[0]).toHaveAttribute('aria-label', expect.stringContaining('1 dispatch'))
-    expect(bars[23]).toHaveAttribute('aria-label', expect.stringContaining('1 dispatch'))
+    expect(getBar(bars, 0)).toHaveAttribute('aria-label', expect.stringContaining('1 dispatch'))
+    expect(getBar(bars, 23)).toHaveAttribute('aria-label', expect.stringContaining('1 dispatch'))
   })
 
   it('shows dispatch count in aria-label for the latest bar', () => {
@@ -75,8 +81,8 @@ describe('DispatchVolumeChart', () => {
         ]}
       />,
     )
-    const bars = screen.getAllByRole('img')
-    expect(bars[23]).toHaveAttribute('aria-label', expect.stringContaining('2 dispatches'))
-    expect(bars[23]).toHaveStyle({ height: '100%' })
+    const latestBar = getBar(screen.getAllByRole('img'), 23)
+    expect(latestBar).toHaveAttribute('aria-label', expect.stringContaining('2 dispatches'))
+    expect(latestBar).toHaveStyle({ height: '100%' })
   })
 })
