@@ -63,7 +63,9 @@ function clearPersistedDismissal(uid: string) {
 
 function isAuthenticationFlow() {
   if (typeof globalThis.location === 'undefined') return false
-  return globalThis.location.pathname === '/login' || globalThis.location.pathname === '/totp-enroll'
+  return (
+    globalThis.location.pathname === '/login' || globalThis.location.pathname === '/totp-enroll'
+  )
 }
 
 export function FcmSetup() {
@@ -74,8 +76,9 @@ export function FcmSetup() {
   const [permissionWarning, setPermissionWarning] = useState<PushPermissionBannerPermission | null>(
     getInitialPushPermissionWarning,
   )
-  const [dismissedPermission, setDismissedPermission] =
-    useState<DismissedPermissionState | null>(null)
+  const [dismissedPermission, setDismissedPermission] = useState<DismissedPermissionState | null>(
+    null,
+  )
   const [isRetryingPermission, setIsRetryingPermission] = useState(false)
 
   const registerAndTrackPermission = useCallback(async () => {
@@ -199,8 +202,7 @@ export function FcmSetup() {
     user && dismissedPermission?.uid === user.uid
       ? dismissedPermission.permission
       : persistedDismissal
-  const visiblePermissionWarning =
-    permissionWarning === currentDismissal ? null : permissionWarning
+  const visiblePermissionWarning = permissionWarning === currentDismissal ? null : permissionWarning
 
   if (!user || isAuthenticationFlow() || !visiblePermissionWarning) return null
 

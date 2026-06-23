@@ -178,9 +178,7 @@ function addErrorCorrection(dataCodewords: number[], version: number) {
     offset += spec.dataCodewords
     const degree = spec.totalCodewords - spec.dataCodewords
     blocks.push(block)
-    errorCorrectionBlocks.push(
-      createReedSolomonRemainder(block, createReedSolomonDivisor(degree)),
-    )
+    errorCorrectionBlocks.push(createReedSolomonRemainder(block, createReedSolomonDivisor(degree)))
   }
 
   const result: number[] = []
@@ -274,11 +272,7 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
   drawFinderPattern(size - 4, 3)
   drawFinderPattern(3, size - 4)
 
-  const alignmentPositions = getItem(
-    ALIGNMENT_PATTERN_POSITIONS,
-    version,
-    'QR alignment positions',
-  )
+  const alignmentPositions = getItem(ALIGNMENT_PATTERN_POSITIONS, version, 'QR alignment positions')
   for (const centerY of alignmentPositions) {
     for (const centerX of alignmentPositions) {
       if (getMatrixCell(isFunction, centerX, centerY)) continue
@@ -333,8 +327,7 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
       for (let column = 0; column < 2; column += 1) {
         const x = right - column
         if (getMatrixCell(isFunction, x, y)) continue
-        let dark =
-          dataIndex < dataBits.length ? getItem(dataBits, dataIndex, 'QR data bit') : false
+        let dark = dataIndex < dataBits.length ? getItem(dataBits, dataIndex, 'QR data bit') : false
         dataIndex += 1
         if (shouldInvert(mask, x, y)) dark = !dark
         setMatrixCell(modules, x, y, dark)

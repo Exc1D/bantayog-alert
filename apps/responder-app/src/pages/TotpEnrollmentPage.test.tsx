@@ -90,10 +90,7 @@ describe('TotpEnrollmentPage', () => {
     await waitFor(() => {
       expect(mockGetSession).toHaveBeenCalledTimes(1)
       expect(mockGenerateSecret).toHaveBeenCalledWith('mock-session')
-      expect(mockGenerateQrCodeUrl).toHaveBeenCalledWith(
-        'responder@test.com',
-        'Bantayog Alert',
-      )
+      expect(mockGenerateQrCodeUrl).toHaveBeenCalledWith('responder@test.com', 'Bantayog Alert')
     })
   })
 
@@ -104,9 +101,7 @@ describe('TotpEnrollmentPage', () => {
     await user.click(screen.getByRole('button', { name: /generate qr code/i }))
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('img', { name: /authenticator setup qr code/i }),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('img', { name: /authenticator setup qr code/i })).toBeInTheDocument()
     })
   })
 
