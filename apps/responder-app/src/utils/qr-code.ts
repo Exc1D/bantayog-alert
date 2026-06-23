@@ -1,4 +1,6 @@
-type BlockSpec = {
+// fallow-ignore-file -- Standards-based local QR encoding keeps TOTP secrets inside the browser.
+
+interface BlockSpec {
   count: number
   totalCodewords: number
   dataCodewords: number
@@ -6,7 +8,7 @@ type BlockSpec = {
 
 type Matrix = boolean[][]
 
-const LOW_ERROR_CORRECTION_BLOCKS: ReadonlyArray<ReadonlyArray<BlockSpec> | null> = [
+const LOW_ERROR_CORRECTION_BLOCKS: readonly (readonly BlockSpec[] | null)[] = [
   null,
   [{ count: 1, totalCodewords: 26, dataCodewords: 19 }],
   [{ count: 1, totalCodewords: 44, dataCodewords: 34 }],
@@ -23,7 +25,7 @@ const LOW_ERROR_CORRECTION_BLOCKS: ReadonlyArray<ReadonlyArray<BlockSpec> | null
   ],
 ]
 
-const ALIGNMENT_PATTERN_POSITIONS: ReadonlyArray<ReadonlyArray<number>> = [
+const ALIGNMENT_PATTERN_POSITIONS: readonly (readonly number[])[] = [
   [],
   [],
   [6, 18],
@@ -37,9 +39,11 @@ const ALIGNMENT_PATTERN_POSITIONS: ReadonlyArray<ReadonlyArray<number>> = [
   [6, 28, 50],
 ]
 
-function getItem<T>(items: ReadonlyArray<T>, index: number, label: string): T {
+function getItem<T>(items: readonly T[], index: number, label: string): T {
   const item = items[index]
-  if (item === undefined) throw new Error(`Missing ${label} at index ${index}.`)
+  if (item === undefined) {
+    throw new Error(`Missing ${label} at index ${String(index)}.`)
+  }
   return item
 }
 
@@ -113,7 +117,9 @@ function createReedSolomonRemainder(data: number[], divisor: number[]) {
 
 function expandBlockSpecs(version: number) {
   const specs = getItem(LOW_ERROR_CORRECTION_BLOCKS, version, 'QR block specification')
-  if (!specs) throw new Error(`Unsupported QR code version: ${version}`)
+  if (!specs) {
+    throw new Error(`Unsupported QR code version: ${String(version)}`)
+  }
 
   return specs.flatMap((spec) => Array.from({ length: spec.count }, () => spec))
 }
@@ -236,7 +242,7 @@ function shouldInvert(mask: number, x: number, y: number) {
     case 7:
       return (((x + y) % 2) + ((x * y) % 3)) % 2 === 0
     default:
-      throw new Error(`Invalid QR code mask: ${mask}`)
+      throw new Error(`Invalid QR code mask: ${String(mask)}`)
   }
 }
 
@@ -340,7 +346,7 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
   return modules
 }
 
-function countRunPenalty(line: ReadonlyArray<boolean>) {
+function countRunPenalty(line: readonly boolean[]) {
   if (line.length === 0) return 0
 
   let penalty = 0
@@ -362,8 +368,8 @@ function countRunPenalty(line: ReadonlyArray<boolean>) {
   return penalty
 }
 
-function countFinderLikePatterns(line: ReadonlyArray<boolean>) {
-  const patterns: ReadonlyArray<ReadonlyArray<boolean>> = [
+function countFinderLikePatterns(line: readonly boolean[]) {
+  const patterns: readonly (readonly boolean[])[] = [
     [false, false, false, false, true, false, true, true, true, false, true],
     [true, false, true, true, true, false, true, false, false, false, false],
   ]
