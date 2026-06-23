@@ -1,5 +1,3 @@
-// fallow-ignore-file -- Standards-based local QR encoding keeps TOTP secrets inside the browser.
-
 interface BlockSpec {
   count: number
   totalCodewords: number
@@ -246,6 +244,7 @@ function shouldInvert(mask: number, x: number, y: number) {
   }
 }
 
+// fallow-ignore-next-line complexity -- QR matrix placement mirrors the specification and is covered by enrollment regression tests.
 function buildMatrix(version: number, codewords: number[], mask: number) {
   const size = version * 4 + 17
   const modules = Array.from({ length: size }, () => Array<boolean>(size).fill(false))
