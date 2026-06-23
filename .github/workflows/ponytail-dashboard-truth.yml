@@ -1,0 +1,272 @@
+name: Ponytail dashboard truth slice
+
+on:
+  push:
+    branches:
+      - fix/dashboard-truth-metrics
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/dashboard-truth-metrics
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - run: corepack enable
+      - run: corepack prepare pnpm@9.12.0 --activate
+      - run: pnpm install --frozen-lockfile
+
+      - name: Add focused regression assertions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/admin-desktop/src/__tests__/DashboardPage.ops.test.tsx')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "import { renderWithMemoryRouter, makeRow, defaultRows } from '../test-utils'",
+                  "import { renderWithMemoryRouter, makeRow } from '../test-utils'",
+              ),
+              (
+                  """vi.mock('../hooks/useDispatchLifecycle', () => ({
+  useDispatchLifecycle: () => ({
+    rows: defaultRows.concat(
+      makeRow({
+        dispatchId: 'd2',
+        reportId: 'r2',
+        status: 'needs_admin',
+        responderName: 'B',
+        responderAgency: 'MDRRMO',
+      }),
+    ),
+    loading: false,
+    error: null,
+  }),
+}))""",
+                  """vi.mock('../hooks/useDispatchLifecycle', () => ({
+  useDispatchLifecycle: () => ({
+    rows: [
+      makeRow({ dispatchId: 'active-pending', status: 'pending' }),
+      makeRow({ dispatchId: 'active-scene', status: 'on_scene' }),
+      makeRow({ dispatchId: 'terminal-resolved', status: 'resolved' }),
+      makeRow({ dispatchId: 'terminal-cancelled', status: 'cancelled' }),
+      makeRow({
+        dispatchId: 'needs-admin',
+        reportId: 'r2',
+        status: 'needs_admin',
+        responderName: 'B',
+        responderAgency: 'MDRRMO',
+      }),
+    ],
+    loading: false,
+    error: null,
+  }),
+}))""",
+              ),
+              (
+                  """vi.mock('../hooks/useResponderFleet', async () =>
+  (await import('../test-utils')).createResponderFleetHookModuleMock(),
+)""",
+                  """vi.mock('../hooks/useResponderFleet', () => ({
+  useResponderFleet: () => ({
+    responders: [
+      {
+        uid: 'daet-responder',
+        displayName: 'Alice',
+        availabilityStatus: 'available',
+        lastActivityAt: Date.now(),
+        onlineStatus: 'online',
+        municipalityId: 'daet',
+      },
+    ],
+    loading: false,
+    error: null,
+  }),
+}))""",
+              ),
+              (
+                  """  it('renders StatusBar metrics', () => {
+    renderWithMemoryRouter(<DashboardPage />)
+    // StatusBar primary metrics in the situation strip
+    expect(screen.getByText('active')).toBeInTheDocument()
+    expect(screen.getByText('avg response')).toBeInTheDocument()
+    // Stalled count shown in expanded section
+    expect(screen.getByTestId('statusbar-stalled')).toBeInTheDocument()
+  })""",
+                  """  it('renders truthful StatusBar metrics', () => {
+    renderWithMemoryRouter(<DashboardPage />)
+
+    expect(screen.getByText('active').previousElementSibling).toHaveTextContent('2')
+    expect(screen.getByText('avg response')).toBeInTheDocument()
+    expect(screen.getByTestId('statusbar-stalled')).toHaveTextContent('1')
+    expect(screen.getByTestId('responder-coverage')).toHaveTextContent(
+      '1 available / 1 uncovered',
+    )
+  })""",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one test match, found {count}: {old[:80]!r}')
+              text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+
+      - name: Prove the regression test fails on main
+        shell: bash
+        run: |
+          git checkout origin/main -- apps/admin-desktop/src/pages/DashboardPage.tsx
+          set +e
+          pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DashboardPage.ops.test.tsx > /tmp/red.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/red.log
+          if [ "$rc" -eq 0 ]; then
+            echo 'Expected the regression test to fail on main.' >&2
+            exit 1
+          fi
+          grep -q '1 available / 1 uncovered\|toHaveTextContent' /tmp/red.log
+
+      - name: Implement the smallest truth fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/admin-desktop/src/pages/DashboardPage.tsx')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  """type OpsMetricsSnapshot = ReturnType<typeof useOpsMetrics>['metrics']
+
+interface StalledDispatch""",
+                  """type OpsMetricsSnapshot = ReturnType<typeof useOpsMetrics>['metrics']
+
+const ACTIVE_DISPATCH_STATUSES = new Set<DispatchLifecycleRow['status']>([
+  'pending',
+  'accepted',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+  'escalated',
+])
+
+interface StalledDispatch""",
+              ),
+              (
+                  """function getActiveDispatchCount(rows: DispatchLifecycleRow[]): number {
+  return rows.filter((row) => row.status !== 'needs_admin').length
+}""",
+                  """function getActiveDispatchCount(rows: DispatchLifecycleRow[]): number {
+  return rows.filter((row) => ACTIVE_DISPATCH_STATUSES.has(row.status)).length
+}""",
+              ),
+              (
+                  """function buildMunicipalData(reports: Report[]): MunicipalPerformance[] {
+  const byMuni = new Map<string, Report[]>()
+  reports.forEach((report) => {
+    const municipality = report.municipality || 'Unknown'
+    const list = byMuni.get(municipality) ?? []
+    list.push(report)
+    byMuni.set(municipality, list)
+  })
+
+  return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
+    activeIncidents: muniReports.filter((report) => ACTIVE_REPORT_STATUSES.includes(report.status))
+      .length,
+    municipality,
+  }))
+}""",
+                  """function buildMunicipalData(
+  reports: Report[],
+  responders: ResponderFleetRow[],
+): MunicipalPerformance[] {
+  const responderCounts = new Map<string, number>()
+  for (const responder of responders) {
+    const municipalityId = responder.municipalityId?.trim().toLowerCase()
+    if (!municipalityId) continue
+    responderCounts.set(municipalityId, (responderCounts.get(municipalityId) ?? 0) + 1)
+  }
+
+  const byMunicipality = new Map<string, MunicipalPerformance>()
+  for (const report of reports) {
+    const municipality = report.municipality.trim() || 'Unknown'
+    const current = byMunicipality.get(municipality) ?? {
+      activeIncidents: 0,
+      activeResponders: responderCounts.get(municipality.toLowerCase()) ?? 0,
+      municipality,
+    }
+    if (ACTIVE_REPORT_STATUSES.includes(report.status)) current.activeIncidents += 1
+    byMunicipality.set(municipality, current)
+  }
+
+  return Array.from(byMunicipality.values())
+}""",
+              ),
+              (
+                  """function getUncoveredMunicipalityCount(municipalData: MunicipalPerformance[]): number {
+  return municipalData.filter((municipality) => (municipality.activeResponders ?? 0) === 0).length
+}""",
+                  """function getUncoveredMunicipalityCount(municipalData: MunicipalPerformance[]): number {
+  return municipalData.filter(
+    (municipality) =>
+      municipality.activeIncidents > 0 && (municipality.activeResponders ?? 0) === 0,
+  ).length
+}""",
+              ),
+              (
+                  "  const municipalData = useMemo(() => buildMunicipalData(mappedReports), [mappedReports])",
+                  "  const municipalData = useMemo(\n    () => buildMunicipalData(mappedReports, responders),\n    [mappedReports, responders],\n  )",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one DashboardPage match, found {count}: {old[:80]!r}')
+              text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+
+          git rm apps/admin-desktop/src/utils/dashboard-metrics.ts
+          git rm apps/admin-desktop/src/utils/dashboard-metrics.test.ts
+          rm .github/workflows/ponytail-dashboard-truth.yml
+
+      - name: Format and verify
+        run: |
+          pnpm exec prettier --write \
+            apps/admin-desktop/src/pages/DashboardPage.tsx \
+            apps/admin-desktop/src/__tests__/DashboardPage.ops.test.tsx
+          pnpm --dir apps/admin-desktop exec vitest run src/__tests__/DashboardPage.ops.test.tsx
+          pnpm lint
+          pnpm typecheck
+          pnpm build
+
+      - name: Commit the Ponytail slice
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/admin-desktop/src/pages/DashboardPage.tsx \
+            apps/admin-desktop/src/__tests__/DashboardPage.ops.test.tsx \
+            .github/workflows/ponytail-dashboard-truth.yml
+          git commit -m 'Fix dashboard active and coverage truth'
+          git push origin HEAD:fix/dashboard-truth-metrics
