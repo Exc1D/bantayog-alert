@@ -196,10 +196,16 @@ export function TotpEnrollmentPage() {
               onClick={() => {
                 setStep('verify')
               }}
+              disabled={busy}
             >
               Next
             </button>
-            <button type="button" className={styles.secondaryButton} onClick={handleRestart}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={handleRestart}
+              disabled={busy}
+            >
               Start over
             </button>
             <button
