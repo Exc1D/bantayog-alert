@@ -32,7 +32,7 @@ function SituationValue({
 
 interface StatusCenterProps {
   activeIncidents: number
-  avgResponseTime: number
+  avgResponseTime: number | null
   pendingTriage: number
 }
 
@@ -44,7 +44,13 @@ export function StatusCenter({
   const activeAlert: AlertLevel =
     activeIncidents > 75 ? 'red' : activeIncidents > 50 ? 'amber' : 'none'
   const responseAlert: AlertLevel =
-    avgResponseTime > 20 ? 'red' : avgResponseTime > 15 ? 'amber' : 'none'
+    avgResponseTime == null
+      ? 'none'
+      : avgResponseTime > 20
+        ? 'red'
+        : avgResponseTime > 15
+          ? 'amber'
+          : 'none'
   const pendingAlert: AlertLevel = pendingTriage > 10 ? 'red' : pendingTriage > 5 ? 'amber' : 'none'
 
   return (
@@ -52,7 +58,11 @@ export function StatusCenter({
       <SituationValue value={activeIncidents} alert={activeAlert} />
       <span className="text-xs text-[var(--color-text-muted)]">active</span>
       <span className="text-xs text-[var(--color-text-muted)]">·</span>
-      <SituationValue value={avgResponseTime} unit="m" alert={responseAlert} />
+      <SituationValue
+        value={avgResponseTime ?? '—'}
+        unit={avgResponseTime == null ? undefined : 'm'}
+        alert={responseAlert}
+      />
       <span className="text-xs text-[var(--color-text-muted)]">avg response</span>
       <span className="text-xs text-[var(--color-text-muted)]">·</span>
       <SituationValue value={pendingTriage} alert={pendingAlert} />
