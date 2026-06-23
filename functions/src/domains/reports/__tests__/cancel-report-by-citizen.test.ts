@@ -5,6 +5,15 @@ import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-gu
 const itif = (condition: boolean) => (condition ? it : it.skip)
 import { Timestamp } from 'firebase-admin/firestore'
 
+const onCallMock = vi.hoisted(() => vi.fn((_config: unknown, handler: unknown) => handler))
+
+vi.mock('firebase-functions/v2/https', async () => {
+  const actual = await vi.importActual<typeof import('firebase-functions/v2/https')>(
+    'firebase-functions/v2/https',
+  )
+  return { ...actual, onCall: onCallMock }
+})
+
 vi.mock('firebase-admin/database', () => ({
   getDatabase: vi.fn(() => ({})),
 }))
@@ -17,7 +26,7 @@ vi.mock('firebase-admin/storage', () => ({
   })),
 }))
 
-import { cancelReportByCitizenCore } from '../cancel-report-by-citizen.js'
+import { cancelReportByCitizen, cancelReportByCitizenCore } from '../cancel-report-by-citizen.js'
 import { seedReportAtStatus, seedActiveAccount } from '../../../__tests__/helpers/seed-factories.js'
 
 const guarded = await guardInitTestEnvironment(
@@ -40,25 +49,20 @@ afterAll(async () => {
 })
 
 describe('cancelReportByCitizenCore', () => {
-  itif(available)('withdraws report when status is new and citizen owns it', async () => {
+  itif(available)('withdraws a pseudonymous new report', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       const { reportId } = await seedReportAtStatus(db, 'new', {
         municipalityId: 'daet',
-        reporterUid: 'citizen-1',
-      })
-      await seedActiveAccount(testEnv!, {
-        uid: 'citizen-1',
-        role: 'citizen',
-        municipalityId: 'daet',
+        reporterUid: 'anonymous-1',
       })
 
       const result = await cancelReportByCitizenCore(db, {
         reportId,
         idempotencyKey: crypto.randomUUID(),
         actor: {
-          uid: 'citizen-1',
-          claims: { role: 'citizen' },
+          uid: 'anonymous-1',
+          claims: {},
         },
         now: Timestamp.now(),
       })
@@ -70,7 +74,7 @@ describe('cancelReportByCitizenCore', () => {
         status: 'cancelled',
         cancelReason: 'citizen_withdrew',
         visibilityClass: 'internal',
-        withdrawnBy: 'citizen-1',
+        withdrawnBy: 'anonymous-1',
       })
     })
   })
@@ -312,5 +316,56 @@ describe('cancelReportByCitizenCore', () => {
         .get()
       expect(lookupSnap.empty).toBe(false)
     })
+  })
+})
+
+describe('cancelReportByCitizen callable', () => {
+  const handler = cancelReportByCitizen as unknown as (request: {
+    auth: { uid: string; token: Record<string, unknown> }
+    data: unknown
+  }) => Promise<unknown>
+
+  it('allows pseudonymous reporters through to payload validation', async () => {
+    await expect(
+      handler({
+        auth: {
+          uid: 'anonymous-1',
+          token: { firebase: { sign_in_provider: 'anonymous' } },
+        },
+        data: {},
+      }),
+    ).rejects.toMatchObject({ code: 'invalid-argument' })
+  })
+
+  it('still rejects registered non-citizen callers', async () => {
+    await expect(
+      handler({
+        auth: {
+          uid: 'responder-1',
+          token: {
+            firebase: { sign_in_provider: 'password' },
+            role: 'responder',
+            accountStatus: 'active',
+          },
+        },
+        data: {},
+      }),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
+  })
+
+  it('still rejects suspended registered citizens', async () => {
+    await expect(
+      handler({
+        auth: {
+          uid: 'citizen-1',
+          token: {
+            firebase: { sign_in_provider: 'password' },
+            role: 'citizen',
+            accountStatus: 'suspended',
+          },
+        },
+        data: {},
+      }),
+    ).rejects.toMatchObject({ code: 'permission-denied' })
   })
 })

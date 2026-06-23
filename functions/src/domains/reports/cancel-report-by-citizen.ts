@@ -138,12 +138,12 @@ export const cancelReportByCitizen = onCall(
   { region: 'asia-southeast1', enforceAppCheck: shouldEnforceAppCheck(), maxInstances: 100 },
   async (req: CallableRequest<unknown>) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'sign-in required')
-    const claims = req.auth.token as Record<string, unknown> | null
-    if (!claims) throw new HttpsError('unauthenticated', 'sign-in required')
-    if (claims.role !== 'citizen') {
+    const claims = req.auth.token
+    const isPseudonymous = claims.firebase.sign_in_provider === 'anonymous'
+    if (!isPseudonymous && claims.role !== 'citizen') {
       throw new HttpsError('permission-denied', 'citizen role required')
     }
-    if (!isAccountActive(claims)) {
+    if (!isPseudonymous && !isAccountActive(claims)) {
       throw new HttpsError('permission-denied', 'account is not active')
     }
     const parsed = InputSchema.safeParse(req.data)
