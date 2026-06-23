@@ -28,8 +28,13 @@ import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { db } from '../app/firebase'
-import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
+import {
+  buildMunicipalData,
+  getActiveDispatchCount,
+  getAffectedMunicipalities,
+  getUncoveredMunicipalityCount,
+} from '../utils/dashboard-metrics'
 import type { MunicipalPerformance, Report } from '../types'
 
 type DispatchLifecycleRow = ReturnType<typeof useDispatchLifecycle>['rows'][number]
@@ -142,10 +147,6 @@ function isAnyDataSourceLoading(loadingStates: boolean[]): boolean {
   return loadingStates.some(Boolean)
 }
 
-function getActiveDispatchCount(rows: DispatchLifecycleRow[]): number {
-  return rows.filter((row) => row.status !== 'needs_admin').length
-}
-
 function getStalledDispatches(rows: DispatchLifecycleRow[]): StalledDispatch[] {
   return rows
     .filter((row) => row.status === 'needs_admin')
@@ -159,22 +160,6 @@ function getStalledDispatches(rows: DispatchLifecycleRow[]): StalledDispatch[] {
 
 function mapDashboardReports(reports: DashboardReportDoc[]): Report[] {
   return reports.map((report) => mapReportDocToReportLoose(report))
-}
-
-function buildMunicipalData(reports: Report[]): MunicipalPerformance[] {
-  const byMuni = new Map<string, Report[]>()
-  reports.forEach((report) => {
-    const municipality = report.municipality || 'Unknown'
-    const list = byMuni.get(municipality) ?? []
-    list.push(report)
-    byMuni.set(municipality, list)
-  })
-
-  return Array.from(byMuni.entries()).map(([municipality, muniReports]) => ({
-    activeIncidents: muniReports.filter((report) => ACTIVE_REPORT_STATUSES.includes(report.status))
-      .length,
-    municipality,
-  }))
 }
 
 function countPendingTriage(reports: Report[]): number {
@@ -191,16 +176,6 @@ function buildReportCommandQueue(reports: Report[]): Report[] {
         report.status === 'verified',
     )
     .slice(0, 6)
-}
-
-function getAffectedMunicipalities(municipalData: MunicipalPerformance[]): string[] {
-  return municipalData
-    .filter((municipality) => municipality.activeIncidents > 0)
-    .map((municipality) => municipality.municipality)
-}
-
-function getUncoveredMunicipalityCount(municipalData: MunicipalPerformance[]): number {
-  return municipalData.filter((municipality) => (municipality.activeResponders ?? 0) === 0).length
 }
 
 function getModeFcmSuccessRate(opsMetrics: OpsMetricsSnapshot): number {
@@ -594,7 +569,10 @@ export default function DashboardPage() {
     reportsLoading,
   ])
   const error = hookErrors[0] ?? null
-  const municipalData = useMemo(() => buildMunicipalData(mappedReports), [mappedReports])
+  const municipalData = useMemo(
+    () => buildMunicipalData(mappedReports, responders),
+    [mappedReports, responders],
+  )
   const pendingTriage = useMemo(() => countPendingTriage(mappedReports), [mappedReports])
   const reportCommandQueue = useMemo(() => buildReportCommandQueue(mappedReports), [mappedReports])
   const previouslyNotified = useMemo(
