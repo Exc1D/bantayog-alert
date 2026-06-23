@@ -7,7 +7,7 @@ import { guardInitTestEnvironment } from '../helpers/emulator-guard.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore'
 
 const RULES_PATH = resolve(import.meta.dirname, '../../../../infra/firebase/firestore.rules')
 
@@ -67,6 +67,25 @@ describe('user_consents rules', () => {
     )
   })
 
+  itif(!!env)('owner can refresh their consent version with valid fields', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-owner'), {
+        consentVersion: '0.9',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
+      })
+    })
+
+    const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
+    await assertSucceeds(
+      setDoc(doc(db, 'user_consents', 'uid-owner'), {
+        consentVersion: '1.0',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
+      }),
+    )
+  })
+
   itif(!!env)('denies read of another user consent doc', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-other'), {
@@ -107,16 +126,43 @@ describe('user_consents rules', () => {
     )
   })
 
-  itif(!!env)('denies update', async () => {
+  itif(!!env)('denies consent updates with extra fields', async () => {
     await env!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-owner'), {
-        consentVersion: '1.0',
+        consentVersion: '0.9',
         consentGivenAt: Timestamp.now(),
         method: 'in_app_modal',
       })
     })
+
     const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
-    await assertFails(updateDoc(doc(db, 'user_consents', 'uid-owner'), { consentVersion: '2.0' }))
+    await assertFails(
+      setDoc(doc(db, 'user_consents', 'uid-owner'), {
+        consentVersion: '1.0',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
+        extra: 'not-allowed',
+      }),
+    )
+  })
+
+  itif(!!env)('denies updating another user consent doc', async () => {
+    await env!.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'user_consents', 'uid-other'), {
+        consentVersion: '0.9',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
+      })
+    })
+
+    const db = env!.authenticatedContext('uid-owner', activeToken).firestore()
+    await assertFails(
+      setDoc(doc(db, 'user_consents', 'uid-other'), {
+        consentVersion: '1.0',
+        consentGivenAt: Timestamp.now(),
+        method: 'in_app_modal',
+      }),
+    )
   })
 
   itif(!!env)('denies delete', async () => {
