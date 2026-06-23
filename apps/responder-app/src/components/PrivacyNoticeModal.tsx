@@ -30,7 +30,7 @@ function writeLocalConsent(uid: string) {
   try {
     globalThis.localStorage.setItem(getConsentStorageKey(uid), NOTICE_VERSION)
   } catch {
-    // Firestore remains the source of truth when local storage is unavailable.
+    // Firestore remains authoritative when local storage is unavailable.
   }
 }
 
