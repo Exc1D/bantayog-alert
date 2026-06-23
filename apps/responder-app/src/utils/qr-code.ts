@@ -4,6 +4,8 @@ type BlockSpec = {
   dataCodewords: number
 }
 
+type Matrix = boolean[][]
+
 const LOW_ERROR_CORRECTION_BLOCKS: ReadonlyArray<ReadonlyArray<BlockSpec> | null> = [
   null,
   [{ count: 1, totalCodewords: 26, dataCodewords: 19 }],
@@ -35,6 +37,21 @@ const ALIGNMENT_PATTERN_POSITIONS: ReadonlyArray<ReadonlyArray<number>> = [
   [6, 28, 50],
 ]
 
+function getItem<T>(items: ReadonlyArray<T>, index: number, label: string): T {
+  const item = items[index]
+  if (item === undefined) throw new Error(`Missing ${label} at index ${index}.`)
+  return item
+}
+
+function getMatrixCell(matrix: Matrix, x: number, y: number): boolean {
+  return getItem(getItem(matrix, y, 'QR row'), x, 'QR module')
+}
+
+function setMatrixCell(matrix: Matrix, x: number, y: number, value: boolean) {
+  const row = getItem(matrix, y, 'QR row')
+  row[x] = value
+}
+
 function appendBits(target: boolean[], value: number, length: number) {
   for (let bit = length - 1; bit >= 0; bit -= 1) {
     target.push(((value >>> bit) & 1) !== 0)
@@ -64,10 +81,12 @@ function createReedSolomonDivisor(degree: number) {
 
   for (let index = 0; index < degree; index += 1) {
     for (let coefficient = 0; coefficient < divisor.length; coefficient += 1) {
-      divisor[coefficient] = multiplyInGaloisField(divisor[coefficient], root)
-      if (coefficient + 1 < divisor.length) {
-        divisor[coefficient] ^= divisor[coefficient + 1]
-      }
+      const current = getItem(divisor, coefficient, 'Reed-Solomon coefficient')
+      const next =
+        coefficient + 1 < divisor.length
+          ? getItem(divisor, coefficient + 1, 'Reed-Solomon coefficient')
+          : 0
+      divisor[coefficient] = multiplyInGaloisField(current, root) ^ next
     }
     root = multiplyInGaloisField(root, 0x02)
   }
@@ -79,11 +98,13 @@ function createReedSolomonRemainder(data: number[], divisor: number[]) {
   const remainder = Array<number>(divisor.length).fill(0)
 
   for (const byte of data) {
-    const factor = byte ^ remainder[0]
+    const factor = byte ^ getItem(remainder, 0, 'Reed-Solomon remainder')
     remainder.shift()
     remainder.push(0)
     for (let index = 0; index < remainder.length; index += 1) {
-      remainder[index] ^= multiplyInGaloisField(divisor[index], factor)
+      const current = getItem(remainder, index, 'Reed-Solomon remainder')
+      const coefficient = getItem(divisor, index, 'Reed-Solomon divisor')
+      remainder[index] = current ^ multiplyInGaloisField(coefficient, factor)
     }
   }
 
@@ -91,7 +112,7 @@ function createReedSolomonRemainder(data: number[], divisor: number[]) {
 }
 
 function expandBlockSpecs(version: number) {
-  const specs = LOW_ERROR_CORRECTION_BLOCKS[version]
+  const specs = getItem(LOW_ERROR_CORRECTION_BLOCKS, version, 'QR block specification')
   if (!specs) throw new Error(`Unsupported QR code version: ${version}`)
 
   return specs.flatMap((spec) => Array.from({ length: spec.count }, () => spec))
@@ -127,15 +148,15 @@ function createDataCodewords(value: string, version: number) {
   for (let index = 0; index < bits.length; index += 8) {
     let byte = 0
     for (let bit = 0; bit < 8; bit += 1) {
-      byte = (byte << 1) | (bits[index + bit] ? 1 : 0)
+      byte = (byte << 1) | (getItem(bits, index + bit, 'QR data bit') ? 1 : 0)
     }
     result.push(byte)
   }
 
-  const padding = [0xec, 0x11]
+  const padding = [0xec, 0x11] as const
   let paddingIndex = 0
   while (result.length < getDataCapacity(version)) {
-    result.push(padding[paddingIndex % padding.length])
+    result.push(getItem(padding, paddingIndex % padding.length, 'QR padding byte'))
     paddingIndex += 1
   }
 
@@ -164,13 +185,15 @@ function addErrorCorrection(dataCodewords: number[], version: number) {
 
   for (let index = 0; index < longestDataBlock; index += 1) {
     for (const block of blocks) {
-      if (index < block.length) result.push(block[index])
+      if (index < block.length) result.push(getItem(block, index, 'QR data codeword'))
     }
   }
 
   for (let index = 0; index < longestErrorBlock; index += 1) {
     for (const block of errorCorrectionBlocks) {
-      if (index < block.length) result.push(block[index])
+      if (index < block.length) {
+        result.push(getItem(block, index, 'QR error-correction codeword'))
+      }
     }
   }
 
@@ -224,8 +247,8 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
 
   const setFunction = (x: number, y: number, dark: boolean) => {
     if (x < 0 || y < 0 || x >= size || y >= size) return
-    modules[y][x] = dark
-    isFunction[y][x] = true
+    setMatrixCell(modules, x, y, dark)
+    setMatrixCell(isFunction, x, y, true)
   }
 
   for (let index = 0; index < size; index += 1) {
@@ -246,10 +269,14 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
   drawFinderPattern(size - 4, 3)
   drawFinderPattern(3, size - 4)
 
-  const alignmentPositions = ALIGNMENT_PATTERN_POSITIONS[version]
+  const alignmentPositions = getItem(
+    ALIGNMENT_PATTERN_POSITIONS,
+    version,
+    'QR alignment positions',
+  )
   for (const centerY of alignmentPositions) {
     for (const centerX of alignmentPositions) {
-      if (isFunction[centerY][centerX]) continue
+      if (getMatrixCell(isFunction, centerX, centerY)) continue
       for (let offsetY = -2; offsetY <= 2; offsetY += 1) {
         for (let offsetX = -2; offsetX <= 2; offsetX += 1) {
           const distance = Math.max(Math.abs(offsetX), Math.abs(offsetY))
@@ -260,7 +287,9 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
   }
 
   const formatBits = calculateFormatBits(mask)
-  for (let index = 0; index <= 5; index += 1) setFunction(8, index, ((formatBits >>> index) & 1) !== 0)
+  for (let index = 0; index <= 5; index += 1) {
+    setFunction(8, index, ((formatBits >>> index) & 1) !== 0)
+  }
   setFunction(8, 7, ((formatBits >>> 6) & 1) !== 0)
   setFunction(8, 8, ((formatBits >>> 7) & 1) !== 0)
   setFunction(7, 8, ((formatBits >>> 8) & 1) !== 0)
@@ -298,11 +327,12 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
       const y = upward ? size - 1 - vertical : vertical
       for (let column = 0; column < 2; column += 1) {
         const x = right - column
-        if (isFunction[y][x]) continue
-        let dark = dataIndex < dataBits.length ? dataBits[dataIndex] : false
+        if (getMatrixCell(isFunction, x, y)) continue
+        let dark =
+          dataIndex < dataBits.length ? getItem(dataBits, dataIndex, 'QR data bit') : false
         dataIndex += 1
         if (shouldInvert(mask, x, y)) dark = !dark
-        modules[y][x] = dark
+        setMatrixCell(modules, x, y, dark)
       }
     }
   }
@@ -310,18 +340,21 @@ function buildMatrix(version: number, codewords: number[], mask: number) {
   return modules
 }
 
-function countRunPenalty(line: boolean[]) {
+function countRunPenalty(line: ReadonlyArray<boolean>) {
+  if (line.length === 0) return 0
+
   let penalty = 0
-  let runColor = line[0]
+  let runColor = getItem(line, 0, 'QR penalty module')
   let runLength = 1
 
   for (let index = 1; index < line.length; index += 1) {
-    if (line[index] === runColor) {
+    const value = getItem(line, index, 'QR penalty module')
+    if (value === runColor) {
       runLength += 1
       if (runLength === 5) penalty += 3
       else if (runLength > 5) penalty += 1
     } else {
-      runColor = line[index]
+      runColor = value
       runLength = 1
     }
   }
@@ -329,8 +362,8 @@ function countRunPenalty(line: boolean[]) {
   return penalty
 }
 
-function countFinderLikePatterns(line: boolean[]) {
-  const patterns = [
+function countFinderLikePatterns(line: ReadonlyArray<boolean>) {
+  const patterns: ReadonlyArray<ReadonlyArray<boolean>> = [
     [false, false, false, false, true, false, true, true, true, false, true],
     [true, false, true, true, true, false, true, false, false, false, false],
   ]
@@ -338,7 +371,11 @@ function countFinderLikePatterns(line: boolean[]) {
 
   for (let start = 0; start <= line.length - 11; start += 1) {
     for (const pattern of patterns) {
-      if (pattern.every((value, offset) => line[start + offset] === value)) {
+      if (
+        pattern.every(
+          (value, offset) => getItem(line, start + offset, 'QR penalty module') === value,
+        )
+      ) {
         penalty += 40
         break
       }
@@ -348,7 +385,7 @@ function countFinderLikePatterns(line: boolean[]) {
   return penalty
 }
 
-function scoreMatrix(matrix: boolean[][]) {
+function scoreMatrix(matrix: Matrix) {
   const size = matrix.length
   let penalty = 0
 
@@ -358,18 +395,18 @@ function scoreMatrix(matrix: boolean[][]) {
   }
 
   for (let x = 0; x < size; x += 1) {
-    const column = matrix.map((row) => row[x])
+    const column = matrix.map((row) => getItem(row, x, 'QR module'))
     penalty += countRunPenalty(column)
     penalty += countFinderLikePatterns(column)
   }
 
   for (let y = 0; y < size - 1; y += 1) {
     for (let x = 0; x < size - 1; x += 1) {
-      const value = matrix[y][x]
+      const value = getMatrixCell(matrix, x, y)
       if (
-        matrix[y][x + 1] === value &&
-        matrix[y + 1][x] === value &&
-        matrix[y + 1][x + 1] === value
+        getMatrixCell(matrix, x + 1, y) === value &&
+        getMatrixCell(matrix, x, y + 1) === value &&
+        getMatrixCell(matrix, x + 1, y + 1) === value
       ) {
         penalty += 3
       }
