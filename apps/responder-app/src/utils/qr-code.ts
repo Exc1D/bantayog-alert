@@ -1,3 +1,5 @@
+// ponytail: byte-mode QR versions 1-10 at low error correction cover Firebase TOTP
+// otpauth URIs; switch to a full QR library if that URI format grows past this envelope.
 interface BlockSpec {
   count: number
   totalCodewords: number
@@ -136,8 +138,7 @@ function chooseVersion(byteLength: number) {
   throw new Error('Authenticator setup data is too long to encode as a QR code.')
 }
 
-function createDataCodewords(value: string, version: number) {
-  const bytes = Array.from(new TextEncoder().encode(value))
+function createDataCodewords(bytes: readonly number[], version: number) {
   const capacityBits = getDataCapacity(version) * 8
   const bits: boolean[] = []
 
@@ -242,7 +243,7 @@ function shouldInvert(mask: number, x: number, y: number) {
   }
 }
 
-// fallow-ignore-next-line complexity -- QR matrix placement mirrors the specification and is covered by enrollment regression tests.
+// fallow-ignore-next-line complexity
 function buildMatrix(version: number, codewords: number[], mask: number) {
   const size = version * 4 + 17
   const modules = Array.from({ length: size }, () => Array<boolean>(size).fill(false))
@@ -422,9 +423,9 @@ function scoreMatrix(matrix: Matrix) {
 }
 
 export function createQrCodeMatrix(value: string) {
-  const byteLength = new TextEncoder().encode(value).length
-  const version = chooseVersion(byteLength)
-  const dataCodewords = createDataCodewords(value, version)
+  const bytes = Array.from(new TextEncoder().encode(value))
+  const version = chooseVersion(bytes.length)
+  const dataCodewords = createDataCodewords(bytes, version)
   const codewords = addErrorCorrection(dataCodewords, version)
 
   let bestMatrix = buildMatrix(version, codewords, 0)

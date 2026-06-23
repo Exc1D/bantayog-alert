@@ -19,6 +19,14 @@ vi.mock('firebase/firestore', () => ({
 
 const storageKey = 'bantayog.responder.privacy-consent:user-123'
 
+async function expectModalSuppressedByLocalCache() {
+  render(<PrivacyNoticeModal uid="user-123" />)
+
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(mockGetDoc).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+}
+
 describe('PrivacyNoticeModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -55,11 +63,7 @@ describe('PrivacyNoticeModal', () => {
   it('uses locally cached acceptance without reopening or rereading Firestore', async () => {
     globalThis.localStorage.setItem(storageKey, '1.0')
 
-    render(<PrivacyNoticeModal uid="user-123" />)
-
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(mockGetDoc).not.toHaveBeenCalled()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await expectModalSuppressedByLocalCache()
   })
 
   it('shows modal on read failure when no local acceptance exists', async () => {
@@ -122,10 +126,7 @@ describe('PrivacyNoticeModal', () => {
 
     unmount()
     mockGetDoc.mockClear()
-    render(<PrivacyNoticeModal uid="user-123" />)
 
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(mockGetDoc).not.toHaveBeenCalled()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await expectModalSuppressedByLocalCache()
   })
 })
