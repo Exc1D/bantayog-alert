@@ -38,18 +38,34 @@ describe('DispatchVolumeChart', () => {
     expect(screen.getByText(/no dispatches/i)).toBeInTheDocument()
   })
 
-  it('empty state when all dispatches are older than 24h', () => {
+  it('empty state when all dispatches are older than the displayed window', () => {
     const fixedNow = new Date('2024-01-15T14:30:00.000Z').getTime()
     stubDate(fixedNow)
     render(
-      <DispatchVolumeChart rows={[makeRow({ dispatchedAt: fixedNow - 25 * 60 * 60 * 1000 })]} />,
+      <DispatchVolumeChart rows={[makeRow({ dispatchedAt: fixedNow - 24 * 60 * 60 * 1000 })]} />,
     )
     expect(screen.getByText(/no dispatches/i)).toBeInTheDocument()
   })
 
-  it('shows dispatch count in aria-label for current hour bar', () => {
+  it('orders bars chronologically from 23 hours ago through now', () => {
     const fixedNow = new Date('2024-01-15T14:30:00.000Z').getTime()
-    const currentHour = new Date(fixedNow).getHours()
+    stubDate(fixedNow)
+    render(
+      <DispatchVolumeChart
+        rows={[
+          makeRow({ dispatchedAt: fixedNow - 23 * 60 * 60 * 1000, dispatchId: 'oldest' }),
+          makeRow({ dispatchedAt: fixedNow, dispatchId: 'current' }),
+        ]}
+      />,
+    )
+
+    const bars = screen.getAllByRole('img')
+    expect(bars[0]).toHaveAttribute('aria-label', expect.stringContaining('1 dispatch'))
+    expect(bars[23]).toHaveAttribute('aria-label', expect.stringContaining('1 dispatch'))
+  })
+
+  it('shows dispatch count in aria-label for the latest bar', () => {
+    const fixedNow = new Date('2024-01-15T14:30:00.000Z').getTime()
     stubDate(fixedNow)
     render(
       <DispatchVolumeChart
@@ -60,7 +76,7 @@ describe('DispatchVolumeChart', () => {
       />,
     )
     const bars = screen.getAllByRole('img')
-    expect(bars[currentHour]).toHaveAttribute('aria-label', expect.stringContaining('2'))
-    expect(bars[currentHour]).toHaveStyle({ height: '100%' })
+    expect(bars[23]).toHaveAttribute('aria-label', expect.stringContaining('2 dispatches'))
+    expect(bars[23]).toHaveStyle({ height: '100%' })
   })
 })
