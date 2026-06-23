@@ -11,30 +11,30 @@ import {
 
 function makeReport(overrides: Partial<Report> = {}): Report {
   return {
-    id: overrides.id ?? 'report-1',
-    type: overrides.type ?? 'flood',
-    severity: overrides.severity ?? 'medium',
-    status: overrides.status ?? 'new',
-    municipality: overrides.municipality ?? 'Daet',
-    barangay: overrides.barangay ?? 'Barangay I',
-    description: overrides.description ?? 'Test report',
-    reporterName: overrides.reporterName ?? 'Test Reporter',
-    reporterPhone: overrides.reporterPhone ?? '09170000000',
-    latitude: overrides.latitude ?? 14.1122,
-    longitude: overrides.longitude ?? 122.9553,
-    createdAt: overrides.createdAt ?? '2026-06-23T00:00:00.000Z',
-    updatedAt: overrides.updatedAt ?? '2026-06-23T00:00:00.000Z',
+    id: 'report-1',
+    type: 'flood',
+    severity: 'medium',
+    status: 'new',
+    municipality: 'Daet',
+    barangay: 'Barangay I',
+    description: 'Test report',
+    reporterName: 'Test Reporter',
+    reporterPhone: '09170000000',
+    latitude: 14.1122,
+    longitude: 122.9553,
+    createdAt: '2026-06-23T00:00:00.000Z',
+    updatedAt: '2026-06-23T00:00:00.000Z',
     ...overrides,
   }
 }
 
 function makeResponder(overrides: Partial<ResponderFleetMember> = {}): ResponderFleetMember {
   return {
-    uid: overrides.uid ?? 'responder-1',
-    displayName: overrides.displayName ?? 'Responder One',
-    availabilityStatus: overrides.availabilityStatus ?? 'available',
-    lastActivityAt: overrides.lastActivityAt ?? Date.now(),
-    onlineStatus: overrides.onlineStatus ?? 'online',
+    uid: 'responder-1',
+    displayName: 'Responder One',
+    availabilityStatus: 'available',
+    lastActivityAt: Date.now(),
+    onlineStatus: 'online',
     ...overrides,
   }
 }
