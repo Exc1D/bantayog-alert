@@ -1,123 +1,68 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { DispatchStatsCards } from '../components/DispatchStatsCards'
 
-const DEFAULT_PROPS = {
+const props = {
   activeCount: 5,
   stalledCount: 0,
-  avgAcceptSeconds: null as number | null,
-  fcmSuccessRate: 0.95,
+  avgAcceptSeconds: 150 as number | null,
+  fcmSuccessRate: 0.95 as number | null,
   mode: 'active' as const,
 }
 
 describe('DispatchStatsCards', () => {
-  it('renders Active Now card with top accent and role region', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} />)
-    const card = screen.getByLabelText('Active Now')
-    expect(card).toHaveTextContent('5')
-    expect(card).toHaveClass('border-t-[var(--color-carto-blue)]')
-    expect(card).toHaveAttribute('role', 'region')
+  it('shows targets and current decision statuses', () => {
+    render(<DispatchStatsCards {...props} />)
+
+    expect(screen.getByLabelText('Active Now')).toHaveTextContent('Target ≤ 20')
+    expect(screen.getByLabelText('Active Now')).toHaveTextContent('Watch')
+    expect(screen.getByLabelText('Stalled')).toHaveTextContent('Target 0')
+    expect(screen.getByLabelText('Stalled')).toHaveTextContent('OK')
+    expect(screen.getByLabelText('Average accept time')).toHaveTextContent('Target ≤ 5m')
+    expect(screen.getByLabelText('Average accept time')).toHaveTextContent('OK')
+    expect(screen.getByLabelText('FCM success rate')).toHaveTextContent('Target ≥ 90%')
+    expect(screen.getByLabelText('FCM success rate')).toHaveTextContent('OK')
   })
 
-  it('renders Stalled card with red accent when > 0', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} stalledCount={3} />)
-    const card = screen.getByLabelText('Stalled')
-    expect(card).toHaveTextContent('3')
-    expect(card).toHaveClass('border-t-red-400')
-    expect(card).not.toHaveClass('border-t-gray-400')
+  it('marks breached thresholds for operator action', () => {
+    render(
+      <DispatchStatsCards
+        {...props}
+        activeCount={21}
+        stalledCount={2}
+        avgAcceptSeconds={601}
+        fcmSuccessRate={0.79}
+      />,
+    )
+
+    expect(screen.getByLabelText('Active Now')).toHaveTextContent('Action required')
+    expect(screen.getByLabelText('Stalled')).toHaveTextContent('Action required')
+    expect(screen.getByLabelText('Average accept time')).toHaveTextContent('Action required')
+    expect(screen.getByLabelText('FCM success rate')).toHaveTextContent('Action required')
   })
 
-  it('renders Stalled card with gray accent when zero', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} />)
-    const card = screen.getByLabelText('Stalled')
-    expect(card).toHaveTextContent('0')
-    expect(card).toHaveClass('border-t-gray-400')
-  })
+  it('uses stable thresholds instead of consecutive polls as a trend', () => {
+    const { rerender } = render(<DispatchStatsCards {...props} avgAcceptSeconds={301} />)
+    expect(screen.getByLabelText('Average accept time')).toHaveTextContent('Watch')
 
-  it('formats avgAcceptSeconds as "2m 30s" and shows it when present', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} avgAcceptSeconds={150} />)
+    rerender(<DispatchStatsCards {...props} avgAcceptSeconds={601} />)
     const card = screen.getByLabelText('Average accept time')
-    expect(card).toHaveTextContent('2m 30s')
+    expect(card).not.toHaveTextContent(String.fromCharCode(8593))
+    expect(card).not.toHaveTextContent(String.fromCharCode(8595))
   })
 
-  it('shows "—" for avgAcceptSeconds when null', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} />)
-    const card = screen.getByLabelText('Average accept time')
-    expect(card).toHaveTextContent('—')
+  it('does not fabricate missing backend measurements', () => {
+    render(<DispatchStatsCards {...props} avgAcceptSeconds={null} fcmSuccessRate={null} />)
+
+    expect(screen.getByLabelText('Average accept time')).toHaveTextContent('—')
+    expect(screen.getByLabelText('Average accept time')).toHaveTextContent('Unavailable')
+    expect(screen.getByLabelText('FCM success rate')).toHaveTextContent('—')
+    expect(screen.getByLabelText('FCM success rate')).toHaveTextContent('Unavailable')
   })
 
-  it('renders FCM Rate as "95%" with green accent when >= 90%', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} />)
-    const card = screen.getByLabelText('FCM success rate')
-    expect(card).toHaveTextContent('95%')
-    expect(card).toHaveClass('text-green-400')
-  })
+  it('keeps only the urgent cards visible in surge mode', () => {
+    render(<DispatchStatsCards {...props} mode="surge" />)
 
-  it('renders FCM Rate with amber accent when < 90%', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={0.85} />)
-    const card = screen.getByLabelText('FCM success rate')
-    expect(card).toHaveTextContent('85%')
-    expect(card).toHaveClass('text-amber-400')
-  })
-
-  it('renders FCM Rate as "0%" when value is 0', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} activeCount={0} fcmSuccessRate={0} />)
-    const card = screen.getByLabelText('FCM success rate')
-    expect(card).toHaveTextContent('0%')
-    expect(card).toHaveClass('text-amber-400')
-  })
-
-  it('shows "—" for FCM Rate when null (not yet measured)', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={null} />)
-    const card = screen.getByLabelText('FCM success rate')
-    expect(card).toHaveTextContent('—')
-    expect(card).not.toHaveTextContent('0%')
-  })
-
-  it('shows "0%" for FCM Rate when genuinely measured as zero (not null)', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={0} />)
-    const card = screen.getByLabelText('FCM success rate')
-    expect(card).toHaveTextContent('0%')
-    expect(card).not.toHaveTextContent('—')
-  })
-
-  it('shows "95%" for FCM Rate when value is 0.95', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={0.95} />)
-    const card = screen.getByLabelText('FCM success rate')
-    expect(card).toHaveTextContent('95%')
-  })
-
-  it('does not apply warning color class when FCM is null', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} fcmSuccessRate={null} />)
-    const card = screen.getByLabelText('FCM success rate')
-    expect(card).not.toHaveClass('text-green-400')
-    expect(card).not.toHaveClass('text-amber-400')
-  })
-
-  it('shows trend arrow when avgAcceptSeconds changes by >10%', () => {
-    const { rerender } = render(<DispatchStatsCards {...DEFAULT_PROPS} avgAcceptSeconds={100} />)
-    rerender(<DispatchStatsCards {...DEFAULT_PROPS} avgAcceptSeconds={120} />)
-    expect(screen.getByText(/↑/)).toBeInTheDocument()
-  })
-
-  it('does not use side-stripe borders', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} />)
-    const cards = screen.getAllByRole('region')
-    for (const card of cards) {
-      expect(card.className).not.toMatch(/border-l-/)
-    }
-  })
-
-  it('shows all 4 cards in active mode', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} mode="active" />)
-    expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
-    expect(screen.getByLabelText('Stalled')).toBeInTheDocument()
-    expect(screen.getByLabelText('Average accept time')).toBeInTheDocument()
-    expect(screen.getByLabelText('FCM success rate')).toBeInTheDocument()
-  })
-
-  it('only shows Active + Stalled in surge mode', () => {
-    render(<DispatchStatsCards {...DEFAULT_PROPS} mode="surge" />)
     expect(screen.getByLabelText('Active Now')).toBeInTheDocument()
     expect(screen.getByLabelText('Stalled')).toBeInTheDocument()
     expect(screen.queryByLabelText('Average accept time')).not.toBeInTheDocument()
