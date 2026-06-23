@@ -1,16 +1,51 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { multiFactor, TotpMultiFactorGenerator, type TotpSecret } from 'firebase/auth'
+import { multiFactor, signOut, TotpMultiFactorGenerator, type TotpSecret } from 'firebase/auth'
 
 import { auth } from '../app/firebase'
+import { createQrCodeMatrix } from '../utils/qr-code'
 import styles from './TotpEnrollmentPage.module.css'
 
 type Step = 'generate' | 'scan' | 'verify' | 'done'
+
+const QR_QUIET_ZONE = 4
+
+function EnrollmentQrCode({ matrix }: { matrix: boolean[][] }) {
+  const moduleCount = matrix.length
+  const viewBoxSize = moduleCount + QR_QUIET_ZONE * 2
+
+  return (
+    <svg
+      className={styles.qrCode}
+      viewBox={`0 0 ${String(viewBoxSize)} ${String(viewBoxSize)}`}
+      role="img"
+      aria-label="Authenticator setup QR code"
+      shapeRendering="crispEdges"
+    >
+      <rect width={viewBoxSize} height={viewBoxSize} fill="#ffffff" />
+      {matrix.flatMap((row, y) =>
+        row.map((dark, x) =>
+          dark ? (
+            <rect
+              key={`${String(x)}-${String(y)}`}
+              x={x + QR_QUIET_ZONE}
+              y={y + QR_QUIET_ZONE}
+              width="1"
+              height="1"
+              fill="#000000"
+            />
+          ) : null,
+        ),
+      )}
+    </svg>
+  )
+}
 
 export function TotpEnrollmentPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('generate')
   const [secret, setSecret] = useState<TotpSecret | null>(null)
+  const [qrMatrix, setQrMatrix] = useState<boolean[][] | null>(null)
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -25,10 +60,13 @@ export function TotpEnrollmentPage() {
     try {
       const session = await multiFactor(auth.currentUser).getSession()
       const newSecret = await TotpMultiFactorGenerator.generateSecret(session)
+      const accountName = auth.currentUser.email ?? 'Responder'
+      const enrollmentUri = newSecret.generateQrCodeUrl(accountName, 'Bantayog Alert')
+      const matrix = createQrCodeMatrix(enrollmentUri)
       setSecret(newSecret)
+      setQrMatrix(matrix)
       setStep('scan')
     } catch (err) {
-      // Handle specific Firebase Auth errors
       if (err && typeof err === 'object' && 'code' in err) {
         const authErr = err as { code: string; message?: string }
         switch (authErr.code) {
@@ -43,7 +81,7 @@ export function TotpEnrollmentPage() {
             return
         }
       }
-      setError(err instanceof Error ? err.message : 'Failed to generate secret.')
+      setError(err instanceof Error ? err.message : 'Failed to generate the authenticator setup.')
     } finally {
       setBusy(false)
     }
@@ -59,12 +97,10 @@ export function TotpEnrollmentPage() {
       try {
         await auth.currentUser.getIdToken(true)
       } catch (refreshErr) {
-        // Log but don't block — enrollment succeeded; token will refresh on next auth state change
         console.error('[TotpEnrollmentPage] token refresh after enrollment failed:', refreshErr)
       }
       setStep('done')
     } catch (err) {
-      // Handle specific Firebase Auth errors
       if (err && typeof err === 'object' && 'code' in err) {
         const authErr = err as { code: string; message?: string }
         switch (authErr.code) {
@@ -83,6 +119,26 @@ export function TotpEnrollmentPage() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const handleSignOut = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await signOut(auth)
+      void navigate('/login', { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign out. Please try again.')
+      setBusy(false)
+    }
+  }
+
+  const handleRestart = () => {
+    setSecret(null)
+    setQrMatrix(null)
+    setCode('')
+    setError(null)
+    setStep('generate')
   }
 
   const handleContinue = () => {
@@ -112,26 +168,55 @@ export function TotpEnrollmentPage() {
             onClick={() => void handleGenerate()}
             disabled={busy}
           >
-            Generate QR Code
+            {busy ? 'Generating…' : 'Generate QR Code'}
+          </button>
+          <button
+            type="button"
+            className={styles.textButton}
+            onClick={() => void handleSignOut()}
+            disabled={busy}
+          >
+            Sign out
           </button>
         </div>
       ) : null}
 
-      {step === 'scan' && secret ? (
+      {step === 'scan' && secret && qrMatrix ? (
         <div className={styles.card}>
-          <div className={styles.qrPlaceholder}>Scan this QR code with your authenticator app</div>
-          <p className={styles.secretKeyLabel}>Or enter this secret manually:</p>
+          <figure className={styles.qrFigure}>
+            <EnrollmentQrCode matrix={qrMatrix} />
+            <figcaption>Scan this QR code with your authenticator app.</figcaption>
+          </figure>
+          <p className={styles.secretKeyLabel}>Cannot scan? Enter this secret manually:</p>
           <div className={styles.secretKey}>{secret.secretKey}</div>
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => {
-              setStep('verify')
-            }}
-            style={{ marginTop: '16px' }}
-          >
-            Next
-          </button>
+          <div className={styles.actionStack}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => {
+                setStep('verify')
+              }}
+              disabled={busy}
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={handleRestart}
+              disabled={busy}
+            >
+              Start over
+            </button>
+            <button
+              type="button"
+              className={styles.textButton}
+              onClick={() => void handleSignOut()}
+              disabled={busy}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -153,14 +238,35 @@ export function TotpEnrollmentPage() {
             }}
             aria-label="6-digit code"
           />
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => void handleVerify()}
-            disabled={code.length !== 6 || busy}
-          >
-            Verify
-          </button>
+          <div className={styles.actionStack}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void handleVerify()}
+              disabled={code.length !== 6 || busy}
+            >
+              {busy ? 'Verifying…' : 'Verify'}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => {
+                setError(null)
+                setStep('scan')
+              }}
+              disabled={busy}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className={styles.textButton}
+              onClick={() => void handleSignOut()}
+              disabled={busy}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       ) : null}
 

@@ -30,21 +30,22 @@
   margin-bottom: 16px;
 }
 
-.qrPlaceholder {
-  width: 100%;
-  aspect-ratio: 1;
-  max-width: 240px;
+.qrFigure {
   margin: 0 auto 16px;
-  border: 2px dashed #d1d5db;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f9fafb;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #6b7280;
   text-align: center;
-  padding: 12px;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.qrCode {
+  display: block;
+  width: min(100%, 240px);
+  height: auto;
+  margin: 0 auto 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 .secretKeyLabel {
@@ -71,6 +72,7 @@
 
 .input {
   width: 100%;
+  box-sizing: border-box;
   padding: 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
@@ -87,14 +89,26 @@
   border-color: #001e40;
 }
 
-.button {
+.actionStack {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.button,
+.secondaryButton,
+.textButton {
   width: 100%;
+  min-height: 44px;
   padding: 12px 20px;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
-  border: none;
   cursor: pointer;
+}
+
+.button {
+  border: none;
   background: #001e40;
   color: #ffffff;
 }
@@ -103,13 +117,38 @@
   background: #002b5c;
 }
 
-.button:focus-visible {
+.secondaryButton {
+  border: 1px solid #001e40;
+  background: #ffffff;
+  color: #001e40;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.textButton {
+  border: none;
+  background: transparent;
+  color: #4b5563;
+}
+
+.textButton:hover:not(:disabled) {
+  color: #001e40;
+  text-decoration: underline;
+}
+
+.button:focus-visible,
+.secondaryButton:focus-visible,
+.textButton:focus-visible {
   outline: 2px solid #001e40;
   outline-offset: 2px;
 }
 
-.button:disabled {
-  background: #9ca3af;
+.button:disabled,
+.secondaryButton:disabled,
+.textButton:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 

@@ -6,8 +6,10 @@ import { MemoryRouter } from 'react-router-dom'
 
 const mockGetSession = vi.hoisted(() => vi.fn())
 const mockGenerateSecret = vi.hoisted(() => vi.fn())
+const mockGenerateQrCodeUrl = vi.hoisted(() => vi.fn())
 const mockAssertionForEnrollment = vi.hoisted(() => vi.fn())
 const mockEnroll = vi.hoisted(() => vi.fn())
+const mockSignOut = vi.hoisted(() => vi.fn())
 const mockNavigate = vi.hoisted(() => vi.fn())
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -23,6 +25,7 @@ vi.mock('firebase/auth', () => ({
     getSession: mockGetSession,
     enroll: mockEnroll,
   }),
+  signOut: mockSignOut,
   TotpMultiFactorGenerator: {
     generateSecret: mockGenerateSecret,
     assertionForEnrollment: mockAssertionForEnrollment,
@@ -49,13 +52,16 @@ describe('TotpEnrollmentPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetSession.mockResolvedValue('mock-session')
+    mockGenerateQrCodeUrl.mockReturnValue(
+      'otpauth://totp/Bantayog%20Alert:responder@test.com?secret=ABCDEFGHIJKLMNOP&issuer=Bantayog%20Alert',
+    )
     mockGenerateSecret.mockResolvedValue({
       secretKey: 'ABCDEFGHIJKLMNOP',
-      generateQrCodeUrl: () =>
-        'otpauth://totp/Bantayog%20Alert:responder@test.com?secret=ABCDEFGHIJKLMNOP',
+      generateQrCodeUrl: mockGenerateQrCodeUrl,
     })
     mockAssertionForEnrollment.mockReturnValue({ type: 'totp' })
     mockEnroll.mockResolvedValue(undefined)
+    mockSignOut.mockResolvedValue(undefined)
   })
 
   it('renders the heading for TOTP setup', () => {
@@ -65,7 +71,7 @@ describe('TotpEnrollmentPage', () => {
     )
   })
 
-  it('does not show a Skip or Later button (enrollment is mandatory)', () => {
+  it('does not show a Skip or Later button because enrollment is mandatory', () => {
     renderPage()
     expect(screen.queryByRole('button', { name: /skip|later/i })).not.toBeInTheDocument()
   })
@@ -84,6 +90,18 @@ describe('TotpEnrollmentPage', () => {
     await waitFor(() => {
       expect(mockGetSession).toHaveBeenCalledTimes(1)
       expect(mockGenerateSecret).toHaveBeenCalledWith('mock-session')
+      expect(mockGenerateQrCodeUrl).toHaveBeenCalledWith('responder@test.com', 'Bantayog Alert')
+    })
+  })
+
+  it('renders a scannable SVG QR code instead of a placeholder', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /generate qr code/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: /authenticator setup qr code/i })).toBeInTheDocument()
     })
   })
 
@@ -107,6 +125,30 @@ describe('TotpEnrollmentPage', () => {
     await user.click(screen.getByRole('button', { name: /next/i }))
 
     expect(screen.getByLabelText(/6-digit code/i)).toBeInTheDocument()
+  })
+
+  it('returns from verification to the QR step when Back is clicked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /generate qr code/i }))
+    await waitFor(() => screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByRole('button', { name: /back/i }))
+
+    expect(screen.getByRole('img', { name: /authenticator setup qr code/i })).toBeInTheDocument()
+  })
+
+  it('allows the responder to sign out and return to login', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /sign out/i }))
+
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalledTimes(1)
+      expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true })
+    })
   })
 
   it('verify button is disabled when code length is less than 6', async () => {
@@ -161,7 +203,7 @@ describe('TotpEnrollmentPage', () => {
     })
   })
 
-  it('navigates to / after successful enrollment and saving recovery codes', async () => {
+  it('navigates to / after successful enrollment', async () => {
     const user = userEvent.setup()
     renderPage()
 
