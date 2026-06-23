@@ -33,7 +33,12 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
 
     for (const row of rows) {
       const raw = row.dispatchedAt
-      if (typeof raw !== 'number' || !Number.isFinite(raw) || raw > now || raw < windowStart) {
+      if (
+        typeof raw !== 'number' ||
+        !Number.isFinite(raw) ||
+        raw > now ||
+        raw < windowStart
+      ) {
         continue
       }
 
@@ -68,10 +73,7 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
         >
           <div className="flex h-20 items-end gap-1">
             {Array.from({ length: BUCKET_COUNT }).map((_, index) => (
-              <div
-                key={index}
-                className="h-full flex-1 animate-pulse rounded-t bg-white/10"
-              />
+              <div key={index} className="h-full flex-1 animate-pulse rounded-t bg-white/10" />
             ))}
           </div>
           <div className="mt-1 flex justify-between text-[10px] text-gray-500">
