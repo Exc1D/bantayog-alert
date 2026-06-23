@@ -3,9 +3,30 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
 
 const NOTICE_VERSION = '1.0'
+const CONSENT_STORAGE_PREFIX = 'bantayog.responder.privacy-consent'
 
 interface Props {
   uid: string
+}
+
+function getConsentStorageKey(uid: string) {
+  return `${CONSENT_STORAGE_PREFIX}:${uid}`
+}
+
+function readLocalConsent(uid: string) {
+  try {
+    return globalThis.localStorage?.getItem(getConsentStorageKey(uid)) ?? null
+  } catch {
+    return null
+  }
+}
+
+function writeLocalConsent(uid: string) {
+  try {
+    globalThis.localStorage?.setItem(getConsentStorageKey(uid), NOTICE_VERSION)
+  } catch {
+    // Firestore remains the source of truth when local storage is unavailable.
+  }
 }
 
 export function PrivacyNoticeModal({ uid }: Props) {
@@ -13,26 +34,49 @@ export function PrivacyNoticeModal({ uid }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+
+    if (readLocalConsent(uid) === NOTICE_VERSION) {
+      setVisible(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setVisible(false)
     void getDoc(doc(db, 'user_consents', uid))
       .then((snap) => {
+        if (cancelled) return
         const version = snap.data()?.consentVersion as string | undefined
-        if (version !== NOTICE_VERSION) setVisible(true)
+        if (version === NOTICE_VERSION) {
+          writeLocalConsent(uid)
+          setVisible(false)
+        } else {
+          setVisible(true)
+        }
       })
       .catch((err: unknown) => {
+        if (cancelled) return
         console.error('[PrivacyNotice] Failed to read consent doc:', err)
         setVisible(true)
       })
+
+    return () => {
+      cancelled = true
+    }
   }, [uid])
 
   async function handleDismiss() {
     setIsSubmitting(true)
+    writeLocalConsent(uid)
+    setVisible(false)
+
     try {
       await setDoc(doc(db, 'user_consents', uid), {
         consentVersion: NOTICE_VERSION,
         consentGivenAt: serverTimestamp(),
         method: 'in_app_modal',
       })
-      setVisible(false)
     } catch (err: unknown) {
       console.error('[PrivacyNotice] Failed to persist consent:', err)
     } finally {
@@ -56,6 +100,7 @@ export function PrivacyNoticeModal({ uid }: Props) {
       }}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="privacy-notice-title"
     >
       <div
         style={{
@@ -68,7 +113,10 @@ export function PrivacyNoticeModal({ uid }: Props) {
           overflowY: 'auto',
         }}
       >
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>
+        <h2
+          id="privacy-notice-title"
+          style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}
+        >
           Abiso sa Pagprotekta ng Datos / Data Privacy Notice
         </h2>
         <p style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '0.75rem' }}>
