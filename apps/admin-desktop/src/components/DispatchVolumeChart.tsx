@@ -1,35 +1,58 @@
 import { useMemo } from 'react'
 import type { DispatchLifecycleRow } from '../hooks/useDispatchLifecycle'
 
-const TIME_AXIS_LABELS = ['00:00', '06:00', '12:00', '18:00', 'Now'] as const
+const BUCKET_COUNT = 24
+const HOUR_MS = 60 * 60 * 1000
+const AXIS_BUCKETS = [0, 6, 12, 18] as const
 
 interface Props {
   rows: DispatchLifecycleRow[]
   isLoading?: boolean
 }
 
+function getHourStart(timestamp: number): number {
+  const date = new Date(timestamp)
+  date.setMinutes(0, 0, 0)
+  return date.getTime()
+}
+
+function formatHour(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
 export function DispatchVolumeChart({ rows, isLoading }: Props) {
-  const { counts, maxCount, hasData } = useMemo(() => {
-    const c: number[] = new Array(24).fill(0)
-    // eslint-disable-next-line react-hooks/purity -- intentionally impure: reads current time inside useMemo for real-time chart
+  const { buckets, maxCount, hasData, axisLabels } = useMemo(() => {
+    const counts: number[] = new Array(BUCKET_COUNT).fill(0)
+    // eslint-disable-next-line react-hooks/purity -- chart buckets intentionally follow the current hour
     const now = Date.now()
-    const oneDayAgo = now - 24 * 60 * 60 * 1000
+    const windowStart = getHourStart(now) - (BUCKET_COUNT - 1) * HOUR_MS
+
     for (const row of rows) {
       const raw = row.dispatchedAt
-      if (typeof raw !== 'number') continue
-      if (!Number.isFinite(raw) || raw > now || raw < 0) {
+      if (typeof raw !== 'number' || !Number.isFinite(raw) || raw > now || raw < windowStart) {
         continue
       }
-      const date = new Date(raw)
-      if (Number.isNaN(date.getTime())) continue
-      if (raw < oneDayAgo) continue
-      const hour = date.getHours()
-      c[hour] = (c[hour] ?? 0) + 1
+
+      const bucketIndex = Math.floor((raw - windowStart) / HOUR_MS)
+      if (bucketIndex < 0 || bucketIndex >= BUCKET_COUNT) continue
+      counts[bucketIndex] = (counts[bucketIndex] ?? 0) + 1
     }
+
     return {
-      counts: c,
-      maxCount: Math.max(...c, 1),
-      hasData: c.some((x) => x > 0),
+      buckets: counts.map((count, index) => ({
+        count,
+        label: formatHour(windowStart + index * HOUR_MS),
+      })),
+      maxCount: Math.max(...counts, 1),
+      hasData: counts.some((count) => count > 0),
+      axisLabels: [
+        ...AXIS_BUCKETS.map((index) => formatHour(windowStart + index * HOUR_MS)),
+        'Now',
+      ],
     }
   }, [rows])
 
@@ -43,17 +66,13 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
           className="rounded border border-white/10 bg-white/5 p-4"
           data-testid="dispatch-volume-skeleton"
         >
-          <div className="flex items-end gap-1 h-20">
-            {Array.from({ length: 24 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex-1 bg-white/10 animate-pulse rounded-t"
-                style={{ height: '100%' }}
-              />
+          <div className="flex h-20 items-end gap-1">
+            {Array.from({ length: BUCKET_COUNT }).map((_, index) => (
+              <div key={index} className="h-full flex-1 animate-pulse rounded-t bg-white/10" />
             ))}
           </div>
           <div className="mt-1 flex justify-between text-[10px] text-gray-500">
-            {TIME_AXIS_LABELS.map((label) => (
+            {axisLabels.map((label) => (
               <span key={label}>{label}</span>
             ))}
           </div>
@@ -64,22 +83,22 @@ export function DispatchVolumeChart({ rows, isLoading }: Props) {
         </div>
       ) : (
         <div className="rounded border border-white/10 bg-white/5 p-4">
-          <div className="flex items-end gap-1 h-20">
-            {counts.map((count, hour) => (
+          <div className="flex h-20 items-end gap-1">
+            {buckets.map(({ count, label }) => (
               <div
-                key={hour}
-                className="flex-1 bg-[var(--color-info)]/60 rounded-t"
+                key={label}
+                className="flex-1 rounded-t bg-[var(--color-info)]/60"
                 style={{
                   height: `${String((count / maxCount) * 100)}%`,
                   minHeight: count > 0 ? '4px' : '0px',
                 }}
                 role="img"
-                aria-label={`${String(count)} dispatches at ${String(hour).padStart(2, '0')}:00`}
+                aria-label={`${String(count)} dispatch${count === 1 ? '' : 'es'} at ${label}`}
               />
             ))}
           </div>
           <div className="mt-1 flex justify-between text-[10px] text-gray-500">
-            {TIME_AXIS_LABELS.map((label) => (
+            {axisLabels.map((label) => (
               <span key={label}>{label}</span>
             ))}
           </div>

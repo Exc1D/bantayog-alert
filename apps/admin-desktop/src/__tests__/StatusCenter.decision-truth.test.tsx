@@ -19,6 +19,6 @@ it('preserves unavailable response time instead of displaying zero minutes', () 
     />,
   )
 
-  expect(screen.getByText('—')).toBeInTheDocument()
+  expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   expect(screen.queryByText('0m')).not.toBeInTheDocument()
 })

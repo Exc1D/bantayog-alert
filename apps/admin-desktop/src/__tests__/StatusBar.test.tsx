@@ -49,7 +49,12 @@ function renderStatusBar(props: {
 
 describe('StatusBar', () => {
   it('renders three metrics', () => {
-    renderStatusBar({ activeIncidents: 47, avgResponseTime: 12, pendingTriage: 8 })
+    renderStatusBar({
+      activeIncidents: 47,
+      avgResponseTime: 12,
+      avgAcceptSeconds: 60,
+      pendingTriage: 8,
+    })
     expect(screen.getByText('47')).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('8')).toBeInTheDocument()
