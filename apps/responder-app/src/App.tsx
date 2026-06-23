@@ -13,6 +13,13 @@ import {
   type PushPermissionBannerPermission,
 } from './components/PushPermissionBanner'
 
+const PUSH_DISMISSAL_STORAGE_PREFIX = 'bantayog.responder.push-warning-dismissed'
+
+type DismissedPermissionState = {
+  uid: string
+  permission: PushPermissionBannerPermission
+}
+
 function getPushPermissionWarning(): PushPermissionBannerPermission | null {
   if (typeof globalThis.Notification === 'undefined') return null
   const permission = globalThis.Notification.permission
@@ -25,6 +32,40 @@ function getInitialPushPermissionWarning(): PushPermissionBannerPermission | nul
   return warning === 'denied' ? warning : null
 }
 
+function getDismissalStorageKey(uid: string) {
+  return `${PUSH_DISMISSAL_STORAGE_PREFIX}:${uid}`
+}
+
+function readPersistedDismissal(uid: string): PushPermissionBannerPermission | null {
+  try {
+    const value = globalThis.localStorage?.getItem(getDismissalStorageKey(uid))
+    return value === 'default' || value === 'denied' ? value : null
+  } catch {
+    return null
+  }
+}
+
+function persistDismissal(uid: string, permission: PushPermissionBannerPermission) {
+  try {
+    globalThis.localStorage?.setItem(getDismissalStorageKey(uid), permission)
+  } catch {
+    // The in-memory dismissal still prevents repeated warnings for this session.
+  }
+}
+
+function clearPersistedDismissal(uid: string) {
+  try {
+    globalThis.localStorage?.removeItem(getDismissalStorageKey(uid))
+  } catch {
+    // Storage may be unavailable in private browsing or restricted webviews.
+  }
+}
+
+function isAuthenticationFlow() {
+  if (typeof globalThis.location === 'undefined') return false
+  return globalThis.location.pathname === '/login' || globalThis.location.pathname === '/totp-enroll'
+}
+
 export function FcmSetup() {
   const { user } = useAuth()
   const { register } = useRegisterFcmToken({
@@ -34,7 +75,7 @@ export function FcmSetup() {
     getInitialPushPermissionWarning,
   )
   const [dismissedPermission, setDismissedPermission] =
-    useState<PushPermissionBannerPermission | null>(null)
+    useState<DismissedPermissionState | null>(null)
   const [isRetryingPermission, setIsRetryingPermission] = useState(false)
 
   const registerAndTrackPermission = useCallback(async () => {
@@ -42,13 +83,14 @@ export function FcmSetup() {
     if (result.token) {
       setPermissionWarning(null)
       setDismissedPermission(null)
+      if (user) clearPersistedDismissal(user.uid)
       return result
     }
 
     const warning = getPushPermissionWarning()
     if (warning) setPermissionWarning(warning)
     return result
-  }, [register])
+  }, [register, user])
 
   useEffect(() => {
     if (!user) return
@@ -152,19 +194,26 @@ export function FcmSetup() {
       })
   }, [user, registerAndTrackPermission])
 
+  const persistedDismissal = user ? readPersistedDismissal(user.uid) : null
+  const currentDismissal =
+    user && dismissedPermission?.uid === user.uid
+      ? dismissedPermission.permission
+      : persistedDismissal
   const visiblePermissionWarning =
-    permissionWarning === dismissedPermission ? null : permissionWarning
+    permissionWarning === currentDismissal ? null : permissionWarning
 
-  if (!user || !visiblePermissionWarning) return null
+  if (!user || isAuthenticationFlow() || !visiblePermissionWarning) return null
 
   return (
     <PushPermissionBanner
       permission={visiblePermissionWarning}
       isRetrying={isRetryingPermission}
       onDismiss={() => {
-        setDismissedPermission(visiblePermissionWarning)
+        persistDismissal(user.uid, visiblePermissionWarning)
+        setDismissedPermission({ uid: user.uid, permission: visiblePermissionWarning })
       }}
       onRetry={async () => {
+        clearPersistedDismissal(user.uid)
         setDismissedPermission(null)
         setIsRetryingPermission(true)
         try {
