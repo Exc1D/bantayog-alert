@@ -46,9 +46,9 @@ describe('DispatchStatsCards', () => {
     expect(screen.getByLabelText('Average accept time')).toHaveTextContent('Watch')
 
     rerender(<DispatchStatsCards {...props} avgAcceptSeconds={601} />)
-    const text = screen.getByLabelText('Average accept time').textContent ?? ''
-    expect(text).not.toContain(String.fromCharCode(8593))
-    expect(text).not.toContain(String.fromCharCode(8595))
+    const card = screen.getByLabelText('Average accept time')
+    expect(card).not.toHaveTextContent(String.fromCharCode(8593))
+    expect(card).not.toHaveTextContent(String.fromCharCode(8595))
   })
 
   it('does not fabricate missing backend measurements', () => {
