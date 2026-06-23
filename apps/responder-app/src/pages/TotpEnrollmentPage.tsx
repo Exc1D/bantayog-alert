@@ -17,7 +17,7 @@ function EnrollmentQrCode({ matrix }: { matrix: boolean[][] }) {
   return (
     <svg
       className={styles.qrCode}
-      viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
+      viewBox={`0 0 ${String(viewBoxSize)} ${String(viewBoxSize)}`}
       role="img"
       aria-label="Authenticator setup QR code"
       shapeRendering="crispEdges"
@@ -27,7 +27,7 @@ function EnrollmentQrCode({ matrix }: { matrix: boolean[][] }) {
         row.map((dark, x) =>
           dark ? (
             <rect
-              key={`${x}-${y}`}
+              key={`${String(x)}-${String(y)}`}
               x={x + QR_QUIET_ZONE}
               y={y + QR_QUIET_ZONE}
               width="1"
