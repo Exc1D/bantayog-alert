@@ -9,13 +9,18 @@ interface Props {
   uid: string
 }
 
+interface ConsentStatus {
+  uid: string
+  accepted: boolean | null
+}
+
 function getConsentStorageKey(uid: string) {
   return `${CONSENT_STORAGE_PREFIX}:${uid}`
 }
 
 function readLocalConsent(uid: string) {
   try {
-    return globalThis.localStorage?.getItem(getConsentStorageKey(uid)) ?? null
+    return globalThis.localStorage.getItem(getConsentStorageKey(uid))
   } catch {
     return null
   }
@@ -23,42 +28,35 @@ function readLocalConsent(uid: string) {
 
 function writeLocalConsent(uid: string) {
   try {
-    globalThis.localStorage?.setItem(getConsentStorageKey(uid), NOTICE_VERSION)
+    globalThis.localStorage.setItem(getConsentStorageKey(uid), NOTICE_VERSION)
   } catch {
     // Firestore remains the source of truth when local storage is unavailable.
   }
 }
 
 export function PrivacyNoticeModal({ uid }: Props) {
-  const [visible, setVisible] = useState(false)
+  const [consentStatus, setConsentStatus] = useState<ConsentStatus>(() => ({
+    uid,
+    accepted: readLocalConsent(uid) === NOTICE_VERSION ? true : null,
+  }))
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
+    if (readLocalConsent(uid) === NOTICE_VERSION) return
+
     let cancelled = false
-
-    if (readLocalConsent(uid) === NOTICE_VERSION) {
-      setVisible(false)
-      return () => {
-        cancelled = true
-      }
-    }
-
-    setVisible(false)
     void getDoc(doc(db, 'user_consents', uid))
       .then((snap) => {
         if (cancelled) return
         const version = snap.data()?.consentVersion as string | undefined
-        if (version === NOTICE_VERSION) {
-          writeLocalConsent(uid)
-          setVisible(false)
-        } else {
-          setVisible(true)
-        }
+        const accepted = version === NOTICE_VERSION
+        if (accepted) writeLocalConsent(uid)
+        setConsentStatus({ uid, accepted })
       })
       .catch((err: unknown) => {
         if (cancelled) return
         console.error('[PrivacyNotice] Failed to read consent doc:', err)
-        setVisible(true)
+        setConsentStatus({ uid, accepted: false })
       })
 
     return () => {
@@ -69,7 +67,7 @@ export function PrivacyNoticeModal({ uid }: Props) {
   async function handleDismiss() {
     setIsSubmitting(true)
     writeLocalConsent(uid)
-    setVisible(false)
+    setConsentStatus({ uid, accepted: true })
 
     try {
       await setDoc(doc(db, 'user_consents', uid), {
@@ -84,7 +82,11 @@ export function PrivacyNoticeModal({ uid }: Props) {
     }
   }
 
-  if (!visible) return null
+  const acceptedLocally = readLocalConsent(uid) === NOTICE_VERSION
+  const currentStatus = consentStatus.uid === uid ? consentStatus.accepted : null
+  const shouldShow = !acceptedLocally && currentStatus === false
+
+  if (!shouldShow) return null
 
   return (
     <div
