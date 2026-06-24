@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useAuth } from '@bantayog/shared-ui'
 import { useNavigate } from 'react-router-dom'
-import { CommandHeader } from '../components/CommandHeader'
 import { ProvincialMap } from '../components/ProvincialMap'
 import { TriagePanel } from '../components/TriagePanel'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -57,7 +55,6 @@ function actionErrorMessage(err: unknown, fallback: string): string {
 }
 
 export default function MapPage() {
-  const { signOut } = useAuth()
   const {
     selectedReportId,
     selectedMunicipalityId,
@@ -315,26 +312,12 @@ export default function MapPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+    <div className="relative flex min-h-0 flex-1 flex-col bg-[var(--color-surface)]">
       <SkipLink />
       <OfflineBanner
         error={error}
         onRetry={() => {
           window.location.reload()
-        }}
-      />
-      <CommandHeader
-        title="PDRRMO Camarines Norte"
-        windowRole="map"
-        onSignOut={() => {
-          void signOut()
-        }}
-        onDeclareAlert={() => {
-          setAlertPrefill(undefined)
-          setAlertModalOpen(true)
-        }}
-        onShowKeyboardShortcuts={() => {
-          setHelpModalOpen(true)
         }}
       />
       {successMessage && (

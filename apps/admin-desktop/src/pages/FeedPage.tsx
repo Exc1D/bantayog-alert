@@ -1,11 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
-import { useAuth } from '@bantayog/shared-ui'
-import { CommandHeader } from '../components/CommandHeader'
 import { FeedCard } from '../components/FeedCard'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { ConfirmationModal } from '../components/ConfirmationModal'
-import { DeclareAlertModal } from '../components/DeclareAlertModal'
-import { HelpModal } from '../components/HelpModal'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { SuccessBanner } from '../components/SuccessBanner'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
@@ -73,7 +69,6 @@ function isPublicVisibility(value: unknown): boolean {
 }
 
 export default function FeedPage() {
-  const { signOut } = useAuth()
   const { loading, error, reports, alerts, situationUpdates } = useFirestoreListeners({
     windowType: 'dashboard',
     db,
@@ -87,8 +82,6 @@ export default function FeedPage() {
   const [mediaError, setMediaError] = useState<string | null>(null)
   const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
   const [activeTab, setActiveTab] = useState<'new' | 'pending' | 'live'>('new')
-  const [alertModalOpen, setAlertModalOpen] = useState(false)
-  const [helpModalOpen, setHelpModalOpen] = useState(false)
 
   const { optimisticReports, optimisticVerify, optimisticUnpublish, pendingIds } =
     useOptimisticFeedActions({
@@ -316,27 +309,8 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--color-surface)]">
       <OfflineBanner error={error} />
-      <CommandHeader
-        title="PDRRMO Camarines Norte"
-        windowRole="feed"
-        onDeclareAlert={() => {
-          setAlertModalOpen(true)
-        }}
-        onShowKeyboardShortcuts={() => {
-          setHelpModalOpen(true)
-        }}
-        onSignOut={() => {
-          signOut()
-            .then(() => {
-              setActionError(null)
-            })
-            .catch((err: unknown) => {
-              setActionError(err instanceof Error ? err.message : 'Sign out failed')
-            })
-        }}
-      />
       <main className="flex-1 overflow-auto">
         <div className="mx-auto grid max-w-[1200px] gap-6 p-6 lg:grid-cols-[1fr_360px]">
           {/* Left: Feed Stream */}
@@ -719,32 +693,6 @@ export default function FeedPage() {
         onCancel={() => {
           setConfirmUnpublishReport(null)
         }}
-      />
-      <DeclareAlertModal
-        open={alertModalOpen}
-        onClose={() => {
-          setAlertModalOpen(false)
-        }}
-        onSuccess={() => {
-          setAlertModalOpen(false)
-          setSuccessMessage('Alert declared successfully')
-        }}
-        onError={(msg) => {
-          setActionError(msg)
-        }}
-      />
-      <HelpModal
-        open={helpModalOpen}
-        onClose={() => {
-          setHelpModalOpen(false)
-        }}
-        shortcuts={[
-          { key: 'N', description: 'Focus New tab' },
-          { key: 'P', description: 'Focus Pending tab' },
-          { key: 'L', description: 'Focus Live tab' },
-          { key: '?', description: 'Show keyboard shortcuts' },
-          { key: 'Esc', description: 'Close help' },
-        ]}
       />
     </div>
   )

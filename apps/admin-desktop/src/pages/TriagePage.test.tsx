@@ -345,17 +345,18 @@ describe('TriagePage', () => {
   it('confirms the selected rejection reason before single rejection', async () => {
     renderPage()
 
-    fireEvent.change(screen.getByLabelText('Rejection reason'), {
-      target: { value: 'duplicate' },
-    })
+    expect(screen.queryByLabelText('Rejection reason')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Admin note')).not.toBeInTheDocument()
+
     fireEvent.click(
       within(screen.getByTestId('report-row-r-awaiting')).getByRole('button', { name: 'Reject' }),
     )
 
     expect(mockRejectReport).not.toHaveBeenCalled()
     const dialog = screen.getByRole('dialog', { name: 'Reject report?' })
-    expect(within(dialog).getByText('Duplicate')).toBeInTheDocument()
-    expect(within(dialog).getByText('No note')).toBeInTheDocument()
+    fireEvent.change(within(dialog).getByLabelText('Rejection reason'), {
+      target: { value: 'duplicate' },
+    })
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reject report' }))
 
@@ -374,17 +375,14 @@ describe('TriagePage', () => {
   it('shows and sends the admin note after rejection confirmation', async () => {
     renderPage()
 
-    fireEvent.change(screen.getByLabelText('Admin note'), {
-      target: { value: '  Duplicate citizen upload from the same street  ' },
-    })
     fireEvent.click(
       within(screen.getByTestId('report-row-r-awaiting')).getByRole('button', { name: 'Reject' }),
     )
 
     const dialog = screen.getByRole('dialog', { name: 'Reject report?' })
-    expect(
-      within(dialog).getByText('Duplicate citizen upload from the same street'),
-    ).toBeInTheDocument()
+    fireEvent.change(within(dialog).getByLabelText('Admin note'), {
+      target: { value: '  Duplicate citizen upload from the same street  ' },
+    })
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reject report' }))
 
@@ -402,20 +400,18 @@ describe('TriagePage', () => {
   it('confirms bulk rejection with count, reason, and note before committing', async () => {
     renderPage()
 
-    fireEvent.change(screen.getByLabelText('Rejection reason'), {
-      target: { value: 'test_submission' },
-    })
-    fireEvent.change(screen.getByLabelText('Admin note'), {
-      target: { value: '  Training drill report  ' },
-    })
     fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
     fireEvent.click(screen.getByRole('button', { name: 'Reject Selected' }))
 
     expect(mockRejectReport).not.toHaveBeenCalled()
     const dialog = screen.getByRole('dialog', { name: 'Reject selected reports?' })
+    fireEvent.change(within(dialog).getByLabelText('Rejection reason'), {
+      target: { value: 'test_submission' },
+    })
+    fireEvent.change(within(dialog).getByLabelText('Admin note'), {
+      target: { value: '  Training drill report  ' },
+    })
     expect(within(dialog).getByText('1 report')).toBeInTheDocument()
-    expect(within(dialog).getByText('Test submission')).toBeInTheDocument()
-    expect(within(dialog).getByText('Training drill report')).toBeInTheDocument()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reject 1 report' }))
 

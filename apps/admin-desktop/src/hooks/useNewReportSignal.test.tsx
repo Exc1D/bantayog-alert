@@ -1,8 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { Link, MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CommandHeader } from '../components/CommandHeader'
 import {
   NewReportSignalProvider,
   publishReportSnapshot,
@@ -24,24 +23,21 @@ vi.mock('./useAudioAlerts', () => ({
   }),
 }))
 
-vi.mock('@bantayog/shared-ui', () => ({
-  useAuth: () => ({ claims: null }),
-}))
-
-// CommandHeader statically imports EditHotlineModal, which imports ../app/firebase.
-// Stub it so module evaluation does not initialize a real Firebase Auth client.
-vi.mock('../app/firebase', () => ({ db: {} }))
-
 function SignalProbe() {
   const signal = useNewReportSignal()
-  return <output aria-label="new report count">{signal.notificationCount}</output>
+  return (
+    <>
+      <output aria-label="new report count">{signal.notificationCount}</output>
+      <output aria-label="triage decision count">{signal.triageDecisionCount}</output>
+      <Link to="/triage">Triage</Link>
+    </>
+  )
 }
 
 function renderSignalHarness() {
   return render(
     <MemoryRouter initialEntries={['/dashboard']}>
       <NewReportSignalProvider>
-        <CommandHeader title="PDRRMO Camarines Norte" windowRole="dashboard" />
         <SignalProbe />
       </NewReportSignalProvider>
     </MemoryRouter>,
@@ -82,7 +78,6 @@ describe('useNewReportSignal', () => {
     expect(screen.getByLabelText('new report count')).toHaveTextContent('1')
     expect(audioMocks.play).toHaveBeenCalledTimes(1)
     expect(document.title).toBe('(1) Bantayog Command')
-    expect(screen.getByRole('button', { name: '1 notifications' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Triage' }))
 
@@ -90,5 +85,23 @@ describe('useNewReportSignal', () => {
       expect(screen.getByLabelText('new report count')).toHaveTextContent('0')
     })
     expect(document.title).toBe('Bantayog Command')
+  })
+
+  it('counts only reports needing triage decisions', () => {
+    renderSignalHarness()
+
+    act(() => {
+      publishReportSnapshot([
+        { id: 'r-new', status: 'new', createdAt: '2999-01-01T00:00:00.000Z' },
+        {
+          id: 'r-awaiting',
+          status: 'awaiting_verify',
+          createdAt: '2999-01-01T00:00:00.000Z',
+        },
+        { id: 'r-verified', status: 'verified', createdAt: '2999-01-01T00:00:00.000Z' },
+      ])
+    })
+
+    expect(screen.getByLabelText('triage decision count')).toHaveTextContent('2')
   })
 })

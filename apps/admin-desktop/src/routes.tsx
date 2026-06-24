@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import DashboardPage from './pages/DashboardPage'
 import MapPage from './pages/MapPage'
@@ -14,6 +14,7 @@ import { ErrorBoundary } from './providers/ErrorBoundary'
 import { useOnboarding } from './hooks/useOnboarding'
 import { OnboardingTour } from './components/OnboardingTour'
 import { NewReportSignalProvider } from './hooks/useNewReportSignal'
+import { AdminShell } from './components/AdminShell'
 
 function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(
@@ -57,7 +58,7 @@ function AuthLayout() {
     <WindowSyncProvider>
       <ErrorBoundary>
         <NewReportSignalProvider>
-          <Outlet />
+          <AdminShell />
           <OnboardingTour
             state={onboarding}
             onNext={onboarding.nextStep}
