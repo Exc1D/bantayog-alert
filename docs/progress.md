@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-06-24 - Ponytail dependency and workspace shell cleanup
+
+- Removed unused root geospatial dependencies, Admin's unused `@sentry/react`, Citizen's unused `msw`, and stale ignored `node_modules` shells under retired package directories.
+- Refreshed `pnpm-lock.yaml`; root typecheck, lint, build, and Fallow audit passed with inherited warnings only.
+
+## 2026-06-24 - Responder dispatch raw-error copy fix
+
+- Fixed invalid responder dispatch detail routes so Firestore permission/load errors render safe `Dispatch unavailable` copy instead of raw rules text.
+- Added a red-first regression in `DispatchDetailPage.test.tsx`; focused responder page tests, responder typecheck, and responder lint passed.
+
+## 2026-06-23 - Fix Admin-Desktop Auth/Flickering Loop
+
+- Resolved the flickering issue in `admin-desktop` by forcing an automatic sign-out when the Firebase Auth session fails token refresh (e.g. returning 400 Bad Request on emulator restart).
+- Implemented `isNetworkError` check in `@bantayog/shared-ui`'s `AuthProvider` to safely distinguish fatal auth failures from transient network errors, performing auto-signout only on fatal unrecoverable errors.
+- Added comprehensive unit tests in `packages/shared-ui/src/auth-provider.test.tsx` verifying that unrecoverable token refresh failures trigger `signOut`, whereas network errors preserve the auth state.
+- Verification: ran typechecks, eslint, unit tests for `shared-ui` (all 14 passed) and `admin-desktop` (all 587 tests in 78 files passed), and ran workspace build successfully.
+
 ## 2026-06-22 - Citizen PWA CSP Fix for Report Submission
 
 - Fixed the Citizen Firebase Hosting CSP so Firebase Auth/App Check can load the Google reCAPTCHA/Auth helper scripts and frames needed before `submitCitizenReport` runs. No deploy, no rules, no schema changes.
@@ -589,3 +606,7 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Stopped the Map center empty-incidents card from rendering when an active own report is present; municipality-filter empty hints remain unchanged.
 - Allowed authenticated pseudonymous report owners through `cancelReportByCitizen` while preserving registered-role, active-account, report-status, ownership, App Check, and rate-limit enforcement.
 - Red-first Citizen and Functions regressions failed on the old behavior, then passed 6/6 and 11/11. Citizen and Functions typechecks and scoped lint passed. No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-06-23 - Local Admin Auth emulator launch repair
+
+- Fixed `dev:all` POSIX shutdown to signal each spawned process group, preventing orphaned Vite/Firebase descendants from occupying partial-stack ports after exit. The regression test failed first, then passed 8/8; a clean stack exposed all managed ports and browser Admin sign-in reached `/dashboard` with no console errors.

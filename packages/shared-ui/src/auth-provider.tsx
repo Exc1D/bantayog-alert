@@ -1,6 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { onAuthStateChanged, signOut as fbSignOut, type Auth, type User } from 'firebase/auth'
 
+function isNetworkError(err: unknown): boolean {
+  const code = (err as Record<string, unknown> | null)?.code as string | undefined
+  return (
+    code === 'auth/network-request-failed' ||
+    (err instanceof Error && /network|timeout|failed to fetch/i.test(err.message))
+  )
+}
+
 export interface AuthContextValue {
   user: User | null
   claims: Record<string, unknown> | null
@@ -34,8 +42,18 @@ export function AuthProvider({ children, auth }: AuthProviderProps) {
       if (auth.currentUser?.uid !== currentUser.uid) return
       setClaims(token.claims)
     } catch (err: unknown) {
+      const refreshedUser = auth.currentUser
+      // Guard against stale user (sign-out or account switch during refresh)
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (refreshedUser?.uid !== currentUser.uid) return
       console.error('[AuthProvider] token refresh failed:', err)
       setClaims(null)
+      if (!isNetworkError(err)) {
+        console.warn('[AuthProvider] Fatal token refresh error during refresh, signing out.')
+        fbSignOut(auth).catch((e: unknown) => {
+          console.error('[AuthProvider] auto signout failed:', e)
+        })
+      }
     }
   }, [auth])
 
@@ -55,6 +73,12 @@ export function AuthProvider({ children, auth }: AuthProviderProps) {
             if (!active || auth.currentUser?.uid !== uid) return
             console.error('[AuthProvider] token refresh failed:', err)
             setClaims(null)
+            if (!isNetworkError(err)) {
+              console.warn('[AuthProvider] Fatal token refresh error during init, signing out.')
+              fbSignOut(auth).catch((e: unknown) => {
+                console.error('[AuthProvider] auto signout failed:', e)
+              })
+            }
           })
           .finally(() => {
             if (!active || auth.currentUser?.uid !== uid) return

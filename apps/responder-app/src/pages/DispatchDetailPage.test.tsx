@@ -176,6 +176,22 @@ describe('DispatchDetailPage', () => {
     expect(screen.getByText(/decline/i)).toBeInTheDocument()
   })
 
+  it('shows safe copy instead of raw Firestore errors', () => {
+    detailState.error = Object.assign(
+      new Error('Missing or insufficient permissions. Rules line 42'),
+      { code: 'permission-denied' },
+    )
+
+    renderPage()
+
+    expect(
+      screen.getByText(
+        'Dispatch unavailable. It may have been closed, reassigned, or outside your scope.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/rules line 42/i)).not.toBeInTheDocument()
+  })
+
   it('calls accept when the Accept button is clicked', async () => {
     detailState.dispatch.status = 'pending'
     detailState.dispatch.uiStatus = 'pending'

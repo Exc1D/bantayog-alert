@@ -53,6 +53,13 @@ describe('dev-all ports', () => {
     expect(script).toContain("process.on('SIGTERM', () => shutdown())")
   })
 
+  it('terminates spawned process groups so child servers do not survive shutdown', () => {
+    const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
+
+    expect(script).toContain("detached: process.platform !== 'win32'")
+    expect(script).toContain('process.kill(-proc.pid, signal)')
+  })
+
   it('starts the interactive emulator subset without hosting or pubsub', () => {
     const script = readFileSync(new URL('./dev-all.mjs', import.meta.url), 'utf8')
 

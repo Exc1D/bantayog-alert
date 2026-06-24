@@ -223,3 +223,19 @@
 
 - Public-incident empty and filter hints must not use the presence of an own report as their trigger; own reports are valid map content and must suppress the calm empty card.
 - Citizen actions on reports created before registration must accept Firebase's authenticated `anonymous` provider, then enforce ownership in the transaction. Keep role and active-account checks for registered callers.
+
+## Local Dev Process Cleanup
+
+- `dev:all` must terminate process groups on POSIX, not only its `pnpm` wrapper PIDs. Orphaned Vite/Java descendants can leave app and data ports live while Auth 9099 is absent, making persisted sessions look healthy but fresh Admin sign-in fail with `ERR_CONNECTION_REFUSED`.
+
+## Auth / Session Invalidation Loop
+
+- When a persisted Firebase Auth session fails token refresh (e.g. `getIdTokenResult(true)` returns a 400 Bad Request because the emulator was restarted and the user no longer exists), the `AuthProvider` must explicitly call `signOut(auth)`. Leaving the invalid session active keeps `user` non-null but `claims` null, letting the user access protected pages while active page listeners (like `useFirestoreListeners`) repeatedly trigger unauthorized queries and error retries, causing severe console noise and UI flickering.
+
+## Responder Dispatch UX
+
+- Responder dispatch detail pages must not render raw Firestore listener errors. Keep raw errors in console logs for debugging, but map permission/load failures to safe user copy so rules internals never leak into the field UI.
+
+## Ponytail Cleanup
+
+- After deleting a workspace package, remove any ignored per-package `node_modules` shell too. An otherwise-empty directory still matches `packages/*` and makes Fallow report `glob-matched-no-package-json`.
