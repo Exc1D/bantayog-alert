@@ -91,6 +91,7 @@ function start(name, color, cmd, args, opts = {}) {
     stdio: 'pipe',
     shell: false,
     ...opts,
+    detached: process.platform !== 'win32',
   })
   child.stdout.on('data', prefixLogger(name, color))
   child.stderr.on('data', prefixLogger(name, color))
@@ -103,15 +104,25 @@ function start(name, color, cmd, args, opts = {}) {
   return child
 }
 
+function stop(proc, signal) {
+  if (!proc.pid) return
+  try {
+    if (process.platform === 'win32') proc.kill(signal)
+    else process.kill(-proc.pid, signal)
+  } catch (error) {
+    if (error?.code !== 'ESRCH') throw error
+  }
+}
+
 function shutdown(exitCode = 0) {
   console.log(`\n${colors.bold}Shutting down all processes...${colors.reset}`)
   for (const proc of procs) {
-    proc.kill('SIGTERM')
+    stop(proc, 'SIGTERM')
   }
   // Force kill after 5s
   setTimeout(() => {
     for (const proc of procs) {
-      if (!proc.killed) proc.kill('SIGKILL')
+      stop(proc, 'SIGKILL')
     }
     process.exit(exitCode)
   }, 5000)
