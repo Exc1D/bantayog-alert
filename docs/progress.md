@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-06-24 - Repository Documentation Cleanup
+
+- Removed stale agent plans, dated audits/evaluations, hidden design notes,
+  giant PRD/implementation plans, and root duplicate `learnings.md` /
+  `progress.md` ledgers from repository navigation.
+- Replaced the README's phase-plan index with setup, local development,
+  verification, and documentation entry points.
+- Added `CONTRIBUTING.md` with the repo's branch, scope, verification, and
+  risky-change working agreement.
+- Kept stable docs: MVP scope, ADRs, architecture map/alignment, runbooks,
+  `docs/learnings.md`, and `docs/progress.md`. The migration runbook was left
+  untouched because schema/migration cleanup is approval-gated.
+- Verification: markdown relative-link check, targeted Prettier check,
+  `git diff --check`, `pnpm typecheck`, `pnpm lint`, and `pnpm test` passed.
+  Typecheck replayed the existing Functions Node 22 engine warning while
+  running from the Node 20 root workspace; README now calls that out. Root tests
+  passed 27 files / 231 tests with the existing shared-validator structured-log
+  stderr.
+
 ## 2026-06-24 - Ponytail dependency and workspace shell cleanup
 
 - Removed unused root geospatial dependencies, Admin's unused `@sentry/react`, Citizen's unused `msw`, and stale ignored `node_modules` shells under retired package directories.

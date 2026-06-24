@@ -1,5 +1,18 @@
 # Learnings - Durable Rules
 
+## Documentation Hygiene
+
+- Keep `README.md` and `CONTRIBUTING.md` as the contributor entry points; do not
+  turn the repository into a museum of completed plans.
+- `docs/learnings.md` and `docs/progress.md` are the canonical append-only
+  ledgers. Root-level duplicate ledgers drift and should not come back.
+- Generated agent plans, dated audits, and one-off design reviews should live in
+  issues, PRs, or external notes after implementation. Stable docs should be
+  runbooks, ADRs, product scope, architecture boundaries, or current operating
+  instructions.
+- Treat migration/schema docs as approval-gated during cleanup. If a cleanup
+  pass wants to delete or rewrite one, show the diff and ask first.
+
 ## UX / Metrics Display
 
 - Widening a stat-card prop `number`→`number | null`: guard derived bool flags (e.g. `isFcmHigh`) with strict `!== null` — a falsy `!fcmPercent` treats genuine `0` as unknown. Use `String(value) + '%'` not a template literal under `@typescript-eslint/restrict-template-expressions`.
