@@ -65,6 +65,14 @@ function getActionErrorMessage(error: Error | undefined): string | null {
   return 'Something went wrong. Please retry.'
 }
 
+function getDispatchLoadErrorMessage(error: Error | undefined): string {
+  const code = getFirebaseErrorCode(error)
+  if (code === 'permission-denied' || code === 'firestore/permission-denied') {
+    return 'Dispatch unavailable. It may have been closed, reassigned, or outside your scope.'
+  }
+  return 'Dispatch unavailable. Please go back and try again.'
+}
+
 function statusLabel(uiStatus: string | undefined, fallback: string): string {
   if (uiStatus === 'heading_to_scene') return 'En Route'
   if (uiStatus === 'on_scene') return 'On Scene'
@@ -868,7 +876,7 @@ export function DispatchDetailPage() {
   const terminalSurface = getTerminalDispatchSurface(dispatch, acceptError)
   if (terminalSurface) return terminalSurface
   if (error) {
-    return <MessageState message={error.message} isError />
+    return <MessageState message={getDispatchLoadErrorMessage(error)} isError />
   }
   if (!dispatch) {
     return <MessageState message="Dispatch not found." />
