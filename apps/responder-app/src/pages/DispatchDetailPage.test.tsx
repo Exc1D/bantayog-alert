@@ -184,7 +184,11 @@ describe('DispatchDetailPage', () => {
 
     renderPage()
 
-    expect(screen.getByText(/dispatch unavailable/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Dispatch unavailable. It may have been closed, reassigned, or outside your scope.',
+      ),
+    ).toBeInTheDocument()
     expect(screen.queryByText(/rules line 42/i)).not.toBeInTheDocument()
   })
 

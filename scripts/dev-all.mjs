@@ -117,12 +117,20 @@ function stop(proc, signal) {
 function shutdown(exitCode = 0) {
   console.log(`\n${colors.bold}Shutting down all processes...${colors.reset}`)
   for (const proc of procs) {
-    stop(proc, 'SIGTERM')
+    try {
+      stop(proc, 'SIGTERM')
+    } catch (error) {
+      console.error(`Failed to SIGTERM pid ${proc.pid}:`, error)
+    }
   }
   // Force kill after 5s
   setTimeout(() => {
     for (const proc of procs) {
-      stop(proc, 'SIGKILL')
+      try {
+        stop(proc, 'SIGKILL')
+      } catch (error) {
+        console.error(`Failed to SIGKILL pid ${proc.pid}:`, error)
+      }
     }
     process.exit(exitCode)
   }, 5000)

@@ -42,6 +42,10 @@ export function AuthProvider({ children, auth }: AuthProviderProps) {
       if (auth.currentUser?.uid !== currentUser.uid) return
       setClaims(token.claims)
     } catch (err: unknown) {
+      const refreshedUser = auth.currentUser
+      // Guard against stale user (sign-out or account switch during refresh)
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (refreshedUser?.uid !== currentUser.uid) return
       console.error('[AuthProvider] token refresh failed:', err)
       setClaims(null)
       if (!isNetworkError(err)) {
