@@ -180,6 +180,61 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('claims').textContent).toBe('none')
   })
 
+  it('signs out user on fatal getIdTokenResult failure', async () => {
+    const unsubscribe = vi.fn()
+    const mockUser = {
+      uid: 'test-uid',
+      getIdTokenResult: vi.fn().mockRejectedValue(new Error('user deleted')),
+    }
+
+    mockOnAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(mockUser)
+      return unsubscribe
+    })
+
+    const mockAuth = { currentUser: mockUser } as unknown as import('firebase/auth').Auth
+
+    render(
+      <AuthProvider auth={mockAuth}>
+        <TestConsumer />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalledWith(mockAuth)
+    })
+  })
+
+  it('does NOT sign out user on network getIdTokenResult failure', async () => {
+    const unsubscribe = vi.fn()
+    const mockUser = {
+      uid: 'test-uid',
+      getIdTokenResult: vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('network failed'), { code: 'auth/network-request-failed' }),
+        ),
+    }
+
+    mockOnAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(mockUser)
+      return unsubscribe
+    })
+
+    const mockAuth = { currentUser: mockUser } as unknown as import('firebase/auth').Auth
+
+    render(
+      <AuthProvider auth={mockAuth}>
+        <TestConsumer />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading').textContent).toBe('ready')
+    })
+    expect(mockSignOut).not.toHaveBeenCalled()
+  })
+
   it('throws when useAuth is called outside AuthProvider', () => {
     function BadComponent() {
       useAuth()
