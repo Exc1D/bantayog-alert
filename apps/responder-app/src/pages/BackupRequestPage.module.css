@@ -104,7 +104,7 @@
 
 .toggleBtn:hover:not(:disabled) {
   border-color: var(--amber-accent);
-  color: var(--amber-accent);
+  color: var(--amber-text);
 }
 
 .toggleBtn:focus-visible {
@@ -133,5 +133,5 @@
   background: rgba(239, 68, 68, 0.14);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  color: var(--color-danger);
+  color: var(--red-text);
 }
