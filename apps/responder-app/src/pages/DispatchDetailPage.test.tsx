@@ -212,6 +212,17 @@ describe('DispatchDetailPage', () => {
     expect(screen.getByTestId('dispatch-status-d-1')).toBeInTheDocument()
   })
 
+  it('places the current next action before progress details', () => {
+    detailState.dispatch.status = 'acknowledged'
+    detailState.dispatch.uiStatus = 'acknowledged'
+    renderPage()
+
+    const action = screen.getByRole('button', { name: /en route/i })
+    const progress = screen.getByRole('progressbar', { name: /dispatch progress/i })
+
+    expect(action.compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('explains location access before showing live distance', () => {
     detailState.dispatch.status = 'acknowledged'
     detailState.dispatch.uiStatus = 'acknowledged'

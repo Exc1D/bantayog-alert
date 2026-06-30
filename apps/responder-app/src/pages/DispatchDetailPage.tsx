@@ -900,17 +900,6 @@ export function DispatchDetailPage() {
       <div className={styles.body}>
         <MaybeIncidentSummary report={report} reportId={dispatch.reportId} />
 
-        <ProgressCard status={dispatch.status} step={step} progress={progress} />
-
-        <MaybeNavigateSection isActive={isActive} mapsUrl={mapsUrl} />
-
-        <MaybePreArrivalInfo
-          isActive={isActive}
-          status={dispatch.status}
-          report={report}
-          distanceMeters={distanceMeters}
-        />
-
         <MaybePendingDispatchActions
           status={dispatch.status}
           accepting={accepting}
@@ -955,6 +944,17 @@ export function DispatchDetailPage() {
               },
             )
           }}
+        />
+
+        <ProgressCard status={dispatch.status} step={step} progress={progress} />
+
+        <MaybeNavigateSection isActive={isActive} mapsUrl={mapsUrl} />
+
+        <MaybePreArrivalInfo
+          isActive={isActive}
+          status={dispatch.status}
+          report={report}
+          distanceMeters={distanceMeters}
         />
 
         <MaybeActiveDispatchActions
