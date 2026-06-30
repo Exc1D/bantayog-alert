@@ -141,7 +141,6 @@ describe('MapPage Firestore wiring', () => {
 
   it('renders map with reports from Firestore', () => {
     renderWithMemoryRouter(<MapPage />)
-    expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
     // Confirm useFirestoreListeners is invoked and wired to the page
     expect(mockUseFirestoreListeners).toHaveBeenCalledWith(
       expect.objectContaining({ windowType: 'map' }),

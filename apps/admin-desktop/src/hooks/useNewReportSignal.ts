@@ -26,12 +26,14 @@ interface ReportSnapshotDetail {
 
 interface NewReportSignalState {
   notificationCount: number
+  triageDecisionCount: number
   audioEnabled: boolean
   toggleAudio: () => void
 }
 
 const DEFAULT_SIGNAL_STATE: NewReportSignalState = {
   notificationCount: 0,
+  triageDecisionCount: 0,
   audioEnabled: false,
   toggleAudio: noop,
 }
@@ -73,6 +75,11 @@ function latestNewReportMillis(reports: readonly NewReportSignalReport[]): numbe
   return Math.max(...createdAtValues)
 }
 
+function countTriageDecisions(reports: readonly NewReportSignalReport[]): number {
+  return reports.filter((report) => report.status === 'new' || report.status === 'awaiting_verify')
+    .length
+}
+
 function isReportSnapshotEvent(event: Event): event is CustomEvent<ReportSnapshotDetail> {
   const detail = (event as CustomEvent<unknown>).detail
   return (
@@ -96,6 +103,7 @@ export function NewReportSignalProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { enabled: audioEnabled, play, toggle } = useAudioAlerts()
   const [notificationCount, setNotificationCount] = useState(0)
+  const [triageDecisionCount, setTriageDecisionCount] = useState(0)
   const reportsRef = useRef<readonly NewReportSignalReport[]>([])
   const watermarkRef = useRef<number | null>(null)
   const alertedReportIdsRef = useRef(new Set<string>())
@@ -111,6 +119,7 @@ export function NewReportSignalProvider({ children }: { children: ReactNode }) {
   const processReports = useCallback(
     (reports: readonly NewReportSignalReport[]) => {
       reportsRef.current = reports
+      setTriageDecisionCount(countTriageDecisions(reports))
       if (isTriageRouteRef.current) {
         clearSignal()
         return
@@ -169,10 +178,11 @@ export function NewReportSignalProvider({ children }: { children: ReactNode }) {
   const value = useMemo<NewReportSignalState>(
     () => ({
       notificationCount,
+      triageDecisionCount,
       audioEnabled,
       toggleAudio: toggle,
     }),
-    [audioEnabled, notificationCount, toggle],
+    [audioEnabled, notificationCount, toggle, triageDecisionCount],
   )
 
   return createElement(NewReportSignalContext.Provider, { value }, children)

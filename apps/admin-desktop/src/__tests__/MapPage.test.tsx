@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import MapPage from '../pages/MapPage'
 import { useCommandCenterStore } from '../stores/commandCenterStore'
 import {
@@ -63,15 +63,10 @@ describe('MapPage', () => {
     })
   })
 
-  it('renders header and map', async () => {
+  it('renders map controls', async () => {
     await renderMapPage()
-    expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
-  })
-
-  it('opens alert declaration from the map header', async () => {
-    await renderMapPage()
-    fireEvent.click(screen.getByRole('button', { name: /declare alert/i }))
-    expect(screen.getByRole('dialog', { name: /declare alert/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Active Only' })).toBeInTheDocument()
   })
 
   it('N6 receiver: cross-window select:municipality message selects municipality in store', async () => {

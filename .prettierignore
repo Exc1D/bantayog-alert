@@ -9,3 +9,14 @@ pnpm-lock.yaml
 *.tfstate.*
 .terraform
 .terraform.lock.hcl
+.remember
+.lean-ctx
+.mempalace
+.fallow
+.superpowers
+.agents
+.opencode
+.playwright-mcp
+.pnpm-store
+.worktrees
+.graphify-out

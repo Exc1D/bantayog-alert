@@ -6,8 +6,6 @@ import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
-import { useAuth } from '@bantayog/shared-ui'
-import { CommandHeader } from '../components/CommandHeader'
 import { DispatchStatsCards } from '../components/DispatchStatsCards'
 import { EscalationQueueSection } from '../components/EscalationQueueSection'
 import { DispatchLifecycleTable } from '../components/DispatchLifecycleTable'
@@ -18,7 +16,6 @@ import { SuccessBanner } from '../components/SuccessBanner'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { HelpModal } from '../components/HelpModal'
-import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { callables } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
@@ -142,7 +139,6 @@ function SlaCountdown({ deadlineAt }: { deadlineAt: number }) {
 // fallow-ignore-next-line complexity
 export function DispatchMonitorPage() {
   const db = getFirestoreInstance()
-  const { signOut } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -165,7 +161,6 @@ export function DispatchMonitorPage() {
   const [retryCommand, setRetryCommand] = useState<FailedDispatchCommand | null>(null)
   const [retryingAction, setRetryingAction] = useState(false)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
-  const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
 
@@ -468,7 +463,7 @@ export function DispatchMonitorPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--color-surface)]">
       <a
         href="#main-content"
         className="sr-only rounded bg-blue-600 px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60]"
@@ -484,19 +479,6 @@ export function DispatchMonitorPage() {
           }}
         />
       )}
-      <CommandHeader
-        title="PDRRMO Camarines Norte"
-        windowRole="dispatches"
-        onDeclareAlert={() => {
-          setAlertModalOpen(true)
-        }}
-        onShowKeyboardShortcuts={() => {
-          setHelpModalOpen(true)
-        }}
-        onSignOut={() => {
-          void signOut()
-        }}
-      />
       {successMessage && (
         <SuccessBanner
           message={successMessage}
@@ -799,19 +781,6 @@ export function DispatchMonitorPage() {
           { key: '?', description: 'Show keyboard shortcuts' },
           { key: 'Esc', description: 'Close help' },
         ]}
-      />
-      <DeclareAlertModal
-        open={alertModalOpen}
-        onClose={() => {
-          setAlertModalOpen(false)
-        }}
-        onSuccess={() => {
-          setAlertModalOpen(false)
-          setSuccessMessage('Alert declared successfully')
-        }}
-        onError={(msg) => {
-          setDispatchError(msg)
-        }}
       />
     </div>
   )

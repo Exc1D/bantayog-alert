@@ -12,7 +12,6 @@ const mockUnpublishReport = vi.hoisted(() =>
 const mockSetCitizenContentVisibility = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ visibility: 'internal', contentId: 'sit-1' }),
 )
-const mockSignOut = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const mockGetDocs = vi.hoisted(() => vi.fn(() => new Promise(() => undefined)))
 const mockCollection = vi.hoisted(() => vi.fn())
 const mockUpdateDoc = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
@@ -40,10 +39,6 @@ vi.mock('../services/callables', () => ({
     unpublishReport: mockUnpublishReport,
     setCitizenContentVisibility: mockSetCitizenContentVisibility,
   },
-}))
-
-vi.mock('@bantayog/shared-ui', () => ({
-  useAuth: () => ({ signOut: mockSignOut }),
 }))
 
 vi.mock('../hooks/useFirestoreListeners', () => ({
@@ -351,22 +346,6 @@ describe('FeedPage', () => {
           reportId: 'r-new',
         }),
       )
-    })
-  })
-
-  it('surfaces sign-out errors in the actionError banner', async () => {
-    mockSignOut.mockRejectedValueOnce(new Error('Network error during sign out'))
-    render(
-      <MemoryRouter>
-        <FeedPage />
-      </MemoryRouter>,
-    )
-
-    const signOutBtn = screen.getByRole('button', { name: /sign out/i })
-    fireEvent.click(signOutBtn)
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Network error during sign out/)
     })
   })
 

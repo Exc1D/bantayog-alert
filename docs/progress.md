@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-24 - Admin shell and triage friction slice
+
+- Added a shared Admin shell with collapsible persisted sidebar navigation, global utility actions, and a Triage badge that counts only `new` + `awaiting_verify` reports.
+- Moved global Declare Alert, audio, notifications, hotlines, shortcuts, and sign-out out of page headers; Map remains a full-bleed shell content exception.
+- Reduced Triage click friction by making row actions labeled and moving reject reason/admin note into the Reject confirmation modal.
+- Verification: `pnpm --dir apps/admin-desktop exec vitest run` passed 78 files / 587 tests; `pnpm typecheck` and `pnpm lint` passed. Functions lint/typecheck replayed the existing Node 22 engine warning under the Node 20 root workspace.
+
 ## 2026-06-24 - Repository Documentation Cleanup
 
 - Removed stale agent plans, dated audits/evaluations, hidden design notes,

@@ -20,6 +20,7 @@
 
 ## UX / Dashboard Design
 
+- When global admin chrome moves into a shell, move the tests with it. Page tests should assert page content/workflows; shell tests should assert global actions, nav counts, sign-out, and alert surfacing.
 - Un-polled metrics display `—` (em dash), not `0`/`0%`; a `?? 0` default reads as a real zero/outage on first paint. Use `?? null` for the display path and guard the render with a null check.
 - FCM success-rate has two defaults that must NOT be unified: `getStatusFcmSuccessRate ?? null` (display = "not yet known") vs `getModeFcmSuccessRate ?? 1.0` (mode input — a missing metric must not false-trip degraded mode).
 - Surface metrics-poll errors in the always-visible StatusBar row, not the collapsible section; a silent failure is as harmful as a fabricated value.

@@ -172,7 +172,7 @@ export function TriageQueueTable({
                           onVerify(report.id)
                         }}
                         disabled={loadingIds.has(report.id)}
-                        className="rounded p-2 text-[var(--color-success)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-success)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Verify"
                       >
                         {loadingIds.has(report.id) ? (
@@ -180,6 +180,7 @@ export function TriageQueueTable({
                         ) : (
                           <Check className="h-4 w-4" />
                         )}
+                        <span>Verify</span>
                       </button>
                     )}
                     {actions.canReject && (
@@ -189,7 +190,7 @@ export function TriageQueueTable({
                           onReject(report.id)
                         }}
                         disabled={loadingIds.has(report.id)}
-                        className="rounded p-2 text-[var(--color-danger)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-danger)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Reject"
                       >
                         {loadingIds.has(report.id) ? (
@@ -197,6 +198,7 @@ export function TriageQueueTable({
                         ) : (
                           <X className="h-4 w-4" />
                         )}
+                        <span>Reject</span>
                       </button>
                     )}
                     {actions.canDispatch && (
@@ -206,7 +208,7 @@ export function TriageQueueTable({
                           onDispatch(report.id)
                         }}
                         disabled={loadingIds.has(report.id)}
-                        className="rounded p-2 text-[var(--color-info)] hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-info)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Dispatch"
                       >
                         {loadingIds.has(report.id) ? (
@@ -214,6 +216,7 @@ export function TriageQueueTable({
                         ) : (
                           <Send className="h-4 w-4" />
                         )}
+                        <span>Dispatch</span>
                       </button>
                     )}
                   </div>

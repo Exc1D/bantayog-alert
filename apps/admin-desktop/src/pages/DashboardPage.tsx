@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { SuccessBanner } from '../components/SuccessBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -11,7 +10,6 @@ import { ResponderAvailabilityPanel } from '../components/ResponderAvailabilityP
 import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
 import { AllClearState } from '../components/AllClearState'
 import { HelpModal } from '../components/HelpModal'
-import { DeclareAlertModal } from '../components/DeclareAlertModal'
 import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { StatusBar } from '../components/StatusBar'
@@ -20,7 +18,6 @@ import { withRetry } from '../utils/withRetry'
 import { deriveDashboardMode } from '../utils/dashboard-mode'
 import type { DashboardMode } from '../utils/dashboard-mode'
 import { callables } from '../services/callables'
-import { useAuth } from '@bantayog/shared-ui'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
 import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
@@ -95,11 +92,8 @@ interface DashboardFeedbackBannersProps {
 }
 
 interface DashboardModalsProps {
-  alertModalOpen: boolean
   helpModalOpen: boolean
   isDispatching: boolean
-  onAlertError: (message: string) => void
-  onCloseAlert: () => void
   onCloseHelp: () => void
   onCloseReDispatch: () => void
   onDispatch: (responderUid: string) => void
@@ -482,11 +476,8 @@ function DashboardMainContent({
 }
 
 function DashboardModals({
-  alertModalOpen,
   helpModalOpen,
   isDispatching,
-  onAlertError,
-  onCloseAlert,
   onCloseHelp,
   onCloseReDispatch,
   onDispatch,
@@ -497,12 +488,6 @@ function DashboardModals({
   return (
     <>
       <HelpModal open={helpModalOpen} onClose={onCloseHelp} shortcuts={DASHBOARD_SHORTCUTS} />
-      <DeclareAlertModal
-        open={alertModalOpen}
-        onClose={onCloseAlert}
-        onSuccess={onCloseAlert}
-        onError={onAlertError}
-      />
       <ReDispatchModal
         isOpen={reDispatchModalOpen}
         onClose={onCloseReDispatch}
@@ -516,7 +501,6 @@ function DashboardModals({
 }
 
 export default function DashboardPage() {
-  const { signOut } = useAuth()
   const { rows, loading: lifecycleLoading, error: lifecycleError } = useDispatchLifecycle(db)
   const { responders, loading: fleetLoading, error: fleetError } = useResponderFleet(db)
   const { metrics: opsMetrics, loading: metricsLoading, error: metricsError } = useOpsMetrics('24h')
@@ -530,7 +514,6 @@ export default function DashboardPage() {
   })
 
   const [helpModalOpen, setHelpModalOpen] = useState(false)
-  const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [reDispatchModalOpen, setReDispatchModalOpen] = useState(false)
   const [selectedDispatchId, setSelectedDispatchId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -694,21 +677,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+    <>
       <DashboardOfflineBanner error={error} />
-      <CommandHeader
-        title="PDRRMO Camarines Norte"
-        windowRole="dashboard"
-        onDeclareAlert={() => {
-          setAlertModalOpen(true)
-        }}
-        onShowKeyboardShortcuts={() => {
-          setHelpModalOpen(true)
-        }}
-        onSignOut={() => {
-          void signOut()
-        }}
-      />
       <DashboardFeedbackBanners
         actionError={actionError}
         onDismissActionError={() => {
@@ -757,16 +727,8 @@ export default function DashboardPage() {
         verifyingReportIds={verifyingReportIds}
       />
       <DashboardModals
-        alertModalOpen={alertModalOpen}
         helpModalOpen={helpModalOpen}
         isDispatching={isDispatching}
-        onAlertError={(msg) => {
-          console.error('Alert declaration failed:', msg)
-          setActionError(msg)
-        }}
-        onCloseAlert={() => {
-          setAlertModalOpen(false)
-        }}
         onCloseHelp={() => {
           setHelpModalOpen(false)
         }}
@@ -781,6 +743,6 @@ export default function DashboardPage() {
         responders={responders}
         reDispatchModalOpen={reDispatchModalOpen}
       />
-    </div>
+    </>
   )
 }

@@ -174,11 +174,6 @@ describe('DashboardPage ops redesign', () => {
     expect(h1).toHaveTextContent('Operations Dashboard')
   })
 
-  it('renders Declare Alert button', () => {
-    renderWithMemoryRouter(<DashboardPage />)
-    expect(screen.getByRole('button', { name: /Declare Alert/i })).toBeInTheDocument()
-  })
-
   it('navigates to /dispatches on D key', () => {
     renderWithMemoryRouter(<DashboardPage />)
     fireEvent.keyDown(window, { key: 'd' })

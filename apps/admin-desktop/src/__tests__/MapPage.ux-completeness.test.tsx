@@ -69,20 +69,15 @@ describe('MapPage UX completeness', () => {
     })
   })
 
-  it('renders header and map', () => {
+  it('renders map controls', () => {
     renderWithMemoryRouter(<MapPage />)
-    expect(screen.getByText('PDRRMO Camarines Norte')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Active Only' })).toBeInTheDocument()
   })
 
   it('shows empty state when no reports exist', () => {
     renderWithMemoryRouter(<MapPage />)
     expect(screen.getByText('No active incidents')).toBeInTheDocument()
-  })
-
-  it('opens alert declaration from the map header', () => {
-    renderWithMemoryRouter(<MapPage />)
-    fireEvent.click(screen.getByRole('button', { name: /declare alert/i }))
-    expect(screen.getByRole('dialog', { name: /declare alert/i })).toBeInTheDocument()
   })
 
   it('shows success banner after verifying a report', async () => {

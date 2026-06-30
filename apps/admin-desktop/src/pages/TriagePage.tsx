@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
-import { CommandHeader } from '../components/CommandHeader'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { SuccessBanner } from '../components/SuccessBanner'
@@ -16,7 +15,11 @@ import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
-import { REJECTION_REASONS, type RejectionReason } from '../constants/report'
+import {
+  REJECTION_REASONS,
+  isValidRejectionReason,
+  type RejectionReason,
+} from '../constants/report'
 import type { Report } from '../types'
 
 const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified'])
@@ -101,10 +104,6 @@ function filterLabel(value: string): string {
     .join(' ')
 }
 
-function rejectionReasonLabel(reason: RejectionReason): string {
-  return REJECTION_REASONS.find((item) => item.value === reason)?.label ?? filterLabel(reason)
-}
-
 function reportCountLabel(count: number): string {
   return `${String(count)} report${count === 1 ? '' : 's'}`
 }
@@ -178,8 +177,6 @@ export default function TriagePage() {
   const [severityFilter, setSeverityFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [rejectionReason, setRejectionReason] = useState<RejectionReason>('insufficient_detail')
-  const [adminNote, setAdminNote] = useState('')
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
   const [pendingRejection, setPendingRejection] = useState<PendingRejection | null>(null)
@@ -365,12 +362,12 @@ export default function TriagePage() {
       setRetryCommand(null)
       setPendingRejection({
         reportIds,
-        reason: rejectionReason,
-        note: adminNote.trim(),
+        reason: 'insufficient_detail',
+        note: '',
         scope,
       })
     },
-    [adminNote, rejectionReason],
+    [],
   )
 
   const handleReject = useCallback(
@@ -474,7 +471,7 @@ export default function TriagePage() {
       const reportId = pending.reportIds[0]
       if (!reportId) return
 
-      const command = buildRejectCommand(reportId, pending.reason, pending.note)
+      const command = buildRejectCommand(reportId, pending.reason, pending.note.trim())
       try {
         await executeCommand(command)
         setSuccessMessage(command.successMessage)
@@ -488,7 +485,7 @@ export default function TriagePage() {
     }
 
     const commands = pending.reportIds.map((reportId) =>
-      buildRejectCommand(reportId, pending.reason, pending.note),
+      buildRejectCommand(reportId, pending.reason, pending.note.trim()),
     )
     setBulkLoading(true)
     const errors: string[] = []
@@ -534,11 +531,6 @@ export default function TriagePage() {
 
   const pendingRejectionCount = pendingRejection?.reportIds.length ?? 0
   const pendingRejectionCountLabel = reportCountLabel(pendingRejectionCount)
-  const pendingRejectionReasonLabel = pendingRejection
-    ? rejectionReasonLabel(pendingRejection.reason)
-    : ''
-  const pendingRejectionNote =
-    pendingRejection && pendingRejection.note.length > 0 ? pendingRejection.note : 'No note'
   const isBulkRejection = pendingRejection?.scope === 'bulk'
   const pendingRejectionTitle = isBulkRejection ? 'Reject selected reports?' : 'Reject report?'
   const pendingRejectionConfirmLabel = isBulkRejection
@@ -557,18 +549,11 @@ export default function TriagePage() {
   if (loading) return <PageSkeleton variant="dashboard" />
 
   return (
-    <div className="flex h-screen flex-col bg-[var(--color-surface)]">
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--color-surface)]">
       <OfflineBanner
         error={isPermissionDenied ? null : error}
         onRetry={() => {
           window.location.reload()
-        }}
-      />
-      <CommandHeader
-        title="Admin Triage"
-        windowRole="triage"
-        onSignOut={() => {
-          void signOut()
         }}
       />
       {isStale && !error && (
@@ -668,22 +653,6 @@ export default function TriagePage() {
                   ))}
                 </select>
               </label>
-              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-                Rejection reason
-                <select
-                  value={rejectionReason}
-                  onChange={(event) => {
-                    setRejectionReason(event.target.value as RejectionReason)
-                  }}
-                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                >
-                  {REJECTION_REASONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <div className="text-xs font-semibold uppercase text-[var(--color-text-muted)] md:col-span-2">
                 <label htmlFor="triage-search">Search triage reports</label>
                 <div className="mt-1 flex gap-2">
@@ -707,19 +676,6 @@ export default function TriagePage() {
                   </button>
                 </div>
               </div>
-              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)] md:col-span-6">
-                Admin note
-                <textarea
-                  value={adminNote}
-                  onChange={(event) => {
-                    setAdminNote(event.target.value)
-                  }}
-                  maxLength={500}
-                  rows={2}
-                  className="mt-1 w-full resize-y rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                  placeholder="Optional context saved with rejected reports"
-                />
-              </label>
             </section>
             {successMessage && (
               <SuccessBanner
@@ -793,26 +749,50 @@ export default function TriagePage() {
           setPendingRejection(null)
         }}
       >
-        <dl className="mt-4 grid gap-3 rounded border border-white/10 bg-white/[0.03] p-3 text-sm">
+        <div className="mt-4 grid gap-3 rounded border border-white/10 bg-white/[0.03] p-3 text-sm">
           <div className="flex items-start justify-between gap-3">
-            <dt className="text-[var(--color-text-secondary)]">Reports</dt>
-            <dd className="font-medium text-[var(--color-text-primary)]">
+            <span className="text-[var(--color-text-secondary)]">Reports</span>
+            <span className="font-medium text-[var(--color-text-primary)]">
               {pendingRejectionCountLabel}
-            </dd>
+            </span>
           </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="text-[var(--color-text-secondary)]">Reason</dt>
-            <dd className="font-medium text-[var(--color-text-primary)]">
-              {pendingRejectionReasonLabel}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[var(--color-text-secondary)]">Admin note</dt>
-            <dd className="mt-1 rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-[var(--color-text-primary)]">
-              {pendingRejectionNote}
-            </dd>
-          </div>
-        </dl>
+          <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+            Rejection reason
+            <select
+              aria-label="Rejection reason"
+              value={pendingRejection?.reason ?? 'insufficient_detail'}
+              onChange={(event) => {
+                const value = event.target.value
+                if (!isValidRejectionReason(value)) return
+                setPendingRejection((current) =>
+                  current ? { ...current, reason: value } : current,
+                )
+              }}
+              className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+            >
+              {REJECTION_REASONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+            Admin note
+            <textarea
+              aria-label="Admin note"
+              value={pendingRejection?.note ?? ''}
+              onChange={(event) => {
+                const note = event.target.value
+                setPendingRejection((current) => (current ? { ...current, note } : current))
+              }}
+              maxLength={500}
+              rows={3}
+              className="mt-1 w-full resize-y rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+              placeholder="Optional context saved with rejected reports"
+            />
+          </label>
+        </div>
       </ConfirmationModal>
     </div>
   )
