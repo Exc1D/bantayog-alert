@@ -764,7 +764,9 @@ export default function TriagePage() {
               onChange={(event) => {
                 const value = event.target.value
                 if (!isValidRejectionReason(value)) return
-                setPendingRejection((current) => (current ? { ...current, reason: value } : current))
+                setPendingRejection((current) =>
+                  current ? { ...current, reason: value } : current,
+                )
               }}
               className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
             >
