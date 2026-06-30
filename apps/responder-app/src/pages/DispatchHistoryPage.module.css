@@ -54,7 +54,7 @@
   background: rgba(239, 68, 68, 0.14);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  color: var(--color-danger);
+  color: var(--red-text);
   text-align: center;
   margin-top: var(--space-4);
 }

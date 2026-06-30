@@ -27,7 +27,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--amber-accent);
+  color: var(--amber-text);
   margin-bottom: var(--space-2);
 }
 
