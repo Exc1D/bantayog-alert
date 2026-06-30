@@ -44,24 +44,25 @@ describe('PrivacyNoticeModal', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
+    expect(screen.getByText(/retained for up to 90 days/i)).toBeInTheDocument()
   })
 
   it('does not show modal when the Firestore consent version matches', async () => {
     mockGetDoc.mockResolvedValue({
-      data: () => ({ consentVersion: '1.0' }),
+      data: () => ({ consentVersion: '1.1' }),
     })
 
     render(<PrivacyNoticeModal uid="user-123" />)
 
     await waitFor(() => {
       expect(mockGetDoc).toHaveBeenCalledTimes(1)
-      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.0')
+      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.1')
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('uses locally cached acceptance without reopening or rereading Firestore', async () => {
-    globalThis.localStorage.setItem(storageKey, '1.0')
+    globalThis.localStorage.setItem(storageKey, '1.1')
 
     await expectModalSuppressedByLocalCache()
   })
@@ -95,12 +96,12 @@ describe('PrivacyNoticeModal', () => {
       expect(mockSetDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          consentVersion: '1.0',
+          consentVersion: '1.1',
           consentGivenAt: expect.anything(),
           method: 'in_app_modal',
         }),
       )
-      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.0')
+      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.1')
     })
   })
 
@@ -121,7 +122,7 @@ describe('PrivacyNoticeModal', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.0')
+      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.1')
     })
 
     unmount()
