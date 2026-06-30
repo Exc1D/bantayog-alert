@@ -11,7 +11,10 @@ const signalState = vi.hoisted(() => ({
 }))
 
 vi.mock('@bantayog/shared-ui', () => ({
-  useAuth: () => ({ claims: null, signOut: mockSignOut }),
+  useAuth: () => ({
+    claims: { role: 'provincial_superadmin', accountStatus: 'active' },
+    signOut: mockSignOut,
+  }),
 }))
 
 vi.mock('../hooks/useNewReportSignal', () => ({

@@ -15,7 +15,11 @@ import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
-import { REJECTION_REASONS, type RejectionReason } from '../constants/report'
+import {
+  REJECTION_REASONS,
+  isValidRejectionReason,
+  type RejectionReason,
+} from '../constants/report'
 import type { Report } from '../types'
 
 const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified'])
@@ -758,8 +762,9 @@ export default function TriagePage() {
               aria-label="Rejection reason"
               value={pendingRejection?.reason ?? 'insufficient_detail'}
               onChange={(event) => {
-                const reason = event.target.value as RejectionReason
-                setPendingRejection((current) => (current ? { ...current, reason } : current))
+                const value = event.target.value
+                if (!isValidRejectionReason(value)) return
+                setPendingRejection((current) => (current ? { ...current, reason: value } : current))
               }}
               className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
             >

@@ -15,7 +15,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import { useNewReportSignal } from '../hooks/useNewReportSignal'
@@ -60,7 +60,11 @@ export function AdminShell() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const accountMenuRef = useRef<HTMLDetailsElement>(null)
   const showHotlines = canEditHotlines(claims)
+  const role = claims?.role
+  const canDeclareAlert =
+    role === 'provincial_superadmin' || role === 'pdrrmo' || role === 'municipal_admin'
 
   const toggleCollapsed = () => {
     setCollapsed((current) => {
@@ -73,6 +77,34 @@ export function AdminShell() {
       return next
     })
   }
+
+  const closeAccountMenu = () => {
+    if (accountMenuRef.current) {
+      accountMenuRef.current.open = false
+    }
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        closeAccountMenu()
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && accountMenuRef.current?.open) {
+        closeAccountMenu()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [])
 
   return (
     <div className="flex h-dvh overflow-hidden bg-[var(--color-surface)] text-[var(--color-text-primary)]">
@@ -128,16 +160,18 @@ export function AdminShell() {
             PDRRMO Camarines Norte
           </span>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setAlertOpen(true)
-              }}
-              className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              Declare Alert
-            </button>
+            {canDeclareAlert && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAlertOpen(true)
+                }}
+                className="flex items-center gap-2 rounded-md bg-[var(--color-danger)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Declare Alert
+              </button>
+            )}
             <button
               type="button"
               onClick={signal.toggleAudio}
@@ -165,7 +199,7 @@ export function AdminShell() {
                 </span>
               )}
             </button>
-            <details className="relative">
+            <details ref={accountMenuRef} className="relative">
               <summary
                 aria-label="Account menu"
                 className="list-none rounded-md p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
@@ -178,6 +212,7 @@ export function AdminShell() {
                     type="button"
                     onClick={() => {
                       setHotlineOpen(true)
+                      closeAccountMenu()
                     }}
                     className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-white/10"
                   >
@@ -189,6 +224,7 @@ export function AdminShell() {
                   type="button"
                   onClick={() => {
                     setHelpOpen(true)
+                    closeAccountMenu()
                   }}
                   className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[var(--color-text-secondary)] hover:bg-white/10"
                 >
@@ -198,6 +234,7 @@ export function AdminShell() {
                 <button
                   type="button"
                   onClick={() => {
+                    closeAccountMenu()
                     void signOut().catch((err: unknown) => {
                       setActionError(err instanceof Error ? err.message : 'Sign out failed')
                     })
