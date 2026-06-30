@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-06-30 - Responder Field Accessibility Basics
+
+- Increased bottom-tab labels from 9px to 12px, used the existing high-contrast primary text token for the active tab, and enlarged the SOS control from 40px to 48px. Navigation and SOS behavior are unchanged.
+
 ## 2026-06-24 - Repository Documentation Cleanup
 
 - Removed stale agent plans, dated audits/evaluations, hidden design notes,
