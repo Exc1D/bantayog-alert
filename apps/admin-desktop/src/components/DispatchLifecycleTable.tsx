@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Search, Info } from 'lucide-react'
-import { List } from 'react-window'
 import type { DispatchLifecycleRow, DispatchEvent } from '../hooks/useDispatchLifecycle'
 import { FcmStatusIcon } from './FcmStatusIcon'
 import { DispatchTimeline } from './DispatchTimeline'
@@ -42,29 +41,17 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-const ROW_HEIGHT = 40
-
 interface RowRendererProps {
-  index: number
-  style: React.CSSProperties
-  rows: DispatchLifecycleRow[]
+  row: DispatchLifecycleRow
   expandedId: string | null
   onToggle: (id: string) => void
   highlightDispatchId?: string | null
 }
 
-function RowRenderer({
-  index,
-  style,
-  rows,
-  expandedId,
-  onToggle,
-  highlightDispatchId,
-}: RowRendererProps) {
-  const row = rows[index]
+function RowRenderer({ row, expandedId, onToggle, highlightDispatchId }: RowRendererProps) {
   const rowRef = useRef<HTMLDivElement>(null)
-  const expanded = row ? expandedId === row.dispatchId : false
-  const isHighlighted = row ? highlightDispatchId === row.dispatchId : false
+  const expanded = expandedId === row.dispatchId
+  const isHighlighted = highlightDispatchId === row.dispatchId
 
   useEffect(() => {
     if (isHighlighted && rowRef.current) {
@@ -72,10 +59,8 @@ function RowRenderer({
     }
   }, [isHighlighted])
 
-  if (!row) return null
-
   return (
-    <div style={style} ref={rowRef}>
+    <div ref={rowRef}>
       <div
         className={`flex cursor-pointer items-center border-b border-white/5 px-3 py-2 hover:bg-white/[0.03] ${expanded ? 'bg-white/[0.05]' : ''} ${isHighlighted ? 'ring-2 ring-[var(--color-carto-blue)] ring-inset' : ''}`}
         role="row"
@@ -212,20 +197,18 @@ export function DispatchLifecycleTable({ rows, highlightDispatchId }: Props) {
               </p>
             </div>
           ) : (
-            <List
-              style={{ height: Math.min(filteredRows.length * ROW_HEIGHT, 600), width: '100%' }}
-              rowCount={filteredRows.length}
-              rowHeight={ROW_HEIGHT}
-              // react-window v2 types expect forbidden keys as `never` in rowProps
-              // @ts-expect-error rowProps excludes index/style/ariaAttributes at runtime
-              rowProps={{
-                rows: filteredRows,
-                expandedId,
-                onToggle: toggleRow,
-                highlightDispatchId,
-              }}
-              rowComponent={RowRenderer}
-            />
+            // ponytail: plain scroll list; re-virtualize if pilot dispatch volume ever makes this slow
+            <div role="list" className="overflow-y-auto" style={{ maxHeight: 600 }}>
+              {filteredRows.map((row) => (
+                <RowRenderer
+                  key={row.dispatchId}
+                  row={row}
+                  expandedId={expandedId}
+                  onToggle={toggleRow}
+                  highlightDispatchId={highlightDispatchId ?? null}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

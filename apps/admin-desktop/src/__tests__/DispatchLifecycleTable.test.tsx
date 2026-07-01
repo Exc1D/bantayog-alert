@@ -81,19 +81,22 @@ describe('DispatchLifecycleTable', () => {
     expect(screen.getByText('PNP')).toBeInTheDocument()
   })
 
-  it('uses List for virtualization', () => {
-    const rows: DispatchLifecycleRow[] = [makeRow(), makeRow(), makeRow()]
+  it('renders all rows inside a scrollable list', () => {
+    const rows: DispatchLifecycleRow[] = Array.from({ length: 3 }, (_, i) =>
+      makeRow({ dispatchId: `d${String(i)}` }),
+    )
     render(<DispatchLifecycleTable rows={rows} />)
 
     const list = screen.getByRole('list')
     expect(list).toBeInTheDocument()
+    expect(screen.getAllByRole('row')).toHaveLength(3)
   })
 
   it('caps list height at 600px for many rows', () => {
-    const manyRows = Array.from({ length: 50 }, () => makeRow())
+    const manyRows = Array.from({ length: 50 }, (_, i) => makeRow({ dispatchId: `d${String(i)}` }))
     render(<DispatchLifecycleTable rows={manyRows} />)
 
     const list = screen.getByRole('list')
-    expect(list).toHaveStyle({ height: '600px' })
+    expect(list).toHaveStyle({ maxHeight: '600px' })
   })
 })

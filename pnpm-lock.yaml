@@ -110,9 +110,6 @@ importers:
       react-router-dom:
         specifier: ^7.14.1
         version: 7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      react-window:
-        specifier: ^2.2.7
-        version: 2.2.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       zustand:
         specifier: ^5.0.12
         version: 5.0.14(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
@@ -3938,12 +3935,6 @@ packages:
     peerDependenciesMeta:
       react-dom:
         optional: true
-
-  react-window@2.2.7:
-    resolution: {integrity: sha512-SH5nvfUQwGHYyriDUAOt7wfPsfG9Qxd6OdzQxl5oQ4dsSsUicqQvjV7dR+NqZ4coY0fUn3w1jnC5PwzIUWEg5w==}
-    peerDependencies:
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
 
   react@19.2.7:
     resolution: {integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==}
@@ -8726,11 +8717,6 @@ snapshots:
       react: 19.2.7
       set-cookie-parser: 2.7.2
     optionalDependencies:
-      react-dom: 19.2.7(react@19.2.7)
-
-  react-window@2.2.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
-    dependencies:
-      react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
   react@19.2.7: {}
