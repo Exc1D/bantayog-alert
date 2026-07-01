@@ -51,10 +51,10 @@
 
 .error {
   padding: var(--space-3);
-  background: rgba(239, 68, 68, 0.14);
+  background: var(--red-bg-subtle);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  color: var(--color-danger);
+  color: var(--red-text);
   text-align: center;
   margin-top: var(--space-4);
 }

@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-30 - Responder Field Accessibility Basics
+
+- Increased bottom-tab labels from 9px to 12px, used the existing high-contrast primary text token for the active tab, and enlarged the SOS control from 40px to 48px. Navigation and SOS behavior are unchanged.
+- Added the required bilingual 90-day location/action retention disclosure and bumped responder privacy consent from 1.0 to 1.1 so existing users see it.
+- Split deep semantic fill colors from WCAG-readable dark-surface text colors, then migrated responder amber/red text consumers without changing fills.
+- Moved each dispatch's state-dependent primary action directly below the incident summary, ahead of progress and navigation details. SOS remains hold-then-confirm until operations approves a send/cancel contract.
+
 ## 2026-06-24 - Admin shell and triage friction slice
 
 - Added a shared Admin shell with collapsible persisted sidebar navigation, global utility actions, and a Triage badge that counts only `new` + `awaiting_verify` reports.

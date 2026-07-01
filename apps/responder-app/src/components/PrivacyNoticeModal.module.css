@@ -1,0 +1,14 @@
+.noticeText,
+.englishNotice {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.noticeText {
+  margin-bottom: 0.75rem;
+}
+
+.englishNotice {
+  color: #4b5563;
+  margin-bottom: 1.5rem;
+}

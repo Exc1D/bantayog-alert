@@ -64,12 +64,12 @@
   font-size: var(--font-size-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--amber-accent);
+  color: var(--amber-text);
   white-space: nowrap;
 }
 
 .urgentText {
-  color: var(--red-urgent);
+  color: var(--red-text);
 }
 
 .statusText {
