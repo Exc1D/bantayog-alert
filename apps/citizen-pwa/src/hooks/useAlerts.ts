@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { subscribeAlerts } from '@bantayog/shared-firebase'
+import { subscribeAlerts } from '../services/firebase-web/firestore.js'
 import { db, hasFirebaseConfig } from '../services/firebase.js'
 import type { AlertDoc } from '@bantayog/shared-types'
 

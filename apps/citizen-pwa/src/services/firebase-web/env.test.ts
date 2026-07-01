@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getSessionTimeoutMs, parseFirebaseWebEnv } from './index.js'
+import { parseFirebaseWebEnv } from './env.js'
 
 describe('parseFirebaseWebEnv', () => {
   it('reads the required Vite env values', () => {
@@ -27,15 +27,5 @@ describe('parseFirebaseWebEnv', () => {
         // missing others
       }),
     ).toThrow(/Missing required Firebase env var/)
-  })
-})
-
-describe('getSessionTimeoutMs', () => {
-  it('uses the architecture-spec timeout ladder', () => {
-    expect(getSessionTimeoutMs('provincial_superadmin')).toBe(4 * 60 * 60 * 1000)
-    expect(getSessionTimeoutMs('municipal_admin')).toBe(8 * 60 * 60 * 1000)
-    expect(getSessionTimeoutMs('agency_admin')).toBe(8 * 60 * 60 * 1000)
-    expect(getSessionTimeoutMs('responder')).toBe(12 * 60 * 60 * 1000)
-    expect(getSessionTimeoutMs('citizen')).toBeNull()
   })
 })

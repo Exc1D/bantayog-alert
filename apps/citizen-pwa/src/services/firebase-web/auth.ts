@@ -1,7 +1,6 @@
 import {
   browserLocalPersistence,
   getAuth,
-  onAuthStateChanged,
   setPersistence,
   signInAnonymously,
   type Auth,
@@ -19,8 +18,4 @@ export async function ensurePseudonymousSignIn(auth: Auth): Promise<User> {
 
 export function getFirebaseAuth(app: FirebaseApp): Auth {
   return getAuth(app)
-}
-
-export function subscribeAuth(auth: Auth, callback: (user: User | null) => void): () => void {
-  return onAuthStateChanged(auth, callback)
 }

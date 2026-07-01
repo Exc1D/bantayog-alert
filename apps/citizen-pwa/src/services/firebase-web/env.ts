@@ -1,5 +1,3 @@
-import type { UserRole } from '@bantayog/shared-types'
-
 export interface FirebaseWebEnv {
   apiKey: string
   authDomain: string
@@ -34,11 +32,4 @@ export function parseFirebaseWebEnv(source: Record<string, string | undefined>):
     ...(measurementId ? { measurementId } : {}),
     ...(siteKey ? { appCheckSiteKey: siteKey } : {}),
   }
-}
-
-export function getSessionTimeoutMs(role: UserRole): number | null {
-  if (role === 'provincial_superadmin') return 4 * 60 * 60 * 1000
-  if (role === 'municipal_admin' || role === 'agency_admin') return 8 * 60 * 60 * 1000
-  if (role === 'responder') return 12 * 60 * 60 * 1000
-  return null
 }

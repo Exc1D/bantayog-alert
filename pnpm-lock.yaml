@@ -165,9 +165,6 @@ importers:
 
   apps/citizen-pwa:
     dependencies:
-      '@bantayog/shared-firebase':
-        specifier: workspace:*
-        version: link:../../packages/shared-firebase
       '@bantayog/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -399,15 +396,6 @@ importers:
       tsx:
         specifier: ^4.21.0
         version: 4.22.4
-
-  packages/shared-firebase:
-    dependencies:
-      '@bantayog/shared-types':
-        specifier: workspace:*
-        version: link:../shared-types
-      firebase:
-        specifier: ^12.15.0
-        version: 12.15.0
 
   packages/shared-types: {}
 
