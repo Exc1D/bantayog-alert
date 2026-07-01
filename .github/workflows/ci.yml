@@ -59,7 +59,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-lint-${{ github.sha }}
@@ -100,7 +100,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-typecheck-${{ github.sha }}
@@ -119,7 +119,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-test-${{ github.sha }}
@@ -178,7 +178,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-build-${{ github.sha }}
