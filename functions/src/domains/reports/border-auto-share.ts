@@ -1,5 +1,7 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore'
-import * as turf from '@turf/turf'
+import { point as turfPoint } from '@turf/helpers'
+import { buffer } from '@turf/buffer'
+import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import type { FeatureCollection, Feature, Polygon } from 'geojson'
@@ -42,7 +44,7 @@ export async function borderAutoShareCore(
     | undefined
   if (!exactLocation) return
 
-  const point = turf.point([exactLocation.lng, exactLocation.lat])
+  const point = turfPoint([exactLocation.lng, exactLocation.lat])
   const boundaries = getMunicipalityBoundaries()
   const ownerMuniId = opsData.municipalityId as string
 
@@ -51,10 +53,10 @@ export async function borderAutoShareCore(
     const targetMuniId = feature.properties?.municipalityId as string
     if (targetMuniId === ownerMuniId) continue
 
-    const buffered = turf.buffer(feature as Feature<Polygon>, 0.5, {
+    const buffered = buffer(feature as Feature<Polygon>, 0.5, {
       units: 'kilometers',
     })
-    if (!buffered || !turf.booleanPointInPolygon(point, buffered)) continue
+    if (!buffered || !booleanPointInPolygon(point, buffered)) continue
 
     // This report is within 500m of targetMuniId's boundary — auto-share
     const sharingRef = db.collection('report_sharing').doc(reportId)

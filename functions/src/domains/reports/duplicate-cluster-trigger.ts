@@ -1,6 +1,7 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import * as ngeohash from 'ngeohash'
-import * as turf from '@turf/turf'
+import { point } from '@turf/helpers'
+import { distance } from '@turf/distance'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { adminDb } from '../../admin-init.js'
 import { logDimension } from '@bantayog/shared-validators'
@@ -60,7 +61,7 @@ export async function duplicateClusterTriggerCore(
   } catch {
     return
   }
-  const triggerCoord = turf.point([triggerPoint.longitude, triggerPoint.latitude])
+  const triggerCoord = point([triggerPoint.longitude, triggerPoint.latitude])
 
   const nearby = candidates.docs.filter((d) => {
     if (d.id === snap.id) return false
@@ -69,7 +70,7 @@ export async function duplicateClusterTriggerCore(
     if (!neighborPrefixes.has(gh.slice(0, 6))) return false
     try {
       const pt = ngeohash.decode(gh)
-      const dist = turf.distance(turf.point([pt.longitude, pt.latitude]), triggerCoord, {
+      const dist = distance(point([pt.longitude, pt.latitude]), triggerCoord, {
         units: 'meters',
       })
       return dist <= PROXIMITY_METERS
