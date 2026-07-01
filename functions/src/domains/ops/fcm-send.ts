@@ -6,7 +6,7 @@
  */
 
 import { defineSecret } from 'firebase-functions/params'
-import { getMessaging, type BatchResponse } from 'firebase-admin/messaging'
+import { getMessaging, type BatchResponse, type MulticastMessage } from 'firebase-admin/messaging'
 import { FieldValue } from 'firebase-admin/firestore'
 import { logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
@@ -59,21 +59,25 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
   let result: BatchResponse
   try {
     const messaging = getMessaging()
-    const msg: Parameters<typeof messaging.sendEachForMulticast>[0] = {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    const msg: MulticastMessage = {
       tokens,
       notification: { title, body },
     }
     if (data) msg.data = data
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     result = await messaging.sendEachForMulticast(msg)
   } catch {
     // Retry once on transport failure.
     try {
       const messaging = getMessaging()
-      const msg: Parameters<typeof messaging.sendEachForMulticast>[0] = {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      const msg: MulticastMessage = {
         tokens,
         notification: { title, body },
       }
       if (data) msg.data = data
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       result = await messaging.sendEachForMulticast(msg)
     } catch (err: unknown) {
       // Log full error server-side for debugging; keep warnings as stable codes
@@ -182,7 +186,8 @@ export async function sendFcmToCitizen(payload: FcmCitizenSendPayload): Promise<
     return { warnings: ['fcm_no_token'] }
   }
 
-  const msg: Parameters<ReturnType<typeof getMessaging>['sendEachForMulticast']>[0] = {
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  const msg: MulticastMessage = {
     tokens: [token],
     notification: { title, body },
   }
@@ -190,9 +195,11 @@ export async function sendFcmToCitizen(payload: FcmCitizenSendPayload): Promise<
 
   let result: BatchResponse
   try {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     result = await getMessaging().sendEachForMulticast(msg)
   } catch {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       result = await getMessaging().sendEachForMulticast(msg)
     } catch (err: unknown) {
       console.error('FCM citizen send failed after retry:', err)
