@@ -1,2 +1,0 @@
-export declare function incrementDispatchCounter(scopeType: 'municipality' | 'agency' | 'province', scopeId: string, metric: 'totalDispatches' | 'acceptedCount' | 'declinedCount' | 'escalatedCount' | 'needsAdminCount' | 'fcmSuccessCount' | 'fcmFailureCount', value?: number): Promise<void>;
-//# sourceMappingURL=dispatch-counter.d.ts.map
