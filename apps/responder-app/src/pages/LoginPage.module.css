@@ -85,7 +85,7 @@
 
 .error {
   padding: var(--space-3) var(--space-4);
-  background: rgba(239, 68, 68, 0.14);
+  background: var(--red-bg-subtle);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   color: #fecaca;

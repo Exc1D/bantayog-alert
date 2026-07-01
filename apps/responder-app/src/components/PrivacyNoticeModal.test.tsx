@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { PrivacyNoticeModal } from './PrivacyNoticeModal.js'
+import { NOTICE_VERSION, PrivacyNoticeModal } from './PrivacyNoticeModal.js'
 
 const mockGetDoc = vi.hoisted(() => vi.fn())
 const mockSetDoc = vi.hoisted(() => vi.fn())
@@ -49,20 +49,20 @@ describe('PrivacyNoticeModal', () => {
 
   it('does not show modal when the Firestore consent version matches', async () => {
     mockGetDoc.mockResolvedValue({
-      data: () => ({ consentVersion: '1.1' }),
+      data: () => ({ consentVersion: NOTICE_VERSION }),
     })
 
     render(<PrivacyNoticeModal uid="user-123" />)
 
     await waitFor(() => {
       expect(mockGetDoc).toHaveBeenCalledTimes(1)
-      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.1')
+      expect(globalThis.localStorage.getItem(storageKey)).toBe(NOTICE_VERSION)
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('uses locally cached acceptance without reopening or rereading Firestore', async () => {
-    globalThis.localStorage.setItem(storageKey, '1.1')
+    globalThis.localStorage.setItem(storageKey, NOTICE_VERSION)
 
     await expectModalSuppressedByLocalCache()
   })
@@ -96,12 +96,12 @@ describe('PrivacyNoticeModal', () => {
       expect(mockSetDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          consentVersion: '1.1',
+          consentVersion: NOTICE_VERSION,
           consentGivenAt: expect.anything(),
           method: 'in_app_modal',
         }),
       )
-      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.1')
+      expect(globalThis.localStorage.getItem(storageKey)).toBe(NOTICE_VERSION)
     })
   })
 
@@ -122,7 +122,7 @@ describe('PrivacyNoticeModal', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(globalThis.localStorage.getItem(storageKey)).toBe('1.1')
+      expect(globalThis.localStorage.getItem(storageKey)).toBe(NOTICE_VERSION)
     })
 
     unmount()

@@ -38,7 +38,7 @@
 .confirmBtn {
   padding: 16px 40px;
   background: var(--text-primary);
-  color: var(--color-danger);
+  color: var(--red-text);
   border: none;
   border-radius: 999px;
   font-weight: 800;
