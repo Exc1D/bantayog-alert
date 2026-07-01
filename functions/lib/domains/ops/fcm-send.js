@@ -42,24 +42,28 @@ export async function sendFcmToResponder(payload) {
     let result;
     try {
         const messaging = getMessaging();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const msg = {
             tokens,
             notification: { title, body },
         };
         if (data)
             msg.data = data;
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         result = await messaging.sendEachForMulticast(msg);
     }
     catch {
         // Retry once on transport failure.
         try {
             const messaging = getMessaging();
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             const msg = {
                 tokens,
                 notification: { title, body },
             };
             if (data)
                 msg.data = data;
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             result = await messaging.sendEachForMulticast(msg);
         }
         catch (err) {
@@ -156,6 +160,7 @@ export async function sendFcmToCitizen(payload) {
     if (typeof token !== 'string' || token.length === 0) {
         return { warnings: ['fcm_no_token'] };
     }
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const msg = {
         tokens: [token],
         notification: { title, body },
@@ -164,10 +169,12 @@ export async function sendFcmToCitizen(payload) {
         msg.data = data;
     let result;
     try {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         result = await getMessaging().sendEachForMulticast(msg);
     }
     catch {
         try {
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             result = await getMessaging().sendEachForMulticast(msg);
         }
         catch (err) {
