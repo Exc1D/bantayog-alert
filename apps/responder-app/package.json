@@ -19,7 +19,7 @@
     "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor/core": "^8.4.1",
     "@capacitor/device": "^8.0.0",
-    "react-router-dom": "^7.14.2",
+    "react-router-dom": "^7.18.1",
     "@capacitor/preferences": "^8.0.0",
     "@capacitor/push-notifications": "^8.1.1",
     "firebase": "^12.15.0",
