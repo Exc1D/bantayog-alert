@@ -636,3 +636,11 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 ## 2026-06-23 - Local Admin Auth emulator launch repair
 
 - Fixed `dev:all` POSIX shutdown to signal each spawned process group, preventing orphaned Vite/Firebase descendants from occupying partial-stack ports after exit. The regression test failed first, then passed 8/8; a clean stack exposed all managed ports and browser Admin sign-in reached `/dashboard` with no console errors.
+
+## 2026-07-02 - Ponytail repo-wide audit and cleanup
+
+- Ran the whole-repo ponytail audit (12 ranked findings) and applied the safe subset: removed the 14 backend-only Admin callable wrappers with zero UI callers (kept 11 live ones; the runbook documents the backend-only set), collapsed the 30-line UUID polyfill to `crypto.randomUUID()`, and deleted stale phase-3b/3c/4a scripts, the tracked proof PNG, and the orphaned `shared-types/src/_stubs.ts`.
+- Deduplicated the Citizen time-ago formatters into `apps/citizen-pwa/src/lib/time-ago.ts` with two deliberate copy variants: compact `timeAgo` ("5m ago") for AlertsTab/FeedTab/ProfileTab/ReportCard and `timeAgoLong` ("5 minutes ago") for IncidentDetailPage/DetailSheet, so rendered copy stays byte-identical per surface.
+- Removed the dead runtime `geojson` dependency from `functions/` (only `import type` usages, which resolve via `@types/geojson` — moved to devDependencies) and regenerated the lockfile.
+- Deferred with rationale: untracking `functions/lib` (CI/emulator workflow decision), `@turf/turf`→scoped packages, react-window removal, shared-firebase fold-in, framer-motion→CSS (product call), and responder/admin time-ago dedup (would need a shared package for 2 local copies).
+- Verification: focused Admin tests (callables 30/30, idempotency key 2/2), focused Citizen tests (4 files / 44 tests), root typecheck/lint/build (12/12, 12/12, 8/8 tasks), root tests 27 files / 231 tests, Prettier on all changed files, `git diff --check`, and Fallow `new-only` (verdict `warn`, exit 0: flagged clone groups are the deferred responder time-ago copies plus inherited duplication in files touched only by import edits). No deploy; no rules, indexes, schema, or migration files changed.

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useIncident } from '../hooks/useIncident.js'
 import { getSeverityStyle } from '../utils/useSeverityStyle.js'
+import { timeAgoLong as timeAgo } from '../lib/time-ago.js'
 
 const INCIDENT_LABELS: Record<string, string> = {
   flood: 'Flood',
@@ -43,16 +44,6 @@ const INCIDENT_ICONS: Record<string, ReactNode> = {
   structural: <Building2 size={36} className="text-stone-600" />,
   security: <Siren size={36} className="text-red-700" />,
   other: <AlertTriangle size={36} className="text-slate-500" />,
-}
-
-function timeAgo(timestamp: number): string {
-  const minutes = Math.floor((Date.now() - timestamp) / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${String(minutes)} minute${minutes === 1 ? '' : 's'} ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)} hour${hours === 1 ? '' : 's'} ago`
-  const days = Math.floor(hours / 24)
-  return `${String(days)} day${days === 1 ? '' : 's'} ago`
 }
 
 export function IncidentDetailPage() {

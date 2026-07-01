@@ -356,9 +356,6 @@ importers:
       '@turf/turf':
         specifier: ^7.3.5
         version: 7.3.5
-      '@types/geojson':
-        specifier: ^7946.0.16
-        version: 7946.0.16
       file-type:
         specifier: ^22.0.1
         version: 22.0.1
@@ -368,9 +365,6 @@ importers:
       firebase-functions:
         specifier: ^7.2.5
         version: 7.2.5(firebase-admin@14.0.0)(graphql@16.14.1)
-      geojson:
-        specifier: ^0.5.0
-        version: 0.5.0
       ngeohash:
         specifier: ^0.6.3
         version: 0.6.3
@@ -384,6 +378,9 @@ importers:
       '@firebase/rules-unit-testing':
         specifier: ^5.0.0
         version: 5.0.1(firebase@12.15.0)
+      '@types/geojson':
+        specifier: ^7946.0.16
+        version: 7946.0.16
       '@types/ngeohash':
         specifier: ^0.6.8
         version: 0.6.8
@@ -3178,10 +3175,6 @@ packages:
 
   geojson-polygon-self-intersections@1.2.2:
     resolution: {integrity: sha512-6XRNF4CsRHYmR9z5YuIk5f/aOototnDf0dgMqYGcS7y1l57ttt6MAIAxl3rXyas6lq1HEbTuLMh4PgvO+OV42w==}
-
-  geojson@0.5.0:
-    resolution: {integrity: sha512-/Bx5lEn+qRF4TfQ5aLu6NH+UKtvIv7Lhc487y/c8BdludrCTpiWf9wyI0RTyqg49MFefIAvFDuEi5Dfd/zgNxQ==}
-    engines: {node: '>= 0.10'}
 
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
@@ -9011,8 +9004,6 @@ snapshots:
   geojson-polygon-self-intersections@1.2.2:
     dependencies:
       rbush: 2.0.2
-
-  geojson@0.5.0: {}
 
   get-caller-file@2.0.5: {}
 

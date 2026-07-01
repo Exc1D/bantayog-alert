@@ -253,3 +253,5 @@
 ## Ponytail Cleanup
 
 - After deleting a workspace package, remove any ignored per-package `node_modules` shell too. An otherwise-empty directory still matches `packages/*` and makes Fallow report `glob-matched-no-package-json`.
+- `pnpm install --lockfile-only` can still trigger pnpm's "modules will be removed and reinstalled" purge prompt; under `CI=true` it auto-confirms and deletes `node_modules` WITHOUT reinstalling (lockfile-only skips installation). If that prompt appears, follow the lockfile-only run with a full `pnpm install` before any verification.
+- Fallow's `new-only` duplication attribution charges a pre-existing clone group as "introduced" when any instance sits in a changed file — a one-line import edit in `FeedTab.tsx` re-attributed its inherited `MUNICIPALITY_OPTIONS` clone. Read the clone-group instances before treating a `warn` verdict as a regression.

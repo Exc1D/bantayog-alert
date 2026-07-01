@@ -1,13 +1,12 @@
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../app/firebase'
-import type { ReportStatus, DispatchStatus, UserRole } from '@bantayog/shared-types'
+import type { ReportStatus, DispatchStatus } from '@bantayog/shared-types'
 import type {
   UpdateMunicipalityContactInput,
   UpdateMunicipalityContactOutput,
 } from '@bantayog/shared-validators'
 
 type IdempotencyKey = string
-type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
 
 /** Build a callable wrapper: `callable<Payload, Return>('functionName')` */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- P is the caller's contract
@@ -15,6 +14,9 @@ function callable<P, R>(name: string) {
   return (payload: P) => httpsCallable<P, R>(functions, name)(payload).then((r) => r.data)
 }
 
+// Backend-only operations (cancelDispatch, closeReport, mergeDuplicates, user/responder
+// suspend/revoke, erasure, reopenReport, ...) have no frontend wrapper by design;
+// see docs/runbooks/pilot-demo.md#backend-only-operations.
 export const callables = {
   verifyReport: callable<
     { reportId: string; idempotencyKey: IdempotencyKey; scrubbedDescription?: string },
@@ -62,38 +64,6 @@ export const callables = {
     { reportId: string; responderUid: string; idempotencyKey: IdempotencyKey },
     { dispatchId: string; status: DispatchStatus; reportId: string }
   >('dispatchResponder'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  cancelDispatch: callable<
-    {
-      dispatchId: string
-      reason: 'responder_unavailable' | 'duplicate_report' | 'admin_error' | 'citizen_withdrew'
-      idempotencyKey: IdempotencyKey
-    },
-    { status: DispatchStatus; dispatchId: string }
-  >('cancelDispatch'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  closeReport: callable<
-    { reportId: string; idempotencyKey: IdempotencyKey; closureSummary?: string },
-    { status: ReportStatus; reportId: string }
-  >('closeReport'),
-  mergeDuplicates: callable<
-    { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
-    { success: true; mergedCount: number } | { success: false; errorCode: string }
-  >('mergeDuplicates'),
-  suspendResponder: callable<
-    { uid: string; idempotencyKey: IdempotencyKey },
-    { uid: string; status: 'suspended' }
-  >('suspendResponder'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  revokeResponder: callable<
-    { uid: string; idempotencyKey: IdempotencyKey },
-    { uid: string; status: 'revoked' }
-  >('revokeResponder'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  bulkAvailabilityOverride: callable<
-    { uids: string[]; status: AvailabilityStatus; idempotencyKey: IdempotencyKey },
-    { updated: number }
-  >('bulkAvailabilityOverride'),
   declareAlert: callable<
     {
       hazardType: string
@@ -113,47 +83,6 @@ export const callables = {
     UpdateMunicipalityContactInput,
     UpdateMunicipalityContactOutput
   >('updateMunicipalityContact'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  setRetentionExempt: callable<
-    { collection: string; documentId: string; exempt: boolean; reason: string },
-    unknown
-  >('setRetentionExempt'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  setErasureLegalHold: callable<
-    { erasureRequestId: string; hold: boolean; reason: string },
-    unknown
-  >('setErasureLegalHold'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  approveErasureRequest: callable<
-    { erasureRequestId: string; approved: boolean; reason?: string },
-    unknown
-  >('approveErasureRequest'),
-  suspendUser: callable<
-    { uid: string; idempotencyKey: IdempotencyKey },
-    { uid: string; status: 'suspended' }
-  >('suspendUser'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  revokeUser: callable<
-    { uid: string; idempotencyKey: IdempotencyKey },
-    { uid: string; status: 'revoked' }
-  >('revokeUser'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  resetUserTotp: callable<
-    { uid: string; idempotencyKey: IdempotencyKey },
-    { uid: string; reset: true }
-  >('resetUserTotp'),
-  createUser: callable<
-    {
-      displayName: string
-      phone: string
-      role: UserRole
-      municipalityId?: string
-      agencyId?: string
-      specializations?: string[]
-      idempotencyKey: IdempotencyKey
-    },
-    { uid: string }
-  >('createUser'),
   createResponder: callable<
     {
       displayName: string
@@ -174,11 +103,6 @@ export const callables = {
     },
     { newDispatchId: string; status: DispatchStatus; reportId: string }
   >('redispatchReport'),
-  // Backend-only operation; see docs/runbooks/pilot-demo.md#backend-only-operations.
-  reopenReport: callable<
-    { reportId: string; reason: string; idempotencyKey: IdempotencyKey },
-    { status: ReportStatus; reportId: string }
-  >('reopenReport'),
   escalateDispatch: callable<
     {
       dispatchId: string

@@ -6,20 +6,12 @@ import {
   severityDotColor,
 } from '../../../utils/incident-meta.js'
 import type { MyReport } from '../../MapTab/types.js'
+import { timeAgo } from '../../../lib/time-ago.js'
 
 interface ReportCardProps {
   report: MyReport
   onTap: () => void
   onWithdraw?: () => void
-}
-
-function timeAgo(ts: number): string {
-  const minutes = Math.floor((Date.now() - ts) / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${String(minutes)}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)}h ago`
-  return `${String(Math.floor(hours / 24))}d ago`
 }
 
 export function ReportCard({ report, onTap, onWithdraw }: ReportCardProps) {

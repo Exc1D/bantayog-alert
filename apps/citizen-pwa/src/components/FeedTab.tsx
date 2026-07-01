@@ -14,6 +14,7 @@ import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { useSituationUpdates } from '../hooks/useSituationUpdates.js'
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js'
 import { hasFirebaseConfig } from '../services/firebase.js'
+import { timeAgo } from '../lib/time-ago.js'
 import {
   createSituationUpdate,
   reportSituationUpdate,
@@ -21,15 +22,6 @@ import {
   type SituationHazardType,
   type SituationUpdate,
 } from '../services/situation-updates.js'
-
-function timeAgo(timestamp: number, now = Date.now()): string {
-  const minutes = Math.floor((now - timestamp) / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${String(minutes)}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)}h ago`
-  return `${String(Math.floor(hours / 24))}d ago`
-}
 
 function locationLabel(update: SituationUpdate): string {
   return `${update.barangayLabel ? `${update.barangayLabel}, ` : ''}${update.municipalityLabel}`
