@@ -12,7 +12,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bantayog/shared-firebase": "workspace:*",
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
     "firebase": "^12.15.0",

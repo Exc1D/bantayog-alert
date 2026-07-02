@@ -257,3 +257,8 @@
 ## Ponytail Cleanup
 
 - After deleting a workspace package, remove any ignored per-package `node_modules` shell too. An otherwise-empty directory still matches `packages/*` and makes Fallow report `glob-matched-no-package-json`.
+- `pnpm install --lockfile-only` can still trigger pnpm's "modules will be removed and reinstalled" purge prompt; under `CI=true` it auto-confirms and deletes `node_modules` WITHOUT reinstalling (lockfile-only skips installation). If that prompt appears, follow the lockfile-only run with a full `pnpm install` before any verification.
+- Fallow's `new-only` duplication attribution charges a pre-existing clone group as "introduced" when any instance sits in a changed file — a one-line import edit in `FeedTab.tsx` re-attributed its inherited `MUNICIPALITY_OPTIONS` clone. Read the clone-group instances before treating a `warn` verdict as a regression.
+- A whole-file move (e.g. `packages/shared-firebase` → `apps/citizen-pwa/src/services/firebase-web/`) re-attributes every complexity/duplication finding already inside that file as "introduced" against `main`, even when the function is byte-identical — diff the moved function against its pre-move `git show main:<old-path>` before treating a `fail` verdict as a regression.
+- Rendered time-ago copy staying byte-identical per surface (`docs/learnings.md` "UX / Metrics Display"-adjacent rule) also applies across responder-app: `AlertsPage` caps at "over 30 days ago", `FeedPage` doesn't — a shared `timeAgo(timestamp, capAt30Days = false)` flag preserves both, don't silently unify to one behavior.
+- The lean-ctx zsh alias that intercepts bare `pnpm` (`command not found: _lc`) also intercepts bare `git`; prefix both with `command` in this shell.

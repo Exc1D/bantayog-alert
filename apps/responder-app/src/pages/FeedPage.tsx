@@ -22,17 +22,8 @@ import {
 } from 'lucide-react'
 import { usePublicFeed, type PublicFeedItem } from '../hooks/usePublicFeed'
 import { getReportTypeLabel } from '../lib/incident-labels'
+import { timeAgo } from '../lib/time-ago'
 import styles from './FeedPage.module.css'
-
-function timeAgo(timestamp: number): string {
-  if (timestamp <= 0) return 'time pending'
-  const minutes = Math.floor((Date.now() - timestamp) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${String(minutes)}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)}h ago`
-  return `${String(Math.floor(hours / 24))}d ago`
-}
 
 function formatStatus(value: string): string {
   return value.replace(/_/g, ' ')

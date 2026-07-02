@@ -5,6 +5,7 @@ import { useAlerts } from '../hooks/useAlerts.js'
 import { useAlertReadState } from '../hooks/useAlertReadState.js'
 import { AlertDetailSheet } from './AlertDetailSheet.js'
 import { severityMeta } from '../utils/alertUtils.js'
+import { timeAgo } from '../lib/time-ago.js'
 import type { AlertDoc } from '@bantayog/shared-types'
 
 const SEVERITY_ORDER: Record<string, number> = {
@@ -41,15 +42,6 @@ function severityIconColor(severity: string): string {
 function severityIcon(severity: string): ReactNode {
   if (severity === 'critical' || severity === 'high') return <Siren size={16} />
   return <Bell size={16} />
-}
-
-function timeAgo(ts: number): string {
-  const minutes = Math.floor((Date.now() - ts) / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${String(minutes)}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)}h ago`
-  return `${String(Math.floor(hours / 24))}d ago`
 }
 
 function AlertCard({

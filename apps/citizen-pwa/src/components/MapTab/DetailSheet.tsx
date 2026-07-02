@@ -8,6 +8,7 @@ import {
 } from '../../utils/status-registry.js'
 import { buildTrackingTimeline } from '../../utils/tracking-timeline.js'
 import { getSeverityStyle } from '../../utils/useSeverityStyle.js'
+import { timeAgoLong as timeAgo } from '../../lib/time-ago.js'
 import type { MyReport, PublicIncident } from './types.js'
 
 type Props =
@@ -28,17 +29,6 @@ type Props =
     }
 
 // This compact peek intentionally mirrors the public detail card's scan order.
-// fallow-ignore-next-line code-duplication
-function timeAgo(timestamp: number): string {
-  const minutes = Math.floor((Date.now() - timestamp) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${String(minutes)} minute${minutes === 1 ? '' : 's'} ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)} hour${hours === 1 ? '' : 's'} ago`
-  const days = Math.floor(hours / 24)
-  return `${String(days)} day${days === 1 ? '' : 's'} ago`
-}
-
 // fallow-ignore-next-line code-duplication
 export function DetailSheet(props: Props) {
   const [copied, setCopied] = useState(false)
@@ -95,6 +85,7 @@ export function DetailSheet(props: Props) {
     const hazard = getHazardTypePresentation(incident.reportType)
     const HazardIcon = hazard.icon
 
+    // fallow-ignore-next-line code-duplication
     return (
       <section
         role="dialog"
@@ -170,6 +161,7 @@ export function DetailSheet(props: Props) {
   const hazard = getHazardTypePresentation(report.reportType)
   const StatusIcon = status.icon
 
+  // fallow-ignore-next-line code-duplication
   return (
     <section
       role="dialog"

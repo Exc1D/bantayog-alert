@@ -6,14 +6,10 @@ import type { Auth } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
 import { connectAuthEmulator } from 'firebase/auth'
 import { connectFirestoreEmulator } from 'firebase/firestore'
-import {
-  createFirebaseWebApp,
-  createAppCheck,
-  ensurePseudonymousSignIn,
-  getFirebaseAuth,
-  getFirebaseDb,
-  parseFirebaseWebEnv,
-} from '@bantayog/shared-firebase'
+import { createFirebaseWebApp, createAppCheck } from './firebase-web/app.js'
+import { ensurePseudonymousSignIn, getFirebaseAuth } from './firebase-web/auth.js'
+import { getFirebaseDb } from './firebase-web/firestore.js'
+import { parseFirebaseWebEnv } from './firebase-web/env.js'
 
 export const FIREBASE_ENV_ERROR_MESSAGE =
   'Firebase is not configured for this environment. Set the VITE_FIREBASE_* env vars to use live data.'
