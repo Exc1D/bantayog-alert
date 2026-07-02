@@ -125,7 +125,7 @@
 
 .pillPending {
   background: rgba(245, 158, 11, 0.16);
-  color: var(--amber-accent);
+  color: var(--amber-text);
 }
 
 .pillActive {
@@ -236,7 +236,7 @@
 .ringNumber {
   display: block;
   margin-top: 4px;
-  color: var(--amber-accent);
+  color: var(--amber-text);
   font-size: 36px; /* kept for ring number - intentionally large */
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -250,7 +250,7 @@
 }
 
 .errorBanner {
-  color: var(--color-danger);
+  color: var(--red-text);
   margin-bottom: var(--space-4);
 }
 
@@ -269,7 +269,7 @@
 .resumeText {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--amber-accent);
+  color: var(--amber-text);
 }
 
 .resumeBtn {
@@ -294,7 +294,7 @@
   border: 1px solid var(--color-danger);
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--color-danger);
+  color: var(--red-text);
   font-size: var(--font-size-sm);
   font-weight: 600;
   cursor: pointer;

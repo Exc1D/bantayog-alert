@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../app/firebase'
+import styles from './PrivacyNoticeModal.module.css'
 
-const NOTICE_VERSION = '1.0'
+export const NOTICE_VERSION = '1.1'
 const CONSENT_STORAGE_PREFIX = 'bantayog.responder.privacy-consent'
 
 interface Props {
@@ -121,15 +122,15 @@ export function PrivacyNoticeModal({ uid }: Props) {
         >
           Abiso sa Pagprotekta ng Datos / Data Privacy Notice
         </h2>
-        <p style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '0.75rem' }}>
+        <p className={styles.noticeText}>
           Bilang responder ng <strong>Bantayog Alert</strong>, ang iyong lokasyon at mga aksyon ay
-          naitala para sa koordinasyon ng pagtugon sa sakuna sa Camarines Norte.
+          naitala para sa koordinasyon ng pagtugon sa sakuna sa Camarines Norte. Maaaring itago ang
+          mga talang ito nang hanggang 90 araw.
         </p>
-        <p
-          style={{ fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem', color: '#4b5563' }}
-        >
+        <p className={styles.englishNotice}>
           As a <strong>Bantayog Alert</strong> responder, your location and actions are logged to
-          coordinate disaster response. Your data is protected under Republic Act 10173.
+          coordinate disaster response and may be retained for up to 90 days. Your data is protected
+          under Republic Act 10173.
         </p>
         <button
           onClick={() => void handleDismiss()}

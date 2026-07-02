@@ -45,7 +45,7 @@
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "firebase": "^12.15.0",
-    "firebase-admin": "^14.0.0",
+    "firebase-admin": "^14.1.0",
     "globals": "^17.6.0",
     "happy-dom": "^20.9.0",
     "husky": "^9.1.6",
@@ -54,7 +54,7 @@
     "tsx": "^4.19.0",
     "turbo": "^2.1.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1",
+    "typescript-eslint": "^8.62.0",
     "vitest": "^4.1.9"
   },
   "pnpm": {

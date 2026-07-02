@@ -59,7 +59,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-lint-${{ github.sha }}
@@ -80,7 +80,7 @@ jobs:
         with:
           fetch-depth: 0 # audit diffs against the PR base ref
       # fallow-rs/fallow v2 branch snapshot from 2026-06-12.
-      - uses: fallow-rs/fallow@9a46ab94fc51b6eed0fb663af2f201cc589b802d
+      - uses: fallow-rs/fallow@7226852618979a43dbceeb860ca3bacc8369e7a5
         with:
           version: '2.91.0'
           command: audit
@@ -100,7 +100,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-typecheck-${{ github.sha }}
@@ -119,7 +119,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-test-${{ github.sha }}
@@ -178,7 +178,7 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@${PNPM_VERSION} --activate
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: .turbo
           key: turbo-build-${{ github.sha }}

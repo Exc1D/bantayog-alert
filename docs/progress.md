@@ -6,6 +6,13 @@
 - Responder-app's two local `timeAgo` copies were not byte-identical (AlertsPage caps at "over 30 days ago", FeedPage doesn't) — the shared `time-ago.ts` takes an opt-in `capAt30Days` flag so both surfaces keep their exact prior rendered copy.
 - Final gates: root typecheck/lint/test/build all green. `fallow audit --gate new-only` first reported `fail` with 1 complexity + 3 duplication "introduced" findings, all path/line-count re-attribution artifacts of the file moves above, not new regressions: `mapAlertDoc` (citizen-pwa `firestore.ts`) is byte-identical to the pre-move `packages/shared-firebase` version; the `firestore.test.ts` and `DetailSheet.tsx` clones are pre-existing patterns caught by a changed line count in an unrelated edit. Suppressed each with the repo's established `// fallow-ignore-next-line complexity` / `code-duplication` comments (same pattern already used in `functions/src/domains/users/responder-roster.ts`), including the one genuinely new clone (`time-ago.ts` between citizen-pwa and responder-app — the accepted cost of not building a shared package for two small per-app copies). Re-run: `verdict: pass`, 0 introduced on every axis.
 
+## 2026-06-30 - Responder Field Accessibility Basics
+
+- Increased bottom-tab labels from 9px to 12px, used the existing high-contrast primary text token for the active tab, and enlarged the SOS control from 40px to 48px. Navigation and SOS behavior are unchanged.
+- Added the required bilingual 90-day location/action retention disclosure and bumped responder privacy consent from 1.0 to 1.1 so existing users see it.
+- Split deep semantic fill colors from WCAG-readable dark-surface text colors, then migrated responder amber/red text consumers without changing fills.
+- Moved each dispatch's state-dependent primary action directly below the incident summary, ahead of progress and navigation details. SOS remains hold-then-confirm until operations approves a send/cancel contract.
+
 ## 2026-06-24 - Admin shell and triage friction slice
 
 - Added a shared Admin shell with collapsible persisted sidebar navigation, global utility actions, and a Triage badge that counts only `new` + `awaiting_verify` reports.

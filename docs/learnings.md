@@ -15,6 +15,10 @@
 
 ## UX / Metrics Display
 
+- Semantic colors need separate fill and text tokens: deep emergency fills can be
+  safe with light text while failing WCAG when reused as text on dark surfaces.
+- Bump the consent version whenever privacy copy materially changes, or previously
+  accepted users will never see the revised disclosure.
 - Widening a stat-card prop `number`→`number | null`: guard derived bool flags (e.g. `isFcmHigh`) with strict `!== null` — a falsy `!fcmPercent` treats genuine `0` as unknown. Use `String(value) + '%'` not a template literal under `@typescript-eslint/restrict-template-expressions`.
 - Test assertions over `getAllByRole('status')`: use `el.textContent.includes(...)` (direct, no optional chain, no `??`) — ESLint treats `HTMLElement.textContent` as non-nullable in test code.
 

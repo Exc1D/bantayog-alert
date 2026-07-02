@@ -30,7 +30,7 @@
   align-items: center;
   justify-content: center;
   border: 2px solid var(--amber-accent);
-  color: var(--amber-accent);
+  color: var(--amber-text);
   background: rgba(245, 158, 11, 0.08);
   flex-shrink: 0;
 }
@@ -64,7 +64,7 @@
 
 .profileTypeBadge {
   margin: 0;
-  color: var(--amber-accent);
+  color: var(--amber-text);
   font-size: var(--font-size-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -151,7 +151,7 @@
 }
 
 .statAmber {
-  color: var(--amber-accent);
+  color: var(--amber-text);
 }
 
 .statGreen {

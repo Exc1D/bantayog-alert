@@ -106,11 +106,11 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .tabActive {
-  color: var(--amber-accent);
+  color: var(--text-primary);
   border-bottom-color: var(--amber-accent);
 }
 
