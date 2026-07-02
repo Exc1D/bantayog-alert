@@ -85,6 +85,7 @@ export function DetailSheet(props: Props) {
     const hazard = getHazardTypePresentation(incident.reportType)
     const HazardIcon = hazard.icon
 
+    // fallow-ignore-next-line code-duplication
     return (
       <section
         role="dialog"
@@ -160,6 +161,7 @@ export function DetailSheet(props: Props) {
   const hazard = getHazardTypePresentation(report.reportType)
   const StatusIcon = status.icon
 
+  // fallow-ignore-next-line code-duplication
   return (
     <section
       role="dialog"

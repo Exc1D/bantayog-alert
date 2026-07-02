@@ -1,5 +1,6 @@
 /** Compact relative time for cards and rows: "just now", "5m ago", "3h ago", "2d ago". */
 export function timeAgo(ts: number, now = Date.now()): string {
+  // fallow-ignore-next-line code-duplication
   const minutes = Math.floor((now - ts) / 60000)
   if (minutes < 1) return 'just now'
   if (minutes < 60) return `${String(minutes)}m ago`

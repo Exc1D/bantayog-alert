@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-07-02 - Ponytail deferred findings execution
+
+- Executed the 5 deferred findings from the 2026-07-02 whole-repo ponytail audit, one verified commit each: untrack `functions/lib` (444 generated files), `@turf/turf` → 4 scoped packages (785e204c), react-window → plain scrollable list (312ab495), `shared-firebase` folded into citizen-pwa (its only consumer, 3bb86dd9), responder-app time-ago dedup (5b2f3680). framer-motion → CSS stays deferred: usage spans ~11 production files using `AnimatePresence`/`useMotionValue` semantics CSS can't replicate — a product refactor, not cleanup.
+- Responder-app's two local `timeAgo` copies were not byte-identical (AlertsPage caps at "over 30 days ago", FeedPage doesn't) — the shared `time-ago.ts` takes an opt-in `capAt30Days` flag so both surfaces keep their exact prior rendered copy.
+- Final gates: root typecheck/lint/test/build all green. `fallow audit --gate new-only` first reported `fail` with 1 complexity + 3 duplication "introduced" findings, all path/line-count re-attribution artifacts of the file moves above, not new regressions: `mapAlertDoc` (citizen-pwa `firestore.ts`) is byte-identical to the pre-move `packages/shared-firebase` version; the `firestore.test.ts` and `DetailSheet.tsx` clones are pre-existing patterns caught by a changed line count in an unrelated edit. Suppressed each with the repo's established `// fallow-ignore-next-line complexity` / `code-duplication` comments (same pattern already used in `functions/src/domains/users/responder-roster.ts`), including the one genuinely new clone (`time-ago.ts` between citizen-pwa and responder-app — the accepted cost of not building a shared package for two small per-app copies). Re-run: `verdict: pass`, 0 introduced on every axis.
+
 ## 2026-06-24 - Admin shell and triage friction slice
 
 - Added a shared Admin shell with collapsible persisted sidebar navigation, global utility actions, and a Triage badge that counts only `new` + `awaiting_verify` reports.

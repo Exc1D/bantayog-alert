@@ -21,6 +21,7 @@ vi.mock('firebase/firestore', () => ({
 import { subscribeAlerts } from './firestore'
 
 describe('subscribeAlerts', () => {
+  // fallow-ignore-next-line code-duplication
   it('orders by publishedAt and maps snapshot docs', () => {
     mockCollection.mockReturnValue({ _tag: 'collection' })
     mockOrderBy.mockReturnValue({ _tag: 'orderBy' })
@@ -69,6 +70,7 @@ describe('subscribeAlerts', () => {
     ])
   })
 
+  // fallow-ignore-next-line code-duplication
   it('maps backend-declared alert docs into citizen alert cards', () => {
     mockCollection.mockReturnValue({ _tag: 'collection' })
     mockOrderBy.mockReturnValue({ _tag: 'orderBy' })

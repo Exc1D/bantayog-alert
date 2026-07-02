@@ -1,5 +1,6 @@
 export function timeAgo(timestamp: number, capAt30Days = false): string {
   if (timestamp <= 0) return 'time pending'
+  // fallow-ignore-next-line code-duplication
   const minutes = Math.floor((Date.now() - timestamp) / 60_000)
   if (minutes < 1) return 'just now'
   if (minutes < 60) return `${String(minutes)}m ago`

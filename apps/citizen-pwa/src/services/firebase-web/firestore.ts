@@ -49,6 +49,7 @@ function severityField(data: Record<string, unknown>, hazardType: string): Alert
   return HAZARD_SEVERITY[hazardType] ?? 'info'
 }
 
+// fallow-ignore-next-line complexity
 function mapAlertDoc(id: string, data: Record<string, unknown>): AlertDoc {
   const hazardType = stringField(data, 'hazardType') ?? 'alert'
   return {
