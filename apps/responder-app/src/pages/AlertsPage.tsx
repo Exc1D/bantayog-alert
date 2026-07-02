@@ -12,6 +12,7 @@ import {
 import { CAMARINES_NORTE_MUNICIPALITIES } from '@bantayog/shared-validators'
 import { useOfficialAlerts, type OfficialAlertItem } from '../hooks/useOfficialAlerts'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { timeAgo } from '../lib/time-ago'
 import styles from './AlertsPage.module.css'
 
 const MUNICIPALITY_LABELS = new Map(
@@ -32,18 +33,6 @@ function mapFirebaseError(message: string): string {
     if (message.toLowerCase().includes(code)) return friendly
   }
   return message
-}
-
-function timeAgo(timestamp: number): string {
-  if (timestamp <= 0) return 'time pending'
-  const minutes = Math.floor((Date.now() - timestamp) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${String(minutes)}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${String(hours)}h ago`
-  const days = Math.floor(hours / 24)
-  if (days > 30) return 'over 30 days ago'
-  return `${String(days)}d ago`
 }
 
 function formatAbsoluteTime(timestamp: number): string {
@@ -97,7 +86,7 @@ function AlertCard({ alert }: { alert: OfficialAlertItem }) {
           <p className={styles.metaLine}>
             <Clock size={13} aria-hidden="true" />
             <span title={formatAbsoluteTime(alert.publishedAtMillis)}>
-              {timeAgo(alert.publishedAtMillis)}
+              {timeAgo(alert.publishedAtMillis, true)}
             </span>
             <span aria-hidden="true">.</span>
             <MapPin size={13} aria-hidden="true" />
