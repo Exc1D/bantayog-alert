@@ -45,6 +45,17 @@ afterAll(async () => {
   await testEnv?.cleanup()
 })
 
+const monitorConfig = {
+  autoEscalationEnabled: true,
+  maxDispatchesPerRun: 50,
+  maxEscalationsPerRun: 50,
+  enableCircuitBreaker: false,
+  circuitBreakerThreshold: 100,
+  circuitBreakerErrorThreshold: 10,
+  updatedAt: 0,
+  updatedBy: 'system',
+}
+
 describe('monitorDispatchDeadlines — deadline exceeded', () => {
   itif(available)('escalates pending dispatch past deadline with expired lease', async () => {
     // Create a dispatch past deadline with expired lease
@@ -86,16 +97,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()
@@ -132,16 +134,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()
@@ -176,29 +169,56 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const dateStr = new Date(ts).toISOString().slice(0, 10)
-    const daetAlert = await adminDb
-      .collection('alerts')
-      .doc('daet_' + dateStr)
-      .get()
-    const laboAlert = await adminDb
-      .collection('alerts')
-      .doc('labo_' + dateStr)
-      .get()
+    const daetAlert = await adminDb.collection('alerts').doc('daet_' + dateStr).get()
+    const laboAlert = await adminDb.collection('alerts').doc('labo_' + dateStr).get()
     expect(daetAlert.data()?.count).toBe(2)
     expect(laboAlert.data()?.count).toBe(1)
+  })
+
+  itif(available)('adds needs_admin alerts to an existing municipality alert count', async () => {
+    const dateStr = new Date(ts).toISOString().slice(0, 10)
+
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'alerts', 'daet_' + dateStr), {
+        type: 'dispatch_deadline_exceeded',
+        municipalityId: 'daet',
+        count: 5,
+        lastUpdatedAt: ts - 1,
+      })
+
+      for (const dispatchId of ['d1', 'd2'] as const) {
+        await setDoc(doc(ctx.firestore(), 'dispatches', dispatchId), {
+          status: 'pending',
+          reportId: 'r1',
+          assignedTo: { uid: 'responder-1', agencyId: 'bfp', municipalityId: 'daet' },
+          municipalityId: 'daet',
+          acknowledgementDeadlineAt: ts - 60000,
+          monitorLeaseAt: ts - 180000,
+          escalationCount: 1,
+          previouslyNotifiedResponderUids: ['responder-1'],
+          createdAt: ts - 300000,
+        })
+      }
+    })
+
+    await monitorDispatchDeadlinesCore(adminDb, {
+      now: ts,
+      config: monitorConfig,
+    })
+
+    const alert = await adminDb.collection('alerts').doc('daet_' + dateStr).get()
+    expect(alert.data()).toEqual(
+      expect.objectContaining({
+        type: 'dispatch_deadline_exceeded',
+        municipalityId: 'daet',
+        count: 7,
+        lastUpdatedAt: ts,
+      }),
+    )
   })
 
   itif(available)('flips to needs_admin when no available responders', async () => {
@@ -220,16 +240,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()
@@ -253,16 +264,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()
