@@ -248,85 +248,101 @@ export async function monitorDispatchDeadlinesCore(
 
   for (const dispatchDoc of dispatchDocs) {
     try {
-      await db.runTransaction(async (tx) => {
-        const dispatchRef = db.collection('dispatches').doc(dispatchDoc.id)
-        const freshSnap = await tx.get(dispatchRef)
-        if (!freshSnap.exists) return
+      // Transaction returns outcome so tallying can happen once after commit
+      const outcome = await db.runTransaction(
+        async (tx): Promise<{ needsAdmin: boolean; municipalityId?: string } | null> => {
+          const dispatchRef = db.collection('dispatches').doc(dispatchDoc.id)
+          const freshSnap = await tx.get(dispatchRef)
+          if (!freshSnap.exists) return null
 
-        const data = freshSnap.data() as DispatchData
-        const assignedTo = data.assignedTo
-        if (!assignedTo) return
+          const data = freshSnap.data() as DispatchData
+          const assignedTo = data.assignedTo
+          if (!assignedTo) return null
 
-        if (
-          data.status !== 'pending' ||
-          data.acknowledgementDeadlineAt === undefined ||
-          data.acknowledgementDeadlineAt >= now
-        ) {
-          return
-        }
+          if (
+            data.status !== 'pending' ||
+            data.acknowledgementDeadlineAt === undefined ||
+            data.acknowledgementDeadlineAt >= now
+          ) {
+            return null
+          }
 
-        if ((data.escalationCount ?? 0) >= 1) {
-          markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
-          writeDeadlineExceededEvent(
+          if ((data.escalationCount ?? 0) >= 1) {
+            markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
+            writeDeadlineExceededEvent(
+              tx,
+              db,
+              dispatchDoc.id,
+              assignedTo,
+              data.escalationCount ?? 0,
+              now,
+            )
+            return {
+              needsAdmin: true,
+              ...(data.municipalityId ? { municipalityId: data.municipalityId } : {}),
+            }
+          }
+
+          const responderSnap = await tx.get(db.collection('responders').doc(assignedTo.uid))
+          if (
+            !responderSnap.exists ||
+            (responderSnap.data() as { accountStatus?: string }).accountStatus !== 'active'
+          ) {
+            markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
+            return {
+              needsAdmin: true,
+              ...(data.municipalityId ? { municipalityId: data.municipalityId } : {}),
+            }
+          }
+
+          const candidate = findCandidateResponder(allResponders, data)
+          if (!candidate) {
+            markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
+            return {
+              needsAdmin: true,
+              ...(data.municipalityId ? { municipalityId: data.municipalityId } : {}),
+            }
+          }
+
+          const newEscalationCount = (data.escalationCount ?? 0) + 1
+
+          tx.update(dispatchRef, {
+            assignedTo: {
+              uid: candidate.id,
+              agencyId: candidate.agencyId,
+              municipalityId: candidate.municipalityId,
+            },
+            escalationCount: newEscalationCount,
+            previouslyNotifiedResponderUids: Array.from(
+              new Set([...(data.previouslyNotifiedResponderUids ?? []), assignedTo.uid]),
+            ),
+            escalationReason: 'deadline_exceeded',
+            monitorLeaseAt: now,
+            monitorRunId,
+            status: 'pending',
+          })
+
+          writeDeadlineExceededEvent(tx, db, dispatchDoc.id, assignedTo, newEscalationCount, now)
+          writeEscalationAttemptedEvent(
             tx,
             db,
             dispatchDoc.id,
             assignedTo,
-            data.escalationCount ?? 0,
+            candidate,
+            newEscalationCount,
             now,
           )
-          tallyNeedsAdmin(data.municipalityId)
-          return
-        }
 
-        const responderSnap = await tx.get(db.collection('responders').doc(assignedTo.uid))
-        if (
-          !responderSnap.exists ||
-          (responderSnap.data() as { accountStatus?: string }).accountStatus !== 'active'
-        ) {
-          markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
-          tallyNeedsAdmin(data.municipalityId)
-          return
-        }
+          return { needsAdmin: false }
+        },
+      )
 
-        const candidate = findCandidateResponder(allResponders, data)
-        if (!candidate) {
-          markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
-          tallyNeedsAdmin(data.municipalityId)
-          return
-        }
-
-        const newEscalationCount = (data.escalationCount ?? 0) + 1
-
-        tx.update(dispatchRef, {
-          assignedTo: {
-            uid: candidate.id,
-            agencyId: candidate.agencyId,
-            municipalityId: candidate.municipalityId,
-          },
-          escalationCount: newEscalationCount,
-          previouslyNotifiedResponderUids: Array.from(
-            new Set([...(data.previouslyNotifiedResponderUids ?? []), assignedTo.uid]),
-          ),
-          escalationReason: 'deadline_exceeded',
-          monitorLeaseAt: now,
-          monitorRunId,
-          status: 'pending',
-        })
-
-        writeDeadlineExceededEvent(tx, db, dispatchDoc.id, assignedTo, newEscalationCount, now)
-        writeEscalationAttemptedEvent(
-          tx,
-          db,
-          dispatchDoc.id,
-          assignedTo,
-          candidate,
-          newEscalationCount,
-          now,
-        )
-
+      // Tally after transaction completes so retries don't double-count
+      if (outcome?.needsAdmin) {
+        tallyNeedsAdmin(outcome.municipalityId)
+      } else if (outcome && !outcome.needsAdmin) {
         escalatedCount++
-      })
+      }
     } catch (err) {
       log({
         severity: 'ERROR',

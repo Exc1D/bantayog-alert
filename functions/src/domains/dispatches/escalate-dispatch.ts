@@ -196,18 +196,25 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
       const fcmResult = mapFcmResult(fcm)
       const nowMillis = deps.now.toMillis()
 
-      await db.collection('dispatch_events').add({
-        type: 'notification_attempted',
-        dispatchId: txResult.dispatchId,
-        responderUid: parsed.newResponderUid,
-        agencyId: txResult.responder.agencyId,
-        municipalityId: txResult.responder.municipalityId,
-        fcmResult,
-        fcmWarnings: fcm.warnings,
-        at: nowMillis,
-        correlationId: txResult.correlationId,
-        schemaVersion: 1,
-      })
+      // Key off idempotencyKey (stable across retries), not correlationId
+      // (regenerated per invocation), so a retry after partial failure
+      // overwrites rather than duplicates these records.
+      const notificationEventId = `${parsed.idempotencyKey}_notification`
+      await db
+        .collection('dispatch_events')
+        .doc(notificationEventId)
+        .set({
+          type: 'notification_attempted',
+          dispatchId: txResult.dispatchId,
+          responderUid: parsed.newResponderUid,
+          agencyId: txResult.responder.agencyId,
+          municipalityId: txResult.responder.municipalityId,
+          fcmResult,
+          fcmWarnings: fcm.warnings,
+          at: nowMillis,
+          correlationId: txResult.correlationId,
+          schemaVersion: 1,
+        })
 
       await db.collection('dispatches').doc(txResult.dispatchId).update({
         fcmResult,
@@ -215,15 +222,19 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
       })
 
       if (fcmResult === 'network_error') {
-        await db.collection('fcm_retry_queue').add({
-          dispatchId: txResult.dispatchId,
-          responderUid: parsed.newResponderUid,
-          attemptCount: 0,
-          lastAttemptAt: nowMillis,
-          nextAttemptAt: nowMillis + 30_000,
-          originalError: 'fcm_network_error',
-          status: 'pending',
-        })
+        const retryQueueId = `${parsed.idempotencyKey}_retry`
+        await db
+          .collection('fcm_retry_queue')
+          .doc(retryQueueId)
+          .set({
+            dispatchId: txResult.dispatchId,
+            responderUid: parsed.newResponderUid,
+            attemptCount: 0,
+            lastAttemptAt: nowMillis,
+            nextAttemptAt: nowMillis + 30_000,
+            originalError: 'fcm_network_error',
+            status: 'pending',
+          })
       }
 
       return {
