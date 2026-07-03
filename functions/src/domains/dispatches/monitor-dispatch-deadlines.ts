@@ -250,6 +250,7 @@ export async function monitorDispatchDeadlinesCore(
     try {
       // Transaction returns outcome so tallying can happen once after commit
       const outcome = await db.runTransaction(
+        // fallow-ignore-next-line complexity
         async (tx): Promise<{ needsAdmin: boolean; municipalityId?: string } | null> => {
           const dispatchRef = db.collection('dispatches').doc(dispatchDoc.id)
           const freshSnap = await tx.get(dispatchRef)

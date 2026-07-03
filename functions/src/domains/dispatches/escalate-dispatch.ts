@@ -200,21 +200,18 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
       // (regenerated per invocation), so a retry after partial failure
       // overwrites rather than duplicates these records.
       const notificationEventId = `${parsed.idempotencyKey}_notification`
-      await db
-        .collection('dispatch_events')
-        .doc(notificationEventId)
-        .set({
-          type: 'notification_attempted',
-          dispatchId: txResult.dispatchId,
-          responderUid: parsed.newResponderUid,
-          agencyId: txResult.responder.agencyId,
-          municipalityId: txResult.responder.municipalityId,
-          fcmResult,
-          fcmWarnings: fcm.warnings,
-          at: nowMillis,
-          correlationId: txResult.correlationId,
-          schemaVersion: 1,
-        })
+      await db.collection('dispatch_events').doc(notificationEventId).set({
+        type: 'notification_attempted',
+        dispatchId: txResult.dispatchId,
+        responderUid: parsed.newResponderUid,
+        agencyId: txResult.responder.agencyId,
+        municipalityId: txResult.responder.municipalityId,
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+        at: nowMillis,
+        correlationId: txResult.correlationId,
+        schemaVersion: 1,
+      })
 
       await db.collection('dispatches').doc(txResult.dispatchId).update({
         fcmResult,
