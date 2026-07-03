@@ -74,6 +74,23 @@ export async function createResponderCore(
         throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'agencyId does not match caller')
       }
 
+      // A supplied municipalityId must be within the caller's jurisdiction.
+      if (deps.municipalityId !== undefined) {
+        const callerMunicipalityId = deps.actor.claims.municipalityId as string | undefined
+        const permitted = Array.isArray(deps.actor.claims.permittedMunicipalityIds)
+          ? (deps.actor.claims.permittedMunicipalityIds as unknown[])
+          : []
+        if (
+          deps.municipalityId !== callerMunicipalityId &&
+          !permitted.includes(deps.municipalityId)
+        ) {
+          throw new BantayogError(
+            BantayogErrorCode.FORBIDDEN,
+            'municipalityId outside caller jurisdiction',
+          )
+        }
+      }
+
       // Check for existing phone to avoid auth collisions.
       try {
         const existing = await adminAuth.getUserByPhoneNumber(deps.phone)
