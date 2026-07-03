@@ -221,7 +221,7 @@ describe('escalateDispatchCore', () => {
     })
   })
 
-  itif(available)('rejects escalating a resolved dispatch', async () => {
+  itif(available)('rejects escalating terminal-status dispatches', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
       await seedResponder(db, 'responder-1', 'daet', 'active')
@@ -230,25 +230,29 @@ describe('escalateDispatchCore', () => {
         municipalityId: 'daet',
         responderUid: 'responder-1',
       })
-      await db.collection('dispatches').doc('d1').update({ status: 'resolved' })
       await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
         municipalityId: 'daet',
       })
 
-      await expect(
-        escalateDispatchCore(db, {
-          dispatchId: 'd1',
-          newResponderUid: 'responder-2',
-          idempotencyKey: crypto.randomUUID(),
-          actor: {
-            uid: 'admin-1',
-            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
-          },
-          now: Timestamp.now(),
-        }),
-      ).rejects.toThrow('cannot escalate a resolved dispatch')
+      const terminalStatuses = ['resolved', 'cancelled', 'superseded'] as const
+      for (const status of terminalStatuses) {
+        await db.collection('dispatches').doc('d1').update({ status })
+
+        await expect(
+          escalateDispatchCore(db, {
+            dispatchId: 'd1',
+            newResponderUid: 'responder-2',
+            idempotencyKey: crypto.randomUUID(),
+            actor: {
+              uid: 'admin-1',
+              claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+            },
+            now: Timestamp.now(),
+          }),
+        ).rejects.toThrow(`cannot escalate a ${status} dispatch`)
+      }
     })
   })
 
