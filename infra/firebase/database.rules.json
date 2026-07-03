@@ -16,7 +16,7 @@
     },
     "shared_projection": {
       "$municipalityId": {
-        ".read": "auth != null && auth.token.accountStatus === 'active' && (auth.token.role === 'provincial_superadmin' || (auth.token.role === 'municipal_admin' && auth.token.municipalityId === $municipalityId) || auth.token.role === 'agency_admin')",
+        ".read": "auth != null && auth.token.accountStatus === 'active' && (auth.token.role === 'provincial_superadmin' || (auth.token.role === 'municipal_admin' && auth.token.municipalityId === $municipalityId) || (auth.token.role === 'agency_admin' && auth.token.municipalityId === $municipalityId))",
         ".write": false,
         "$uid": { ".write": false }
       }

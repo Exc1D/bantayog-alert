@@ -91,8 +91,19 @@ describe('situation_updates rules', () => {
   })
 
   itif('allows signed-in users to report a public update for moderation', async () => {
-    const db = authed(env, 'citizen-1', {})
+    const db = authed(env, 'citizen-1', { accountStatus: 'active' })
     await assertSucceeds(
+      addDoc(collection(db, 'situation_updates/seed-public/reports'), {
+        reporterUid: 'citizen-1',
+        reason: 'misleading location',
+        createdAt: ts,
+      }),
+    )
+  })
+
+  itif('rejects moderation reports from non-active accounts', async () => {
+    const db = authed(env, 'citizen-1', { accountStatus: 'suspended' })
+    await assertFails(
       addDoc(collection(db, 'situation_updates/seed-public/reports'), {
         reporterUid: 'citizen-1',
         reason: 'misleading location',
