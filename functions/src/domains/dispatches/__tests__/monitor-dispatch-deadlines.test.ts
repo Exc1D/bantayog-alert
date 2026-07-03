@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
@@ -16,27 +16,26 @@ vi.mock('../../../admin-init.js', () => ({
 import { monitorDispatchDeadlinesCore } from '../monitor-dispatch-deadlines.js'
 
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment | undefined
-let available = false
 
-beforeAll(async () => {
-  const guarded = await guardInitTestEnvironment(
-    {
-      projectId: 'dispatch-monitor-test',
-      firestore: {
-        host: 'localhost',
-        port: 8081,
-        rules:
-          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
-      },
+// Guard must settle before Vitest registers tests: collection-time itif(available)
+// with a beforeAll guard silently registers every test as skipped.
+const guarded = await guardInitTestEnvironment(
+  {
+    projectId: 'dispatch-monitor-test',
+    firestore: {
+      host: 'localhost',
+      port: 8081,
+      rules:
+        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
     },
-    'monitor-dispatch-deadlines',
-  )
-  testEnv = guarded.env
-  available = guarded.available
-  if (!available) return
+  },
+  'monitor-dispatch-deadlines',
+)
+const testEnv: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
+if (available) {
   adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
-})
+}
 
 beforeEach(async () => {
   if (!available || !testEnv) return
@@ -63,8 +62,18 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
       })
     })
 
-    // Create an available responder in same municipality
+    // Create an available responder in same municipality.
+    // responder-1 (currently assigned) must exist and be active or the monitor
+    // routes the dispatch to needs_admin instead of escalating.
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'responders', 'responder-1'), {
+        availabilityStatus: 'available',
+        accountStatus: 'active',
+        agencyId: 'bfp',
+        municipalityId: 'daet',
+        lastSeenAt: ts - 60000,
+        fcmTokens: ['token-1'],
+      })
       await setDoc(doc(ctx.firestore(), 'responders', 'responder-2'), {
         availabilityStatus: 'available',
         accountStatus: 'active',
@@ -142,6 +151,54 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
     const events = await adminDb.collection('dispatch_events').get()
     expect(events.size).toBe(1)
     expect(events.docs[0]!.data().type).toBe('deadline_exceeded')
+  })
+
+  itif(available)('counts needs_admin alerts per municipality, not the run total', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      for (const [id, muni] of [
+        ['d1', 'daet'],
+        ['d2', 'daet'],
+        ['d3', 'labo'],
+      ] as const) {
+        await setDoc(doc(ctx.firestore(), 'dispatches', id), {
+          status: 'pending',
+          reportId: 'r1',
+          assignedTo: { uid: 'responder-1', agencyId: 'bfp', municipalityId: muni },
+          municipalityId: muni,
+          acknowledgementDeadlineAt: ts - 60000,
+          monitorLeaseAt: ts - 180000,
+          escalationCount: 1,
+          previouslyNotifiedResponderUids: ['responder-1'],
+          createdAt: ts - 300000,
+        })
+      }
+    })
+
+    await monitorDispatchDeadlinesCore(adminDb, {
+      now: ts,
+      config: {
+        autoEscalationEnabled: true,
+        maxDispatchesPerRun: 50,
+        maxEscalationsPerRun: 50,
+        enableCircuitBreaker: false,
+        circuitBreakerThreshold: 100,
+        circuitBreakerErrorThreshold: 10,
+        updatedAt: 0,
+        updatedBy: 'system',
+      },
+    })
+
+    const dateStr = new Date(ts).toISOString().slice(0, 10)
+    const daetAlert = await adminDb
+      .collection('alerts')
+      .doc('daet_' + dateStr)
+      .get()
+    const laboAlert = await adminDb
+      .collection('alerts')
+      .doc('labo_' + dateStr)
+      .get()
+    expect(daetAlert.data()?.count).toBe(2)
+    expect(laboAlert.data()?.count).toBe(1)
   })
 
   itif(available)('flips to needs_admin when no available responders', async () => {

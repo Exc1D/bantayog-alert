@@ -221,6 +221,71 @@ describe('escalateDispatchCore', () => {
     })
   })
 
+  itif(available)('rejects escalating a resolved dispatch', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await seedResponder(db, 'responder-1', 'daet', 'active')
+      await seedResponder(db, 'responder-2', 'daet', 'active')
+      await seedDispatchNeedsAdmin(db, 'd1', {
+        municipalityId: 'daet',
+        responderUid: 'responder-1',
+      })
+      await db.collection('dispatches').doc('d1').update({ status: 'resolved' })
+      await seedActiveAccount(testEnv!, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+
+      await expect(
+        escalateDispatchCore(db, {
+          dispatchId: 'd1',
+          newResponderUid: 'responder-2',
+          idempotencyKey: crypto.randomUUID(),
+          actor: {
+            uid: 'admin-1',
+            claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+          },
+          now: Timestamp.now(),
+        }),
+      ).rejects.toThrow('cannot escalate a resolved dispatch')
+    })
+  })
+
+  itif(available)('recomputes acknowledgementDeadlineAt from report severity', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await seedResponder(db, 'responder-1', 'daet', 'active')
+      await seedResponder(db, 'responder-2', 'daet', 'active')
+      await seedDispatchNeedsAdmin(db, 'd1', {
+        municipalityId: 'daet',
+        responderUid: 'responder-1',
+      })
+      await db.collection('reports').doc('r1').set({ severityDerived: 'critical' })
+      await seedActiveAccount(testEnv!, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+
+      const now = Timestamp.fromMillis(ts + 60_000)
+      await escalateDispatchCore(db, {
+        dispatchId: 'd1',
+        newResponderUid: 'responder-2',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now,
+      })
+
+      const dispatch = (await db.collection('dispatches').doc('d1').get()).data()!
+      // critical severity = 5-minute acknowledgement window
+      expect(dispatch.acknowledgementDeadlineAt).toBe(ts + 60_000 + 300_000)
+    })
+  })
+
   itif(available)('rejects escalating to already-notified responder', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any

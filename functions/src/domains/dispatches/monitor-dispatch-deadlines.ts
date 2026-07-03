@@ -1,5 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { FieldValue, Transaction } from 'firebase-admin/firestore'
+import { Transaction } from 'firebase-admin/firestore'
 import { adminDb } from '../../admin-init.js'
 import { getMonitorConfig, LEASE_EXPIRY_MS } from './monitor-config.js'
 import { logDimension } from '@bantayog/shared-validators'
@@ -149,18 +149,20 @@ function findCandidateResponder(
 }
 
 async function updateNeedsAdminAlerts(
-  municipalityIds: string[],
+  countByMunicipality: Map<string, number>,
   now: number,
-  count: number,
 ): Promise<void> {
   const dateStr = new Date(now).toISOString().slice(0, 10)
-  for (const muniId of municipalityIds) {
+  for (const [muniId, count] of countByMunicipality) {
     const alertRef = adminDb.collection('alerts').doc(muniId + '_' + dateStr)
+    // Concrete read-then-set instead of FieldValue.increment: the monitor runs
+    // single-instance, and Admin transforms break rules-unit-testing contexts.
+    const existing = (await alertRef.get()).data() as { count?: number } | undefined
     await alertRef.set(
       {
         type: 'dispatch_deadline_exceeded',
         municipalityId: muniId,
-        count: FieldValue.increment(count),
+        count: (existing?.count ?? 0) + count,
         lastUpdatedAt: now,
       },
       { merge: true },
@@ -233,6 +235,16 @@ export async function monitorDispatchDeadlinesCore(
 
   let escalatedCount = 0
   let needsAdminCount = 0
+  const needsAdminByMunicipality = new Map<string, number>()
+  const tallyNeedsAdmin = (municipalityId: string | undefined): void => {
+    needsAdminCount++
+    // No municipality on the dispatch = no alert doc to target; still logged in totals.
+    if (municipalityId === undefined) return
+    needsAdminByMunicipality.set(
+      municipalityId,
+      (needsAdminByMunicipality.get(municipalityId) ?? 0) + 1,
+    )
+  }
 
   for (const dispatchDoc of dispatchDocs) {
     try {
@@ -263,7 +275,7 @@ export async function monitorDispatchDeadlinesCore(
             data.escalationCount ?? 0,
             now,
           )
-          needsAdminCount++
+          tallyNeedsAdmin(data.municipalityId)
           return
         }
 
@@ -273,14 +285,14 @@ export async function monitorDispatchDeadlinesCore(
           (responderSnap.data() as { accountStatus?: string }).accountStatus !== 'active'
         ) {
           markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
-          needsAdminCount++
+          tallyNeedsAdmin(data.municipalityId)
           return
         }
 
         const candidate = findCandidateResponder(allResponders, data)
         if (!candidate) {
           markDispatchNeedsAdmin(tx, dispatchRef, dispatchDoc.id, now, monitorRunId)
-          needsAdminCount++
+          tallyNeedsAdmin(data.municipalityId)
           return
         }
 
@@ -292,8 +304,10 @@ export async function monitorDispatchDeadlinesCore(
             agencyId: candidate.agencyId,
             municipalityId: candidate.municipalityId,
           },
-          escalationCount: FieldValue.increment(1),
-          previouslyNotifiedResponderUids: FieldValue.arrayUnion(assignedTo.uid),
+          escalationCount: newEscalationCount,
+          previouslyNotifiedResponderUids: Array.from(
+            new Set([...(data.previouslyNotifiedResponderUids ?? []), assignedTo.uid]),
+          ),
           escalationReason: 'deadline_exceeded',
           monitorLeaseAt: now,
           monitorRunId,
@@ -322,8 +336,8 @@ export async function monitorDispatchDeadlinesCore(
     }
   }
 
-  if (needsAdminCount > 0) {
-    await updateNeedsAdminAlerts(municipalityIds, now, needsAdminCount)
+  if (needsAdminByMunicipality.size > 0) {
+    await updateNeedsAdminAlerts(needsAdminByMunicipality, now)
   }
 
   log({
