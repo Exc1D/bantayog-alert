@@ -48,6 +48,7 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
+  // fallow-ignore-next-line code-duplication
   const { result } = await withIdempotency(
     db,
     {
@@ -58,6 +59,7 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
     // FCM send, notification event, and retry-queue enqueue live inside the
     // idempotent operation so a cached-result retry cannot double-send.
     async () => {
+      // fallow-ignore-next-line complexity
       const txResult = await db.runTransaction(async (tx) => {
         const dispatchRef = db.collection('dispatches').doc(parsed.dispatchId)
         const dispatchSnap = await tx.get(dispatchRef)

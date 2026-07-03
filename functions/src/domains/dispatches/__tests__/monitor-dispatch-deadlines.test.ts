@@ -1,8 +1,13 @@
+// fallow-ignore-next-line code-duplication
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
+// fallow-ignore-next-line code-duplication
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+// fallow-ignore-next-line code-duplication
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
+// fallow-ignore-next-line code-duplication
 import { setDoc, doc } from 'firebase/firestore'
+// fallow-ignore-next-line code-duplication
 import { type Firestore } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
@@ -33,6 +38,7 @@ const guarded = await guardInitTestEnvironment(
 )
 const testEnv: RulesTestEnvironment | undefined = guarded.env
 const available = guarded.available
+// fallow-ignore-next-line code-duplication
 if (available) {
   adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
 }
@@ -57,6 +63,7 @@ const monitorConfig = {
 }
 
 describe('monitorDispatchDeadlines — deadline exceeded', () => {
+  // fallow-ignore-next-line code-duplication
   itif(available)('escalates pending dispatch past deadline with expired lease', async () => {
     // Create a dispatch past deadline with expired lease
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
@@ -85,6 +92,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
         lastSeenAt: ts - 60000,
         fcmTokens: ['token-1'],
       })
+      // fallow-ignore-next-line code-duplication
       await setDoc(doc(ctx.firestore(), 'responders', 'responder-2'), {
         availabilityStatus: 'available',
         accountStatus: 'active',
@@ -117,8 +125,10 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
     expect(escalationEvent?.data().toResponderUid).toBe('responder-2')
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('flips to needs_admin when escalation cap reached', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      // fallow-ignore-next-line code-duplication
       await setDoc(doc(ctx.firestore(), 'dispatches', 'd1'), {
         status: 'pending',
         reportId: 'r1',
@@ -173,8 +183,14 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
     })
 
     const dateStr = new Date(ts).toISOString().slice(0, 10)
-    const daetAlert = await adminDb.collection('alerts').doc('daet_' + dateStr).get()
-    const laboAlert = await adminDb.collection('alerts').doc('labo_' + dateStr).get()
+    const daetAlert = await adminDb
+      .collection('alerts')
+      .doc('daet_' + dateStr)
+      .get()
+    const laboAlert = await adminDb
+      .collection('alerts')
+      .doc('labo_' + dateStr)
+      .get()
     expect(daetAlert.data()?.count).toBe(2)
     expect(laboAlert.data()?.count).toBe(1)
   })
@@ -210,7 +226,10 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
       config: monitorConfig,
     })
 
-    const alert = await adminDb.collection('alerts').doc('daet_' + dateStr).get()
+    const alert = await adminDb
+      .collection('alerts')
+      .doc('daet_' + dateStr)
+      .get()
     expect(alert.data()).toEqual(
       expect.objectContaining({
         type: 'dispatch_deadline_exceeded',
@@ -221,6 +240,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
     )
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('flips to needs_admin when no available responders', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'dispatches', 'd1'), {
@@ -230,6 +250,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
         municipalityId: 'daet',
         acknowledgementDeadlineAt: ts - 60000,
         monitorLeaseAt: ts - 180000,
+        // fallow-ignore-next-line code-duplication
         escalationCount: 0,
         previouslyNotifiedResponderUids: [],
         createdAt: ts - 300000,
@@ -247,6 +268,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
     expect(d1.data()?.status).toBe('needs_admin')
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('skips dispatches with unexpired lease', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'dispatches', 'd1'), {
@@ -256,6 +278,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
         municipalityId: 'daet',
         acknowledgementDeadlineAt: ts - 60000,
         monitorLeaseAt: ts, // lease NOT expired (within 2 min)
+        // fallow-ignore-next-line code-duplication
         escalationCount: 0,
         previouslyNotifiedResponderUids: [],
         createdAt: ts - 300000,

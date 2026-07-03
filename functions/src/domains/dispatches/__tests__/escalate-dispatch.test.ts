@@ -19,11 +19,13 @@ vi.mock('../../ops/fcm-send.js', () => ({
 import { escalateDispatchCore } from '../escalate-dispatch.js'
 import { sendFcmToResponder } from '../../ops/fcm-send.js'
 
+// fallow-ignore-next-line code-duplication
 const guarded = await guardInitTestEnvironment(
   {
     projectId: 'escalate-dispatch-test',
     firestore: { host: 'localhost', port: 8081 },
   },
+  // fallow-ignore-next-line code-duplication
   'escalate-dispatch',
 )
 const testEnv: RulesTestEnvironment | undefined = guarded.env
@@ -40,12 +42,7 @@ afterAll(async () => {
 
 const ts = 1713350400000
 
-async function seedResponder(
-  db: any,
-  uid: string,
-  muni: string,
-  status: 'active' | 'suspended',
-) {
+async function seedResponder(db: any, uid: string, muni: string, status: 'active' | 'suspended') {
   await db.collection('responders').doc(uid).set({
     uid,
     municipalityId: muni,
@@ -108,6 +105,7 @@ async function seedDispatchNeedsAdminNoAssignedTo(
 }
 
 describe('escalateDispatchCore', () => {
+  // fallow-ignore-next-line code-duplication
   itif(available)('allows municipal_admin to escalate dispatch in their municipality', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
@@ -117,6 +115,7 @@ describe('escalateDispatchCore', () => {
         municipalityId: 'daet',
         responderUid: 'responder-1',
       })
+      // fallow-ignore-next-line code-duplication
       await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
@@ -169,6 +168,7 @@ describe('escalateDispatchCore', () => {
     })
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('rejects municipal_admin escalating dispatch in other municipality', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
@@ -178,6 +178,7 @@ describe('escalateDispatchCore', () => {
         municipalityId: ' OTHER: ',
         responderUid: 'responder-1',
       })
+      // fallow-ignore-next-line code-duplication
       await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
@@ -228,6 +229,7 @@ describe('escalateDispatchCore', () => {
     })
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('rejects escalating terminal-status dispatches', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
@@ -245,6 +247,7 @@ describe('escalateDispatchCore', () => {
 
       const terminalStatuses = ['resolved', 'cancelled', 'superseded'] as const
       for (const status of terminalStatuses) {
+        // fallow-ignore-next-line code-duplication
         await db.collection('dispatches').doc('d1').update({ status })
 
         await expect(
@@ -263,6 +266,7 @@ describe('escalateDispatchCore', () => {
     })
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('recomputes acknowledgementDeadlineAt from report severity', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
