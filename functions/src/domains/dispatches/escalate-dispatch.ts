@@ -6,6 +6,9 @@ import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { sendFcmToResponder, type FcmSendResult } from '../ops/fcm-send.js'
+import { getRedispatchDeadlineMs } from './redispatch-policy.js'
+
+const TERMINAL_ESCALATION_STATUSES = new Set(['resolved', 'cancelled', 'superseded'])
 
 const InputSchema = z
   .object({
@@ -45,6 +48,7 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
+  // fallow-ignore-next-line code-duplication
   const { result } = await withIdempotency(
     db,
     {
@@ -52,8 +56,11 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
       payload: idempotentPayload,
       now: () => deps.now.toMillis(),
     },
-    async () =>
-      db.runTransaction(async (tx) => {
+    // FCM send, notification event, and retry-queue enqueue live inside the
+    // idempotent operation so a cached-result retry cannot double-send.
+    async () => {
+      // fallow-ignore-next-line complexity
+      const txResult = await db.runTransaction(async (tx) => {
         const dispatchRef = db.collection('dispatches').doc(parsed.dispatchId)
         const dispatchSnap = await tx.get(dispatchRef)
         if (!dispatchSnap.exists) {
@@ -67,6 +74,13 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
           escalationCount?: number
           previouslyNotifiedResponderUids?: string[]
           reportId?: string
+        }
+
+        if (dispatch.status !== undefined && TERMINAL_ESCALATION_STATUSES.has(dispatch.status)) {
+          throw new BantayogError(
+            BantayogErrorCode.FAILED_PRECONDITION,
+            `cannot escalate a ${dispatch.status} dispatch`,
+          )
         }
 
         // Authz: municipal_admin can only escalate in their municipality
@@ -97,6 +111,15 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
         }
         if (responder.accountStatus !== 'active') {
           throw new BantayogError(BantayogErrorCode.FAILED_PRECONDITION, 'responder is not active')
+        }
+
+        // Read the report before any write so the SLA deadline can be recomputed
+        // from severity; the new responder gets a fresh acknowledgement window.
+        let severityDerived: unknown
+        if (dispatch.reportId) {
+          const reportSnap = await tx.get(db.collection('reports').doc(dispatch.reportId))
+          severityDerived = (reportSnap.data() as { severityDerived?: unknown } | undefined)
+            ?.severityDerived
         }
 
         // Exclude previously notified
@@ -130,6 +153,8 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
           escalationReason: 'admin_override',
           monitorLeaseAt: deps.now.toMillis(),
           status: 'pending',
+          statusUpdatedAt: deps.now.toMillis(),
+          acknowledgementDeadlineAt: deps.now.toMillis() + getRedispatchDeadlineMs(severityDerived),
         })
 
         tx.set(db.collection('dispatch_events').doc(), {
@@ -155,58 +180,69 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
           },
           correlationId,
         }
-      }),
+      })
+
+      const fcm = await sendFcmToResponder({
+        uid: parsed.newResponderUid,
+        title: 'Dispatch escalated',
+        body: `Report ${txResult.reportId.slice(0, 8)} — see app for details`,
+        data: {
+          dispatchId: txResult.dispatchId,
+          reportId: txResult.reportId,
+          correlationId: txResult.correlationId,
+        },
+      })
+
+      const fcmResult = mapFcmResult(fcm)
+      const nowMillis = deps.now.toMillis()
+
+      // Key off idempotencyKey (stable across retries), not correlationId
+      // (regenerated per invocation), so a retry after partial failure
+      // overwrites rather than duplicates these records.
+      const notificationEventId = `${parsed.idempotencyKey}_notification`
+      await db.collection('dispatch_events').doc(notificationEventId).set({
+        type: 'notification_attempted',
+        dispatchId: txResult.dispatchId,
+        responderUid: parsed.newResponderUid,
+        agencyId: txResult.responder.agencyId,
+        municipalityId: txResult.responder.municipalityId,
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+        at: nowMillis,
+        correlationId: txResult.correlationId,
+        schemaVersion: 1,
+      })
+
+      await db.collection('dispatches').doc(txResult.dispatchId).update({
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+      })
+
+      if (fcmResult === 'network_error') {
+        const retryQueueId = `${parsed.idempotencyKey}_retry`
+        await db
+          .collection('fcm_retry_queue')
+          .doc(retryQueueId)
+          .set({
+            dispatchId: txResult.dispatchId,
+            responderUid: parsed.newResponderUid,
+            attemptCount: 0,
+            lastAttemptAt: nowMillis,
+            nextAttemptAt: nowMillis + 30_000,
+            originalError: 'fcm_network_error',
+            status: 'pending',
+          })
+      }
+
+      return {
+        ...txResult,
+        fcmResult,
+        fcmWarnings: fcm.warnings,
+      }
+    },
   )
 
-  const fcm = await sendFcmToResponder({
-    uid: parsed.newResponderUid,
-    title: 'Dispatch escalated',
-    body: `Report ${result.reportId.slice(0, 8)} — see app for details`,
-    data: {
-      dispatchId: result.dispatchId,
-      reportId: result.reportId,
-      correlationId: result.correlationId,
-    },
-  })
-
-  const fcmResult = mapFcmResult(fcm)
-  const nowMillis = deps.now.toMillis()
-
-  await db.collection('dispatch_events').add({
-    type: 'notification_attempted',
-    dispatchId: result.dispatchId,
-    responderUid: parsed.newResponderUid,
-    agencyId: result.responder.agencyId,
-    municipalityId: result.responder.municipalityId,
-    fcmResult,
-    fcmWarnings: fcm.warnings,
-    at: nowMillis,
-    correlationId: result.correlationId,
-    schemaVersion: 1,
-  })
-
-  await db.collection('dispatches').doc(result.dispatchId).update({
-    fcmResult,
-    fcmWarnings: fcm.warnings,
-  })
-
-  if (fcmResult === 'network_error') {
-    await db.collection('fcm_retry_queue').add({
-      dispatchId: result.dispatchId,
-      responderUid: parsed.newResponderUid,
-      attemptCount: 0,
-      lastAttemptAt: nowMillis,
-      nextAttemptAt: nowMillis + 30_000,
-      originalError: 'fcm_network_error',
-      status: 'pending',
-    })
-  }
-
-  return {
-    ...result,
-    fcmResult,
-    fcmWarnings: fcm.warnings,
-  }
+  return result
 }
 
 export const escalateDispatch = onCall(

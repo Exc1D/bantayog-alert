@@ -1,8 +1,13 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+// fallow-ignore-next-line code-duplication
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
+// fallow-ignore-next-line code-duplication
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+// fallow-ignore-next-line code-duplication
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
+// fallow-ignore-next-line code-duplication
 import { setDoc, doc } from 'firebase/firestore'
+// fallow-ignore-next-line code-duplication
 import { type Firestore } from 'firebase-admin/firestore'
 
 vi.mock('firebase-admin/database', () => ({ getDatabase: vi.fn(() => ({})) }))
@@ -16,27 +21,27 @@ vi.mock('../../../admin-init.js', () => ({
 import { monitorDispatchDeadlinesCore } from '../monitor-dispatch-deadlines.js'
 
 const ts = 1713350400000
-let testEnv: RulesTestEnvironment | undefined
-let available = false
 
-beforeAll(async () => {
-  const guarded = await guardInitTestEnvironment(
-    {
-      projectId: 'dispatch-monitor-test',
-      firestore: {
-        host: 'localhost',
-        port: 8081,
-        rules:
-          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
-      },
+// Guard must settle before Vitest registers tests: collection-time itif(available)
+// with a beforeAll guard silently registers every test as skipped.
+const guarded = await guardInitTestEnvironment(
+  {
+    projectId: 'dispatch-monitor-test',
+    firestore: {
+      host: 'localhost',
+      port: 8081,
+      rules:
+        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
     },
-    'monitor-dispatch-deadlines',
-  )
-  testEnv = guarded.env
-  available = guarded.available
-  if (!available) return
+  },
+  'monitor-dispatch-deadlines',
+)
+const testEnv: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
+// fallow-ignore-next-line code-duplication
+if (available) {
   adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
-})
+}
 
 beforeEach(async () => {
   if (!available || !testEnv) return
@@ -46,7 +51,19 @@ afterAll(async () => {
   await testEnv?.cleanup()
 })
 
+const monitorConfig = {
+  autoEscalationEnabled: true,
+  maxDispatchesPerRun: 50,
+  maxEscalationsPerRun: 50,
+  enableCircuitBreaker: false,
+  circuitBreakerThreshold: 100,
+  circuitBreakerErrorThreshold: 10,
+  updatedAt: 0,
+  updatedBy: 'system',
+}
+
 describe('monitorDispatchDeadlines — deadline exceeded', () => {
+  // fallow-ignore-next-line code-duplication
   itif(available)('escalates pending dispatch past deadline with expired lease', async () => {
     // Create a dispatch past deadline with expired lease
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
@@ -63,8 +80,19 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
       })
     })
 
-    // Create an available responder in same municipality
+    // Create an available responder in same municipality.
+    // responder-1 (currently assigned) must exist and be active or the monitor
+    // routes the dispatch to needs_admin instead of escalating.
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'responders', 'responder-1'), {
+        availabilityStatus: 'available',
+        accountStatus: 'active',
+        agencyId: 'bfp',
+        municipalityId: 'daet',
+        lastSeenAt: ts - 60000,
+        fcmTokens: ['token-1'],
+      })
+      // fallow-ignore-next-line code-duplication
       await setDoc(doc(ctx.firestore(), 'responders', 'responder-2'), {
         availabilityStatus: 'available',
         accountStatus: 'active',
@@ -77,16 +105,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()
@@ -106,8 +125,10 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
     expect(escalationEvent?.data().toResponderUid).toBe('responder-2')
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('flips to needs_admin when escalation cap reached', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      // fallow-ignore-next-line code-duplication
       await setDoc(doc(ctx.firestore(), 'dispatches', 'd1'), {
         status: 'pending',
         reportId: 'r1',
@@ -123,16 +144,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()
@@ -144,6 +156,91 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
     expect(events.docs[0]!.data().type).toBe('deadline_exceeded')
   })
 
+  itif(available)('counts needs_admin alerts per municipality, not the run total', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      for (const [id, muni] of [
+        ['d1', 'daet'],
+        ['d2', 'daet'],
+        ['d3', 'labo'],
+      ] as const) {
+        await setDoc(doc(ctx.firestore(), 'dispatches', id), {
+          status: 'pending',
+          reportId: 'r1',
+          assignedTo: { uid: 'responder-1', agencyId: 'bfp', municipalityId: muni },
+          municipalityId: muni,
+          acknowledgementDeadlineAt: ts - 60000,
+          monitorLeaseAt: ts - 180000,
+          escalationCount: 1,
+          previouslyNotifiedResponderUids: ['responder-1'],
+          createdAt: ts - 300000,
+        })
+      }
+    })
+
+    await monitorDispatchDeadlinesCore(adminDb, {
+      now: ts,
+      config: monitorConfig,
+    })
+
+    const dateStr = new Date(ts).toISOString().slice(0, 10)
+    const daetAlert = await adminDb
+      .collection('alerts')
+      .doc('daet_' + dateStr)
+      .get()
+    const laboAlert = await adminDb
+      .collection('alerts')
+      .doc('labo_' + dateStr)
+      .get()
+    expect(daetAlert.data()?.count).toBe(2)
+    expect(laboAlert.data()?.count).toBe(1)
+  })
+
+  itif(available)('adds needs_admin alerts to an existing municipality alert count', async () => {
+    const dateStr = new Date(ts).toISOString().slice(0, 10)
+
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'alerts', 'daet_' + dateStr), {
+        type: 'dispatch_deadline_exceeded',
+        municipalityId: 'daet',
+        count: 5,
+        lastUpdatedAt: ts - 1,
+      })
+
+      for (const dispatchId of ['d1', 'd2'] as const) {
+        await setDoc(doc(ctx.firestore(), 'dispatches', dispatchId), {
+          status: 'pending',
+          reportId: 'r1',
+          assignedTo: { uid: 'responder-1', agencyId: 'bfp', municipalityId: 'daet' },
+          municipalityId: 'daet',
+          acknowledgementDeadlineAt: ts - 60000,
+          monitorLeaseAt: ts - 180000,
+          escalationCount: 1,
+          previouslyNotifiedResponderUids: ['responder-1'],
+          createdAt: ts - 300000,
+        })
+      }
+    })
+
+    await monitorDispatchDeadlinesCore(adminDb, {
+      now: ts,
+      config: monitorConfig,
+    })
+
+    const alert = await adminDb
+      .collection('alerts')
+      .doc('daet_' + dateStr)
+      .get()
+    expect(alert.data()).toEqual(
+      expect.objectContaining({
+        type: 'dispatch_deadline_exceeded',
+        municipalityId: 'daet',
+        count: 7,
+        lastUpdatedAt: ts,
+      }),
+    )
+  })
+
+  // fallow-ignore-next-line code-duplication
   itif(available)('flips to needs_admin when no available responders', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'dispatches', 'd1'), {
@@ -153,6 +250,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
         municipalityId: 'daet',
         acknowledgementDeadlineAt: ts - 60000,
         monitorLeaseAt: ts - 180000,
+        // fallow-ignore-next-line code-duplication
         escalationCount: 0,
         previouslyNotifiedResponderUids: [],
         createdAt: ts - 300000,
@@ -163,22 +261,14 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()
     expect(d1.data()?.status).toBe('needs_admin')
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('skips dispatches with unexpired lease', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'dispatches', 'd1'), {
@@ -188,6 +278,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
         municipalityId: 'daet',
         acknowledgementDeadlineAt: ts - 60000,
         monitorLeaseAt: ts, // lease NOT expired (within 2 min)
+        // fallow-ignore-next-line code-duplication
         escalationCount: 0,
         previouslyNotifiedResponderUids: [],
         createdAt: ts - 300000,
@@ -196,16 +287,7 @@ describe('monitorDispatchDeadlines — deadline exceeded', () => {
 
     await monitorDispatchDeadlinesCore(adminDb, {
       now: ts,
-      config: {
-        autoEscalationEnabled: true,
-        maxDispatchesPerRun: 50,
-        maxEscalationsPerRun: 50,
-        enableCircuitBreaker: false,
-        circuitBreakerThreshold: 100,
-        circuitBreakerErrorThreshold: 10,
-        updatedAt: 0,
-        updatedBy: 'system',
-      },
+      config: monitorConfig,
     })
 
     const d1 = await adminDb.collection('dispatches').doc('d1').get()

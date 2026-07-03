@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion */
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { Timestamp } from 'firebase-admin/firestore'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
+import { seedActiveAccount, staffClaims } from '../../../__tests__/helpers/seed-factories.js'
+
 const itif = (condition: boolean) => (condition ? it : it.skip)
 
 // Mock rtdb before importing callable modules that depend on firebase-admin.ts
@@ -15,14 +18,14 @@ vi.mock('../../ops/fcm-send.js', () => ({
 
 import { escalateDispatchCore } from '../escalate-dispatch.js'
 import { sendFcmToResponder } from '../../ops/fcm-send.js'
-import { seedActiveAccount, staffClaims } from '../../../__tests__/helpers/seed-factories.js'
-import { Timestamp } from 'firebase-admin/firestore'
 
+// fallow-ignore-next-line code-duplication
 const guarded = await guardInitTestEnvironment(
   {
     projectId: 'escalate-dispatch-test',
     firestore: { host: 'localhost', port: 8081 },
   },
+  // fallow-ignore-next-line code-duplication
   'escalate-dispatch',
 )
 const testEnv: RulesTestEnvironment | undefined = guarded.env
@@ -32,6 +35,7 @@ beforeEach(async () => {
   if (!available || !testEnv) return
   await testEnv!.clearFirestore()
 })
+
 afterAll(async () => {
   await testEnv?.cleanup()
 })
@@ -101,6 +105,7 @@ async function seedDispatchNeedsAdminNoAssignedTo(
 }
 
 describe('escalateDispatchCore', () => {
+  // fallow-ignore-next-line code-duplication
   itif(available)('allows municipal_admin to escalate dispatch in their municipality', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
@@ -110,6 +115,7 @@ describe('escalateDispatchCore', () => {
         municipalityId: 'daet',
         responderUid: 'responder-1',
       })
+      // fallow-ignore-next-line code-duplication
       await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
@@ -162,6 +168,7 @@ describe('escalateDispatchCore', () => {
     })
   })
 
+  // fallow-ignore-next-line code-duplication
   itif(available)('rejects municipal_admin escalating dispatch in other municipality', async () => {
     await testEnv!.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore() as any
@@ -171,6 +178,7 @@ describe('escalateDispatchCore', () => {
         municipalityId: ' OTHER: ',
         responderUid: 'responder-1',
       })
+      // fallow-ignore-next-line code-duplication
       await seedActiveAccount(testEnv!, {
         uid: 'admin-1',
         role: 'municipal_admin',
@@ -218,6 +226,78 @@ describe('escalateDispatchCore', () => {
       })
 
       expect(result.status).toBe('pending')
+    })
+  })
+
+  // fallow-ignore-next-line code-duplication
+  itif(available)('rejects escalating terminal-status dispatches', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await seedResponder(db, 'responder-1', 'daet', 'active')
+      await seedResponder(db, 'responder-2', 'daet', 'active')
+      await seedDispatchNeedsAdmin(db, 'd1', {
+        municipalityId: 'daet',
+        responderUid: 'responder-1',
+      })
+      await seedActiveAccount(testEnv!, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+
+      const terminalStatuses = ['resolved', 'cancelled', 'superseded'] as const
+      for (const status of terminalStatuses) {
+        // fallow-ignore-next-line code-duplication
+        await db.collection('dispatches').doc('d1').update({ status })
+
+        await expect(
+          escalateDispatchCore(db, {
+            dispatchId: 'd1',
+            newResponderUid: 'responder-2',
+            idempotencyKey: crypto.randomUUID(),
+            actor: {
+              uid: 'admin-1',
+              claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+            },
+            now: Timestamp.now(),
+          }),
+        ).rejects.toThrow(`cannot escalate a ${status} dispatch`)
+      }
+    })
+  })
+
+  // fallow-ignore-next-line code-duplication
+  itif(available)('recomputes acknowledgementDeadlineAt from report severity', async () => {
+    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as any
+      await seedResponder(db, 'responder-1', 'daet', 'active')
+      await seedResponder(db, 'responder-2', 'daet', 'active')
+      await seedDispatchNeedsAdmin(db, 'd1', {
+        municipalityId: 'daet',
+        responderUid: 'responder-1',
+      })
+      await db.collection('reports').doc('r1').set({ severityDerived: 'critical' })
+      await seedActiveAccount(testEnv!, {
+        uid: 'admin-1',
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+      })
+
+      const now = Timestamp.fromMillis(ts + 60_000)
+      await escalateDispatchCore(db, {
+        dispatchId: 'd1',
+        newResponderUid: 'responder-2',
+        idempotencyKey: crypto.randomUUID(),
+        actor: {
+          uid: 'admin-1',
+          claims: staffClaims({ role: 'municipal_admin', municipalityId: 'daet' }),
+        },
+        now,
+      })
+
+      const dispatch = (await db.collection('dispatches').doc('d1').get()).data()!
+      // critical severity = 5-minute acknowledgement window
+      expect(dispatch.acknowledgementDeadlineAt).toBe(ts + 60_000 + 300_000)
     })
   })
 
