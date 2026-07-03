@@ -101,7 +101,7 @@ describe('ProtectedRoute', () => {
     const mockUser = {
       uid: 'u1',
       getIdTokenResult: vi.fn().mockResolvedValue({
-        claims: { role: 'responder', active: false },
+        claims: { role: 'responder', accountStatus: 'suspended' },
       }),
     }
 
@@ -131,11 +131,49 @@ describe('ProtectedRoute', () => {
     expect(await screen.findByText('Access denied.')).toBeDefined()
   })
 
-  it('renders children when municipalityId check is temporarily disabled', async () => {
+  it('renders unauthorized when a scoped role has no municipalityId claim', async () => {
     const mockUser = {
       uid: 'u1',
       getIdTokenResult: vi.fn().mockResolvedValue({
-        claims: { role: 'municipal_admin', active: true },
+        claims: { role: 'municipal_admin', accountStatus: 'active' },
+      }),
+    }
+
+    mockOnAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(mockUser)
+      return vi.fn()
+    })
+
+    const mockAuth = { currentUser: mockUser } as unknown as import('firebase/auth').Auth
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AuthProvider auth={mockAuth}>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['municipal_admin']}
+                  requireActive
+                  requireMunicipalityIdForRoles={['municipal_admin']}
+                >
+                  <div data-testid="protected">Protected</div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Access denied.')).toBeDefined()
+  })
+
+  it('renders children when a scoped role has a municipalityId claim', async () => {
+    const mockUser = {
+      uid: 'u1',
+      getIdTokenResult: vi.fn().mockResolvedValue({
+        claims: { role: 'municipal_admin', accountStatus: 'active', municipalityId: 'daet' },
       }),
     }
 
