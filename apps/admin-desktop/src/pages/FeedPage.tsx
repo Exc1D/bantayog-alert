@@ -87,19 +87,17 @@ export default function FeedPage() {
     useOptimisticFeedActions({
       reports,
       verifyReport: async (reportId) => {
-        await withRetry(() =>
-          callables.verifyReport({
-            reportId,
-            idempotencyKey: generateIdempotencyKey(),
-          }),
-        )
+        // Keys generated before withRetry so every attempt replays the same key.
+        const idempotencyKey = generateIdempotencyKey()
+        await withRetry(() => callables.verifyReport({ reportId, idempotencyKey }))
       },
       unpublishReport: async (reportId) => {
+        const idempotencyKey = generateIdempotencyKey()
         await withRetry(() =>
           callables.unpublishReport({
             reportId,
             reason: 'sensitive_content',
-            idempotencyKey: generateIdempotencyKey(),
+            idempotencyKey,
           }),
         )
       },
@@ -180,13 +178,14 @@ export default function FeedPage() {
     const pendingKey = `${surface}:${contentId}`
     setModeratingContentIds((prev) => new Set(prev).add(pendingKey))
     try {
+      const idempotencyKey = generateIdempotencyKey()
       await withRetry(() =>
         callables.setCitizenContentVisibility({
           surface,
           contentId,
           visibility,
           reason: surface === 'alerts' ? 'other' : 'sensitive_content',
-          idempotencyKey: generateIdempotencyKey(),
+          idempotencyKey,
         }),
       )
       setActionError(null)
@@ -279,11 +278,12 @@ export default function FeedPage() {
     }
     setPublishingIds((prev) => new Set(prev).add(report.id))
     try {
+      const idempotencyKey = generateIdempotencyKey()
       await withRetry(() =>
         callables.verifyReport({
           reportId: report.id,
           scrubbedDescription,
-          idempotencyKey: generateIdempotencyKey(),
+          idempotencyKey,
         }),
       )
       setActionError(null)

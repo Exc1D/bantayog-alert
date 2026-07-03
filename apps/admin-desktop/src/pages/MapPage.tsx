@@ -157,9 +157,9 @@ export default function MapPage() {
 
   const handleVerify = useCallback(async (id: string) => {
     try {
-      await withRetry(() =>
-        callables.verifyReport({ reportId: id, idempotencyKey: generateIdempotencyKey() }),
-      )
+      // Key generated before withRetry so every attempt replays the same key.
+      const idempotencyKey = generateIdempotencyKey()
+      await withRetry(() => callables.verifyReport({ reportId: id, idempotencyKey }))
       setSuccessMessage('Report verified')
     } catch (err) {
       setActionError(actionErrorMessage(err, 'Verify failed'))
@@ -188,12 +188,13 @@ export default function MapPage() {
         setActionError('Admin note must be 500 characters or fewer')
         return
       }
+      const idempotencyKey = generateIdempotencyKey()
       await withRetry(() =>
         callables.rejectReport({
           reportId: id,
           reason,
           ...(trimmedNote ? { notes: trimmedNote } : {}),
-          idempotencyKey: generateIdempotencyKey(),
+          idempotencyKey,
         }),
       )
       setSuccessMessage('Report rejected')
@@ -229,11 +230,12 @@ export default function MapPage() {
         return
       }
       try {
+        const idempotencyKey = generateIdempotencyKey()
         await withRetry(() =>
           callables.dispatchResponder({
             reportId,
             responderUid,
-            idempotencyKey: generateIdempotencyKey(),
+            idempotencyKey,
           }),
         )
         setSuccessMessage('Responder dispatched')
