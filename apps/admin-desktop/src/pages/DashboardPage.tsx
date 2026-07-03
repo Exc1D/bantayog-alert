@@ -577,12 +577,13 @@ export default function DashboardPage() {
       setIsDispatching(true)
       setActionError(null)
       try {
+        const idempotencyKey = generateIdempotencyKey()
         await withRetry(() =>
           callables.redispatchReport({
             oldDispatchId: selectedDispatchId,
             newResponderUid,
             reason: 'Re-dispatched via dashboard',
-            idempotencyKey: generateIdempotencyKey(),
+            idempotencyKey,
           }),
         )
         setSuccessMessage('Re-dispatched successfully')
