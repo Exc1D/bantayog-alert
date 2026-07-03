@@ -75,6 +75,24 @@ function assertCanManageUser(
   throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'insufficient privileges')
 }
 
+// Existing ID tokens carry claims for up to 1 hour. Re-issue claims with the
+// new accountStatus (preserving role/agency/municipality scope), then revoke
+// refresh tokens so live sessions cannot mint new tokens with stale claims.
+async function invalidateUserSessions(
+  auth: ReturnType<typeof getAuth>,
+  uid: string,
+  accountStatus: 'suspended' | 'revoked',
+  nowMillis: number,
+): Promise<void> {
+  const userRecord = await auth.getUser(uid)
+  await auth.setCustomUserClaims(uid, {
+    ...userRecord.customClaims,
+    accountStatus,
+    lastClaimIssuedAt: nowMillis,
+  })
+  await auth.revokeRefreshTokens(uid)
+}
+
 function writeUserManagementEvent(
   db: Firestore,
   tx: FirebaseFirestore.Transaction,
@@ -176,6 +194,7 @@ export async function suspendUserCore(
       // during an external API call. Rollback Firestore on auth failure.
       try {
         await auth.updateUser(uid, { disabled: true })
+        await invalidateUserSessions(auth, uid, 'suspended', now.toMillis())
       } catch (authErr) {
         console.warn('[suspendUser] auth update failed, rolling back', authErr)
         await db.collection('users').doc(uid).update({
@@ -273,6 +292,7 @@ export async function revokeUserCore(
 
       try {
         await auth.updateUser(uid, { disabled: true })
+        await invalidateUserSessions(auth, uid, 'revoked', now.toMillis())
       } catch (authErr) {
         console.warn('[revokeUser] auth update failed, rolling back', authErr)
         await db.collection('users').doc(uid).update({
@@ -384,6 +404,8 @@ export async function resetUserTotpCore(
       if (txResult.hadEnrollment) {
         try {
           await auth.updateUser(uid, { multiFactor: { enrolledFactors: [] } })
+          // Kill live sessions so a token minted under MFA cannot outlive the reset.
+          await auth.revokeRefreshTokens(uid)
         } catch (authErr) {
           console.warn('[resetUserTotp] auth update failed, rolling back', authErr)
           await db.collection('users').doc(uid).update({

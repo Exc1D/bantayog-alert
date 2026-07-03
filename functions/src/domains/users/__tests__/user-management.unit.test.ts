@@ -15,6 +15,9 @@ vi.mock('firebase-admin/app', () => ({
 vi.mock('firebase-admin/auth', () => ({
   getAuth: vi.fn(() => ({
     updateUser: vi.fn(() => Promise.resolve({})),
+    getUser: vi.fn(() => Promise.resolve({ customClaims: {} })),
+    setCustomUserClaims: vi.fn(() => Promise.resolve()),
+    revokeRefreshTokens: vi.fn(() => Promise.resolve()),
   })),
 }))
 
@@ -89,6 +92,13 @@ function mockDb(userDoc?: {
 function mockAuth() {
   return {
     updateUser: vi.fn(() => Promise.resolve({})),
+    getUser: vi.fn(() =>
+      Promise.resolve({
+        customClaims: { role: 'municipal_admin', municipalityId: 'daet' },
+      }),
+    ),
+    setCustomUserClaims: vi.fn(() => Promise.resolve()),
+    revokeRefreshTokens: vi.fn(() => Promise.resolve()),
   }
 }
 
@@ -199,6 +209,16 @@ describe('suspendUserCore', () => {
     expect(result.status).toBe('suspended')
     expect(db.runTransaction).toHaveBeenCalledTimes(1)
     expect(auth.updateUser).toHaveBeenCalledWith('user-1', { disabled: true })
+    expect(auth.setCustomUserClaims).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        role: 'municipal_admin',
+        municipalityId: 'daet',
+        accountStatus: 'suspended',
+        lastClaimIssuedAt: expect.any(Number),
+      }),
+    )
+    expect(auth.revokeRefreshTokens).toHaveBeenCalledWith('user-1')
     expect(txUpdates).toHaveLength(1)
     expect(txUpdates[0]).toMatchObject({
       ref: 'users/user-1',
@@ -297,6 +317,11 @@ describe('revokeUserCore', () => {
     expect(result.status).toBe('revoked')
     expect(db.runTransaction).toHaveBeenCalledTimes(1)
     expect(auth.updateUser).toHaveBeenCalledWith('user-1', { disabled: true })
+    expect(auth.setCustomUserClaims).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ accountStatus: 'revoked', lastClaimIssuedAt: expect.any(Number) }),
+    )
+    expect(auth.revokeRefreshTokens).toHaveBeenCalledWith('user-1')
     expect(txUpdates).toHaveLength(1)
     expect(txUpdates[0]).toMatchObject({
       ref: 'users/user-1',
@@ -332,6 +357,7 @@ describe('resetUserTotpCore', () => {
     expect(auth.updateUser).toHaveBeenCalledWith('user-1', {
       multiFactor: { enrolledFactors: [] },
     })
+    expect(auth.revokeRefreshTokens).toHaveBeenCalledWith('user-1')
     expect(txUpdates).toHaveLength(1)
     expect(txUpdates[0]).toMatchObject({
       ref: 'users/user-1',
@@ -364,6 +390,7 @@ describe('resetUserTotpCore', () => {
     expect(result.uid).toBe('user-1')
     expect(result.reset).toBe(true)
     expect(auth.updateUser).not.toHaveBeenCalled()
+    expect(auth.revokeRefreshTokens).not.toHaveBeenCalled()
     expect(txUpdates).toHaveLength(0)
     expect(txSets).toHaveLength(0)
   })
