@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion */
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { Timestamp } from 'firebase-admin/firestore'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
+import { seedActiveAccount, staffClaims } from '../../../__tests__/helpers/seed-factories.js'
+
 const itif = (condition: boolean) => (condition ? it : it.skip)
 
 // Mock rtdb before importing callable modules that depend on firebase-admin.ts
@@ -15,8 +18,6 @@ vi.mock('../../ops/fcm-send.js', () => ({
 
 import { escalateDispatchCore } from '../escalate-dispatch.js'
 import { sendFcmToResponder } from '../../ops/fcm-send.js'
-import { seedActiveAccount, staffClaims } from '../../../__tests__/helpers/seed-factories.js'
-import { Timestamp } from 'firebase-admin/firestore'
 
 const guarded = await guardInitTestEnvironment(
   {
@@ -32,13 +33,19 @@ beforeEach(async () => {
   if (!available || !testEnv) return
   await testEnv!.clearFirestore()
 })
+
 afterAll(async () => {
   await testEnv?.cleanup()
 })
 
 const ts = 1713350400000
 
-async function seedResponder(db: any, uid: string, muni: string, status: 'active' | 'suspended') {
+async function seedResponder(
+  db: any,
+  uid: string,
+  muni: string,
+  status: 'active' | 'suspended',
+) {
   await db.collection('responders').doc(uid).set({
     uid,
     municipalityId: muni,
