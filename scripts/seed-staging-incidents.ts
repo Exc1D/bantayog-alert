@@ -21,7 +21,7 @@ import { pathToFileURL } from 'node:url'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore'
 
-const PROJECT_ID = 'bantayog-alert-staging'
+const PROJECT_ID = 'bantayogalert-staging'
 const TEST_RESPONDER_UID = 'bfp-responder-test-01'
 const TEST_RESPONDER_AGENCY_ID = 'bfp-daet'
 const TEST_RESPONDER_MUNICIPALITY_ID = 'daet'

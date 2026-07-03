@@ -20,8 +20,8 @@
     "shell": "pnpm build && firebase functions:shell",
     "deploy": "echo 'Use deploy:dev, deploy:staging, or deploy:prod' && exit 1",
     "deploy:dev": "firebase emulators:exec --only firestore,database,functions 'pnpm run test:unit && pnpm run test:rules' && pnpm build && firebase deploy --only functions --project bantayog-alert-dev",
-    "deploy:staging": "pnpm build && firebase deploy --only functions --project bantayog-alert-staging",
-    "deploy:prod": "pnpm build && firebase deploy --only functions --project bantayog-alert-prod",
+    "deploy:staging": "pnpm build && firebase deploy --only functions --project bantayogalert-staging",
+    "deploy:prod": "pnpm build && firebase deploy --only functions --project bantayog-alert",
     "bootstrap:phase1": "tsx scripts/bootstrap-phase1.ts"
   },
   "engines": {

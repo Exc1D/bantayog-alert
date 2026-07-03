@@ -218,10 +218,11 @@ async function submitDraft(draft) {
   }
 
   // Firebase Firestore REST API — no Firebase JS SDK bundle needed.
+  // Staging citizen host is bantayogalert-citizen-stg.web.app ('-stg', not 'staging').
   const projectId = self.location.hostname.includes('localhost')
     ? 'demo-project'
-    : self.location.hostname.includes('staging')
-      ? 'bantayog-staging'
+    : self.location.hostname.includes('-stg') || self.location.hostname.includes('staging')
+      ? 'bantayogalert-staging'
       : 'bantayog-alert'
 
   // Convert inboxDoc to Firestore Document format.
