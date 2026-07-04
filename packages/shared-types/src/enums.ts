@@ -7,7 +7,7 @@ export type UserRole =
   | 'agency_admin'
   | 'provincial_superadmin'
 
-export type AccountStatus = 'active' | 'suspended' | 'disabled'
+export type AccountStatus = 'active' | 'suspended' | 'disabled' | 'revoked'
 
 // Report lifecycle — spec §5.3 (13 states + `draft_inbox` pre-materialisation).
 export type ReportStatus =

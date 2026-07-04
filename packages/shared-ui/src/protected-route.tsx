@@ -15,7 +15,6 @@ export function ProtectedRoute({
   children,
   allowedRoles,
   requireActive = false,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: restore check after emulator claims fix
   requireMunicipalityIdForRoles = [],
   loadingFallback = <div>Loading…</div>,
   unauthorizedFallback = <div role="alert">Access denied.</div>,
@@ -32,21 +31,16 @@ export function ProtectedRoute({
       return unauthorizedFallback
     }
 
-    if (requireActive && claims?.active !== true) {
+    if (requireActive && claims?.accountStatus !== 'active') {
       return unauthorizedFallback
     }
 
-    // TODO: Debug why municipalityId claim is not loading in Firebase Auth emulator
-    // Claims are correctly set via Admin SDK but getIdTokenResult() returns empty.
-    // Temporarily disabled for E2E testing - must restore before production.
-    /*
     if (
       requireMunicipalityIdForRoles.includes(role) &&
       (typeof claims?.municipalityId !== 'string' || !claims.municipalityId.trim())
     ) {
       return unauthorizedFallback
     }
-    */
   }
 
   return <>{children}</>
