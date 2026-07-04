@@ -356,9 +356,10 @@ describe('DispatchMonitorPage', () => {
       expect(mockDispatchResponder).toHaveBeenCalledTimes(1)
     })
     const firstPayload = mockDispatchResponder.mock.calls[0]?.[0]
-    expect(screen.getByRole('button', { name: 'Retry command' })).toBeEnabled()
+    const retryButton = await screen.findByRole('button', { name: 'Retry command' })
+    expect(retryButton).toBeEnabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry command' }))
+    fireEvent.click(retryButton)
 
     await waitFor(() => {
       expect(mockDispatchResponder).toHaveBeenCalledTimes(2)
@@ -506,9 +507,10 @@ describe('DispatchMonitorPage', () => {
       expect(mockEscalateDispatch).toHaveBeenCalledTimes(1)
     })
     const firstPayload = mockEscalateDispatch.mock.calls[0]?.[0]
-    expect(screen.getByRole('button', { name: 'Retry command' })).toBeEnabled()
+    const retryButton = await screen.findByRole('button', { name: 'Retry command' })
+    expect(retryButton).toBeEnabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry command' }))
+    fireEvent.click(retryButton)
 
     await waitFor(() => {
       expect(mockEscalateDispatch).toHaveBeenCalledTimes(2)

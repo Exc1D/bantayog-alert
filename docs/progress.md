@@ -661,3 +661,7 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 ## 2026-07-03 - PR #278 Admin test isolation repair
 
 - Added the established Admin Firebase module mock to the two Dashboard suites that failed in clean CI with `auth/invalid-api-key`; focused red/green proof passed 4/4 with the API key explicitly empty. No production code, deploy, rules, indexes, schema, or migration files changed.
+
+## 2026-07-05 - PR #278 Admin retry test stabilization
+
+- Replaced synchronous retry-button queries in both Dispatch Monitor retry paths with awaited accessible queries, matching the async callable rejection that renders the button. CI supplied the red proof; focused Dispatch Monitor passed 19/19, full Admin passed 589/589, and the root test gate passed on rerun after a separate Citizen route-test cleanup flake cleared. Root lint and typecheck passed. No production code, deploy, rules, indexes, schema, or migration files changed.
