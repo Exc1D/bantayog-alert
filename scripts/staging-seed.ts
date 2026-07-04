@@ -25,7 +25,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 
 const PRODUCTION_PROJECT_ID = 'bantayog-alert'
-const STAGING_PROJECT_ID = 'bantayog-alert-staging'
+const STAGING_PROJECT_ID = 'bantayogalert-staging'
 const BASE_TIME = 1_756_000_000_000 // Deterministic anchor for all seed timestamps
 
 function hasGcloudAuth(): boolean {

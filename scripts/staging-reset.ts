@@ -23,7 +23,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { assertStagingAllowed, resetStagingData } from './staging-seed'
 
-const STAGING_PROJECT_ID = 'bantayog-alert-staging'
+const STAGING_PROJECT_ID = 'bantayogalert-staging'
 
 function getDb() {
   if (getApps().length === 0) {

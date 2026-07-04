@@ -245,6 +245,7 @@
 ## Local Dev Process Cleanup
 
 - `dev:all` must terminate process groups on POSIX, not only its `pnpm` wrapper PIDs. Orphaned Vite/Java descendants can leave app and data ports live while Auth 9099 is absent, making persisted sessions look healthy but fresh Admin sign-in fail with `ERR_CONNECTION_REFUSED`.
+- A mocked async callable being invoked does not mean React has rendered its rejection state. Retry tests must await the resulting UI with `findBy*`; a synchronous `getBy*` after only waiting on mock call count flakes under full-suite load.
 
 ## Auth / Session Invalidation Loop
 

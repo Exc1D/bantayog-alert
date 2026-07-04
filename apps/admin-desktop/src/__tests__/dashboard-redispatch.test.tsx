@@ -22,6 +22,10 @@ vi.mock('../providers/WindowSyncProvider', async () =>
   (await import('../test-utils')).createWindowSyncProviderModuleMock(),
 )
 
+vi.mock('../app/firebase', async () =>
+  (await import('../test-utils')).createAdminFirebaseModuleMock(),
+)
+
 vi.mock('../services/callables', () => ({
   callables: {
     redispatchReport: mockRedispatchReport,

@@ -25,7 +25,7 @@
     "staging:callable-proof": "tsx scripts/staging-callable-proof.ts",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "vitest run",
+    "test": "vitest run && turbo run test --filter=@bantayog/admin-desktop --filter=@bantayog/citizen-pwa --filter=@bantayog/responder-app --filter=@bantayog/shared-ui --filter=@bantayog/shared-validators",
     "test:rules": "turbo run test:rules",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml,css}\"",

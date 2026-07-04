@@ -665,3 +665,11 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 - Removed the dead runtime `geojson` dependency from `functions/` (only `import type` usages, which resolve via `@types/geojson` — moved to devDependencies) and regenerated the lockfile.
 - Deferred with rationale: untracking `functions/lib` (CI/emulator workflow decision), `@turf/turf`→scoped packages, react-window removal, shared-firebase fold-in, framer-motion→CSS (product call), and responder/admin time-ago dedup (would need a shared package for 2 local copies).
 - Verification: focused Admin tests (callables 30/30, idempotency key 2/2), focused Citizen tests (4 files / 44 tests), root typecheck/lint/build (12/12, 12/12, 8/8 tasks), root tests 27 files / 231 tests, Prettier on all changed files, `git diff --check`, and Fallow `new-only` (verdict `warn`, exit 0: flagged clone groups are the deferred responder time-ago copies plus inherited duplication in files touched only by import edits). No deploy; no rules, indexes, schema, or migration files changed.
+
+## 2026-07-03 - PR #278 Admin test isolation repair
+
+- Added the established Admin Firebase module mock to the two Dashboard suites that failed in clean CI with `auth/invalid-api-key`; focused red/green proof passed 4/4 with the API key explicitly empty. No production code, deploy, rules, indexes, schema, or migration files changed.
+
+## 2026-07-05 - PR #278 Admin retry test stabilization
+
+- Replaced synchronous retry-button queries in both Dispatch Monitor retry paths with awaited accessible queries, matching the async callable rejection that renders the button. CI supplied the red proof; focused Dispatch Monitor passed 19/19, full Admin passed 589/589, and the root test gate passed on rerun after a separate Citizen route-test cleanup flake cleared. Root lint and typecheck passed. No production code, deploy, rules, indexes, schema, or migration files changed.
