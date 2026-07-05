@@ -8,7 +8,17 @@ import { Tooltip } from './Tooltip'
 interface Props {
   rows: DispatchLifecycleRow[]
   highlightDispatchId?: string | null
+  onCancelDispatch?: (dispatchId: string) => void
 }
+
+// Matches CANCELLABLE_FROM_STATES in functions/src/domains/dispatches/cancel-dispatch.ts
+const CANCELLABLE_STATUSES = new Set([
+  'pending',
+  'accepted',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+])
 
 const STATUS_BADGE_MAP: Record<string, { label: string; style: React.CSSProperties }> = {
   pending: {
@@ -109,7 +119,7 @@ function RowRenderer({ row, expandedId, onToggle, highlightDispatchId }: RowRend
   )
 }
 
-export function DispatchLifecycleTable({ rows, highlightDispatchId }: Props) {
+export function DispatchLifecycleTable({ rows, highlightDispatchId, onCancelDispatch }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
@@ -215,8 +225,21 @@ export function DispatchLifecycleTable({ rows, highlightDispatchId }: Props) {
 
       {expandedRow && (
         <div className="mt-2 rounded-md border border-white/10 bg-[var(--color-surface-elevated)] p-3">
-          <div className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">
-            Timeline — {expandedRow.reportId.slice(0, 8)}
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium text-[var(--color-text-muted)]">
+              Timeline — {expandedRow.reportId.slice(0, 8)}
+            </span>
+            {onCancelDispatch && CANCELLABLE_STATUSES.has(expandedRow.status) && (
+              <button
+                type="button"
+                onClick={() => {
+                  onCancelDispatch(expandedRow.dispatchId)
+                }}
+                className="rounded border border-[var(--color-danger)]/40 px-2 py-1 text-xs font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/50"
+              >
+                Cancel dispatch
+              </button>
+            )}
           </div>
           <DispatchTimeline events={expandedTimeline} />
         </div>

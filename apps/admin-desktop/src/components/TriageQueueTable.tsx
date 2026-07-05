@@ -1,4 +1,4 @@
-import { Check, X, Send } from 'lucide-react'
+import { Check, X, Send, Archive, RotateCcw } from 'lucide-react'
 import { SeverityBadge } from './SeverityBadge'
 import { ReportTypeIcon } from './ReportTypeIcon'
 import { EmptyTriageState } from './EmptyTriageState'
@@ -20,6 +20,8 @@ interface Props {
   onRowClick: (report: Report) => void
   onBulkVerify?: (ids: Set<string>) => void | Promise<void>
   onBulkReject?: (ids: Set<string>) => void | Promise<void>
+  onClose?: (id: string) => void
+  onReopen?: (id: string) => void
 }
 
 function actionFlags(status: string) {
@@ -28,7 +30,9 @@ function actionFlags(status: string) {
   // Dispatch is owned by the Map/Dispatch surfaces; verified triage rows route
   // there instead of dispatching directly from this table.
   const canDispatch = false
-  return { canVerify, canReject, canDispatch }
+  const canClose = status === 'resolved'
+  const canReopen = status === 'closed'
+  return { canVerify, canReject, canDispatch, canClose, canReopen }
 }
 
 export function TriageQueueTable({
@@ -46,6 +50,8 @@ export function TriageQueueTable({
   onRowClick,
   onBulkVerify,
   onBulkReject,
+  onClose,
+  onReopen,
 }: Props) {
   const allSelected = reports.length > 0 && reports.every((r) => selectedIds.has(r.id))
 
@@ -217,6 +223,42 @@ export function TriageQueueTable({
                           <Send className="h-4 w-4" />
                         )}
                         <span>Dispatch</span>
+                      </button>
+                    )}
+                    {actions.canClose && onClose && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onClose(report.id)
+                        }}
+                        disabled={loadingIds.has(report.id)}
+                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Close report"
+                      >
+                        {loadingIds.has(report.id) ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <Archive className="h-4 w-4" />
+                        )}
+                        <span>Close</span>
+                      </button>
+                    )}
+                    {actions.canReopen && onReopen && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onReopen(report.id)
+                        }}
+                        disabled={loadingIds.has(report.id)}
+                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-warning)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Reopen report"
+                      >
+                        {loadingIds.has(report.id) ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4" />
+                        )}
+                        <span>Reopen</span>
                       </button>
                     )}
                   </div>

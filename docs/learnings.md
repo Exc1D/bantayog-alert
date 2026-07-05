@@ -162,6 +162,8 @@
 - React effect lint treats direct registration helpers that can set state as effect-body writes — schedule app-shell registration through async callbacks and derive initial permission warnings outside the effect.
 - Re-verify review comments after resolving base conflicts (PR #228 inherited a comment on a TriagePanel reject modal the mainline merge had already removed — fix the surviving boundary risk, don't resurrect stale UI).
 - Citizen FCM token tests live at `apps/citizen-pwa/src/hooks/__tests__/useFcmToken.test.tsx` (older slice text says `.test.ts`). Citizen MapTab has no URL-driven report selection yet — preserve `reportId` in URL/payload for tap-through but don't assume MapTab focuses it until a later slice consumes it.
+- Admin `ConfirmationModal` has NO `confirmDisabled` prop (only `confirmLoading`). To require input before confirm (e.g. reopen reason), guard in the confirm handler as a silent no-op (`if (!text) return`) and state the requirement in the field placeholder — don't add a `confirmDisabled` prop. Wiring a backend-only callable into `/dispatches` or `/triage` reuses the whole existing pattern: `generateIdempotencyKey()` before `withRetry(() => callables.x(payload))`, `actionErrorMessage`/`isRetryableActionError`, and one `ConfirmationModal`; one discriminated state can drive one modal for a close/reopen pair instead of two.
+- `vi.hoisted(() => ({ role: 'municipal_admin' as string }))` trips `@typescript-eslint/no-unnecessary-type-assertion` — a mutable object literal already widens `role` to `string`, so drop the `as string`; reassigning `mockAuthState.role = 'agency_admin'` in a role-gate negative test still typechecks.
 
 ## UX / A11y
 

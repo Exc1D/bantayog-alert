@@ -23,6 +23,7 @@ import {
 import type { Report } from '../types'
 
 const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified'])
+const LIFECYCLE_STATUSES = new Set(['resolved', 'closed'])
 const STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
   { value: 'new', label: 'New' },
@@ -66,10 +67,6 @@ interface PendingRejection {
   reason: RejectionReason
   note: string
   scope: 'single' | 'bulk'
-}
-
-function isTriageReport(report: Report): boolean {
-  return TRIAGE_STATUSES.has(report.status)
 }
 
 function isPermissionDeniedError(error: string | null): boolean {
@@ -157,7 +154,9 @@ function downloadCsv(filename: string, csv: string): void {
 
 // fallow-ignore-next-line complexity
 export default function TriagePage() {
-  const { signOut } = useAuth()
+  const { signOut, claims } = useAuth()
+  const canManageLifecycle =
+    claims?.role === 'municipal_admin' || claims?.role === 'provincial_superadmin'
   const navigate = useNavigate()
   const {
     loading,
@@ -182,18 +181,47 @@ export default function TriagePage() {
   const [pendingRejection, setPendingRejection] = useState<PendingRejection | null>(null)
   const [retryCommand, setRetryCommand] = useState<FailedTriageCommand | null>(null)
   const [retryingAction, setRetryingAction] = useState(false)
+  const [pendingMerge, setPendingMerge] = useState<{ primaryId: string; ids: string[] } | null>(
+    null,
+  )
+  const [merging, setMerging] = useState(false)
+  const [pendingLifecycle, setPendingLifecycle] = useState<{
+    kind: 'close' | 'reopen'
+    reportId: string
+    text: string
+  } | null>(null)
+  const [lifecycleBusy, setLifecycleBusy] = useState(false)
 
   const reports = useMemo<Report[]>(
-    () => reportDocs.map((report) => mapReportDocToReportLoose(report)).filter(isTriageReport),
-    [reportDocs],
+    () =>
+      reportDocs
+        .map((report) => mapReportDocToReportLoose(report))
+        .filter(
+          (report) =>
+            TRIAGE_STATUSES.has(report.status) ||
+            (canManageLifecycle && LIFECYCLE_STATUSES.has(report.status)),
+        ),
+    [reportDocs, canManageLifecycle],
   )
   const typeOptions = useMemo(
     () => Array.from(new Set(reports.map((report) => report.type))).sort(),
     [reports],
   )
+  const statusFilterOptions = useMemo<{ value: string; label: string }[]>(
+    () =>
+      canManageLifecycle
+        ? [
+            ...STATUS_FILTERS,
+            { value: 'resolved', label: 'Resolved' },
+            { value: 'closed', label: 'Closed' },
+          ]
+        : [...STATUS_FILTERS],
+    [canManageLifecycle],
+  )
   const filteredReports = useMemo<Report[]>(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase()
     return reports.filter((report) => {
+      if (statusFilter === 'all' && LIFECYCLE_STATUSES.has(report.status)) return false
       if (statusFilter !== 'all' && report.status !== statusFilter) return false
       if (severityFilter !== 'all' && report.severity !== severityFilter) return false
       if (typeFilter !== 'all' && report.type !== typeFilter) return false
@@ -529,6 +557,96 @@ export default function TriagePage() {
     }
   }, [executeCommand, retryCommand])
 
+  const openMergeConfirmation = useCallback(() => {
+    if (!canManageLifecycle) return
+    const ids = selectedReports.map((report) => report.id)
+    if (ids.length < 2) return
+    setActionError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    // ponytail: primary defaults to the first selected row; operator repicks in the modal.
+    setPendingMerge({ primaryId: ids[0] ?? '', ids })
+  }, [canManageLifecycle, selectedReports])
+
+  const handleConfirmMerge = useCallback(async () => {
+    const pending = pendingMerge
+    if (!pending) return
+    const duplicateReportIds = pending.ids.filter((id) => id !== pending.primaryId)
+    if (duplicateReportIds.length === 0) return
+    setPendingMerge(null)
+    setMerging(true)
+    setActionError(null)
+    setSuccessMessage(null)
+    try {
+      const result = await withRetry(() =>
+        callables.mergeDuplicates({
+          primaryReportId: pending.primaryId,
+          duplicateReportIds,
+          idempotencyKey: generateIdempotencyKey(),
+        }),
+      )
+      if (result.success) {
+        setSuccessMessage(`${String(result.mergedCount)} duplicate report(s) merged`)
+        clearSelection()
+      } else {
+        setActionError(`Merge failed (${result.errorCode})`)
+      }
+    } catch (err) {
+      setActionError(actionErrorMessage(err, 'Merge failed'))
+    } finally {
+      setMerging(false)
+    }
+  }, [clearSelection, pendingMerge])
+
+  const openLifecycle = useCallback(
+    (kind: 'close' | 'reopen', reportId: string) => {
+      if (!canManageLifecycle) return
+      setActionError(null)
+      setSuccessMessage(null)
+      setRetryCommand(null)
+      setPendingLifecycle({ kind, reportId, text: '' })
+    },
+    [canManageLifecycle],
+  )
+
+  const handleConfirmLifecycle = useCallback(async () => {
+    const pending = pendingLifecycle
+    if (!pending) return
+    const text = pending.text.trim()
+    if (pending.kind === 'reopen' && !text) return
+    setPendingLifecycle(null)
+    setLifecycleBusy(true)
+    setReportLoading(pending.reportId, true)
+    setActionError(null)
+    setSuccessMessage(null)
+    try {
+      if (pending.kind === 'close') {
+        await withRetry(() =>
+          callables.closeReport({
+            reportId: pending.reportId,
+            idempotencyKey: generateIdempotencyKey(),
+            ...(text ? { closureSummary: text } : {}),
+          }),
+        )
+        setSuccessMessage('Report closed')
+      } else {
+        await withRetry(() =>
+          callables.reopenReport({
+            reportId: pending.reportId,
+            reason: text,
+            idempotencyKey: generateIdempotencyKey(),
+          }),
+        )
+        setSuccessMessage('Report reopened')
+      }
+    } catch (err) {
+      setActionError(actionErrorMessage(err, 'Report lifecycle action failed'))
+    } finally {
+      setReportLoading(pending.reportId, false)
+      setLifecycleBusy(false)
+    }
+  }, [pendingLifecycle, setReportLoading])
+
   const pendingRejectionCount = pendingRejection?.reportIds.length ?? 0
   const pendingRejectionCountLabel = reportCountLabel(pendingRejectionCount)
   const isBulkRejection = pendingRejection?.scope === 'bulk'
@@ -584,6 +702,16 @@ export default function TriagePage() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {canManageLifecycle && (
+                  <button
+                    type="button"
+                    onClick={openMergeConfirmation}
+                    disabled={selectedIds.size < 2}
+                    className="rounded border border-white/10 px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Merge duplicates
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleExportCsv}
@@ -611,7 +739,7 @@ export default function TriagePage() {
                   }}
                   className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
                 >
-                  {STATUS_FILTERS.map((option) => (
+                  {statusFilterOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -731,6 +859,16 @@ export default function TriagePage() {
                 onBulkReject={(ids) => {
                   handleBulkReject(ids)
                 }}
+                {...(canManageLifecycle
+                  ? {
+                      onClose: (reportId: string) => {
+                        openLifecycle('close', reportId)
+                      },
+                      onReopen: (reportId: string) => {
+                        openLifecycle('reopen', reportId)
+                      },
+                    }
+                  : {})}
               />
             </section>
           </div>
@@ -793,6 +931,77 @@ export default function TriagePage() {
             />
           </label>
         </div>
+      </ConfirmationModal>
+      <ConfirmationModal
+        open={pendingMerge !== null}
+        title="Merge duplicate reports?"
+        message="The primary report is kept; the others are marked as duplicates and removed from active triage."
+        confirmLabel="Merge duplicates"
+        confirmVariant="primary"
+        confirmLoading={merging}
+        onConfirm={() => {
+          void handleConfirmMerge()
+        }}
+        onCancel={() => {
+          setPendingMerge(null)
+        }}
+      >
+        <label className="mt-4 block text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+          Primary report (kept)
+          <select
+            aria-label="Primary report"
+            value={pendingMerge?.primaryId ?? ''}
+            onChange={(event) => {
+              const value = event.target.value
+              setPendingMerge((current) => (current ? { ...current, primaryId: value } : current))
+            }}
+            className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+          >
+            {pendingMerge?.ids.map((id) => (
+              <option key={id} value={id}>
+                {id}
+              </option>
+            ))}
+          </select>
+        </label>
+      </ConfirmationModal>
+      <ConfirmationModal
+        open={pendingLifecycle !== null}
+        title={pendingLifecycle?.kind === 'reopen' ? 'Reopen report?' : 'Close report?'}
+        message={
+          pendingLifecycle?.kind === 'reopen'
+            ? 'Reopening returns the report to active handling. A reason is required.'
+            : 'Closing archives a resolved report. You can add an optional closure summary.'
+        }
+        confirmLabel={pendingLifecycle?.kind === 'reopen' ? 'Reopen report' : 'Close report'}
+        confirmVariant={pendingLifecycle?.kind === 'reopen' ? 'primary' : 'danger'}
+        confirmLoading={lifecycleBusy}
+        onConfirm={() => {
+          void handleConfirmLifecycle()
+        }}
+        onCancel={() => {
+          setPendingLifecycle(null)
+        }}
+      >
+        <label className="mt-4 block text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+          {pendingLifecycle?.kind === 'reopen' ? 'Reopen reason' : 'Closure summary'}
+          <textarea
+            aria-label={pendingLifecycle?.kind === 'reopen' ? 'Reopen reason' : 'Closure summary'}
+            value={pendingLifecycle?.text ?? ''}
+            onChange={(event) => {
+              const text = event.target.value
+              setPendingLifecycle((current) => (current ? { ...current, text } : current))
+            }}
+            maxLength={pendingLifecycle?.kind === 'reopen' ? 500 : 2000}
+            rows={3}
+            className="mt-1 w-full resize-y rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
+            placeholder={
+              pendingLifecycle?.kind === 'reopen'
+                ? 'A reason is required to reopen this report'
+                : 'Optional summary saved with the closed report'
+            }
+          />
+        </label>
       </ConfirmationModal>
     </div>
   )

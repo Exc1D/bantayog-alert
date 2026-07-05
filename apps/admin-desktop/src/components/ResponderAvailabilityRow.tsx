@@ -55,31 +55,78 @@ function JurisdictionChips({
   ))
 }
 
+export interface ResponderRowActions {
+  onSetOffDuty?: (uid: string) => void
+  onSuspend?: (uid: string) => void
+  onRevoke?: (uid: string) => void
+}
+
 function ResponderDetails({
   detailsId,
   responder,
+  actions,
 }: {
   detailsId: string
   responder: ResponderFleetMember
+  actions?: ResponderRowActions
 }) {
+  const hasActions = Boolean(
+    actions && (actions.onSetOffDuty ?? actions.onSuspend ?? actions.onRevoke),
+  )
   return (
-    <dl
-      id={detailsId}
-      className="grid grid-cols-2 gap-3 border-t border-white/10 px-3 py-2 text-xs"
-    >
-      <div>
-        <dt className="text-[var(--color-text-muted)]">Availability</dt>
-        <dd className="mt-0.5 font-medium capitalize text-[var(--color-text-primary)]">
-          {responder.availabilityStatus.replaceAll('_', ' ')}
-        </dd>
-      </div>
-      <div className="text-right">
-        <dt className="text-[var(--color-text-muted)]">Last activity</dt>
-        <dd className="mt-0.5 font-medium tabular-nums text-[var(--color-text-primary)]">
-          {formatLastActivity(responder.lastActivityAt)}
-        </dd>
-      </div>
-    </dl>
+    <div id={detailsId} className="border-t border-white/10 px-3 py-2">
+      <dl className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <dt className="text-[var(--color-text-muted)]">Availability</dt>
+          <dd className="mt-0.5 font-medium capitalize text-[var(--color-text-primary)]">
+            {responder.availabilityStatus.replaceAll('_', ' ')}
+          </dd>
+        </div>
+        <div className="text-right">
+          <dt className="text-[var(--color-text-muted)]">Last activity</dt>
+          <dd className="mt-0.5 font-medium tabular-nums text-[var(--color-text-primary)]">
+            {formatLastActivity(responder.lastActivityAt)}
+          </dd>
+        </div>
+      </dl>
+      {hasActions && (
+        <div className="mt-2 flex flex-wrap gap-2 border-t border-white/5 pt-2">
+          {actions?.onSetOffDuty && (
+            <button
+              type="button"
+              onClick={() => {
+                actions.onSetOffDuty?.(responder.uid)
+              }}
+              className="rounded border border-white/15 px-2 py-1 text-[11px] font-medium text-[var(--color-text-secondary)] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-info)]/50"
+            >
+              Set off-duty
+            </button>
+          )}
+          {actions?.onSuspend && (
+            <button
+              type="button"
+              onClick={() => {
+                actions.onSuspend?.(responder.uid)
+              }}
+              className="rounded border border-[var(--color-warning)]/40 px-2 py-1 text-[11px] font-medium text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-warning)]/50"
+            >
+              Suspend
+            </button>
+          )}
+          {actions?.onRevoke && (
+            <button
+              type="button"
+              onClick={() => {
+                actions.onRevoke?.(responder.uid)
+              }}
+              className="rounded border border-[var(--color-danger)]/40 px-2 py-1 text-[11px] font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/50"
+            >
+              Revoke
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -87,10 +134,12 @@ export function ResponderAvailabilityRow({
   expanded,
   onToggle,
   responder,
+  actions,
 }: {
   expanded: boolean
   onToggle: () => void
   responder: ResponderFleetMember
+  actions?: ResponderRowActions
 }) {
   const detailsId = `responder-details-${responder.uid}`
   const action = expanded ? 'Hide' : 'View'
@@ -135,7 +184,13 @@ export function ResponderAvailabilityRow({
           />
         </span>
       </button>
-      {expanded && <ResponderDetails detailsId={detailsId} responder={responder} />}
+      {expanded && (
+        <ResponderDetails
+          detailsId={detailsId}
+          responder={responder}
+          {...(actions ? { actions } : {})}
+        />
+      )}
     </li>
   )
 }
