@@ -1,9 +1,14 @@
 import type { MunicipalPerformance } from '../types'
 
 // Same uncovered rule as getUncoveredMunicipalityCount: active incidents, zero responders.
+function isUncovered(m: MunicipalPerformance): boolean {
+  const responders = m.activeResponders ?? 0
+  return m.activeIncidents > 0 && responders === 0
+}
+
 function cellColor(m: MunicipalPerformance): string {
   const responders = m.activeResponders ?? 0
-  if (m.activeIncidents > 0 && responders === 0) return 'var(--color-danger)'
+  if (isUncovered(m)) return 'var(--color-danger)'
   if (m.activeIncidents > 0) return 'var(--color-warning)'
   return 'var(--color-success)'
 }
@@ -28,7 +33,7 @@ export function MunicipalHeatStrip({
       <div className="flex flex-wrap gap-1.5">
         {data.map((m) => {
           const responders = m.activeResponders ?? 0
-          const uncovered = m.activeIncidents > 0 && responders === 0
+          const uncovered = isUncovered(m)
           return (
             <button
               key={m.municipality}
