@@ -21,6 +21,25 @@ const mockRejectReport = vi.hoisted(() =>
     }),
   ),
 )
+const mockCloseReport = vi.hoisted(() =>
+  vi.fn(({ reportId }: { reportId: string }) => Promise.resolve({ reportId, status: 'closed' })),
+)
+const mockReopenReport = vi.hoisted(() =>
+  vi.fn(({ reportId }: { reportId: string }) => Promise.resolve({ reportId, status: 'reopened' })),
+)
+const mockMergeDuplicates = vi.hoisted(() =>
+  vi
+    .fn<
+      (payload: {
+        primaryReportId: string
+        duplicateReportIds: string[]
+        idempotencyKey: string
+      }) => Promise<{ success: true; mergedCount: number }>
+    >()
+    .mockResolvedValue({ success: true, mergedCount: 1 }),
+)
+const mockAuthState = vi.hoisted(() => ({ role: 'municipal_admin' }))
+const mockRetryState = vi.hoisted(() => ({ attempts: 1 }))
 
 const exportReport = {
   id: 'r-export',
@@ -83,6 +102,28 @@ const mockReportDocs = vi.hoisted(() => [
     description: 'Already resolved',
     status: 'closed',
   },
+  {
+    id: 'r-resolved',
+    reportType: 'medical',
+    severity: 'medium',
+    municipalityLabel: 'Daet',
+    barangayId: 'Alawihao',
+    submittedAt: 1,
+    updatedAt: 1,
+    description: 'Resolved incident awaiting closure',
+    status: 'resolved',
+  },
+  {
+    id: 'r-reopened',
+    reportType: 'flood',
+    severity: 'medium',
+    municipalityLabel: 'Daet',
+    barangayId: 'Gahonon',
+    submittedAt: 1,
+    updatedAt: 1,
+    description: 'Reopened flood report',
+    status: 'reopened',
+  },
 ])
 const mockListenerState = vi.hoisted(() => ({
   loading: false,
@@ -108,7 +149,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 vi.mock('@bantayog/shared-ui', () => ({
   useAuth: () => ({
-    claims: { role: 'municipal_admin', municipalityId: 'daet' },
+    claims: { role: mockAuthState.role, municipalityId: 'daet' },
     loading: false,
     signOut: vi.fn(),
   }),
@@ -118,6 +159,23 @@ vi.mock('../services/callables', () => ({
   callables: {
     verifyReport: mockVerifyReport,
     rejectReport: mockRejectReport,
+    closeReport: mockCloseReport,
+    reopenReport: mockReopenReport,
+    mergeDuplicates: mockMergeDuplicates,
+  },
+}))
+
+vi.mock('../utils/withRetry', () => ({
+  withRetry: async <T,>(fn: () => Promise<T>): Promise<T> => {
+    let lastError: unknown
+    for (let attempt = 0; attempt < mockRetryState.attempts; attempt += 1) {
+      try {
+        return await fn()
+      } catch (error) {
+        lastError = error
+      }
+    }
+    throw lastError
   },
 }))
 
@@ -140,11 +198,24 @@ function renderPage() {
   return render(<TriagePage />, { wrapper: MemoryRouter })
 }
 
+async function openMergeDialog() {
+  renderPage()
+  fireEvent.click(screen.getByLabelText('Select report r-new'))
+  fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
+  fireEvent.click(screen.getByRole('button', { name: 'Merge duplicates' }))
+  return within(await screen.findByRole('dialog', { name: 'Merge duplicate reports?' }))
+}
+
 describe('TriagePage', () => {
   beforeEach(() => {
     mockNavigate.mockClear()
     mockVerifyReport.mockClear()
     mockRejectReport.mockClear()
+    mockCloseReport.mockClear()
+    mockReopenReport.mockClear()
+    mockMergeDuplicates.mockClear()
+    mockAuthState.role = 'municipal_admin'
+    mockRetryState.attempts = 1
 
     // Reset mutable mock report docs between tests
     mockReportDocs[0]!.description = 'Water is rising near the creek'
@@ -159,6 +230,12 @@ describe('TriagePage', () => {
     mockReportDocs[3]!.description = 'Already resolved'
     mockReportDocs[3]!.submittedAt = 1
     mockReportDocs[3]!.status = 'closed'
+    mockReportDocs[4]!.description = 'Resolved incident awaiting closure'
+    mockReportDocs[4]!.submittedAt = 1
+    mockReportDocs[4]!.status = 'resolved'
+    mockReportDocs[5]!.description = 'Reopened flood report'
+    mockReportDocs[5]!.submittedAt = 1
+    mockReportDocs[5]!.status = 'reopened'
     mockListenerState.loading = false
     mockListenerState.error = null
   })
@@ -174,6 +251,10 @@ describe('TriagePage', () => {
     expect(screen.getByText('Smoke in a residential block')).toBeInTheDocument()
     expect(screen.getByText('Responder needed for an elderly resident')).toBeInTheDocument()
     expect(screen.queryByText('Already resolved')).not.toBeInTheDocument()
+    expect(screen.getByText('Reopened flood report')).toBeInTheDocument()
+    expect(
+      within(screen.getByLabelText('Status filter')).getByRole('option', { name: 'Reopened' }),
+    ).toBeInTheDocument()
   })
 
   it('filters triage reports by status, severity, type, and search text', () => {
@@ -441,6 +522,110 @@ describe('TriagePage', () => {
       expect(screen.queryByText(errorToken)).not.toBeInTheDocument()
     },
   )
+
+  it('merges selected duplicates through the chosen primary report', async () => {
+    const dialog = await openMergeDialog()
+    expect(
+      dialog.getByRole('option', {
+        name: 'Water is rising near the creek · Daet · r-new',
+      }),
+    ).toBeInTheDocument()
+    fireEvent.change(dialog.getByLabelText('Primary report'), {
+      target: { value: 'r-new' },
+    })
+    fireEvent.click(dialog.getByRole('button', { name: 'Merge duplicates' }))
+
+    await waitFor(() => {
+      expect(mockMergeDuplicates).toHaveBeenCalledWith(
+        expect.objectContaining({
+          primaryReportId: 'r-new',
+          duplicateReportIds: ['r-awaiting'],
+          idempotencyKey: expect.any(String),
+        }),
+      )
+    })
+    expect(await screen.findByText('1 duplicate report(s) merged')).toBeInTheDocument()
+  })
+
+  it('retries a merge with the original idempotency key', async () => {
+    mockRetryState.attempts = 2
+    mockMergeDuplicates
+      .mockRejectedValueOnce(new Error('Network split'))
+      .mockResolvedValueOnce({ success: true, mergedCount: 1 })
+    const dialog = await openMergeDialog()
+    fireEvent.click(dialog.getByRole('button', { name: 'Merge duplicates' }))
+
+    await waitFor(() => {
+      expect(mockMergeDuplicates).toHaveBeenCalledTimes(2)
+    })
+    expect(mockMergeDuplicates.mock.calls[1]?.[0]).toEqual(mockMergeDuplicates.mock.calls[0]?.[0])
+  })
+
+  it('closes a resolved report with an optional summary', async () => {
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText('Status filter'), { target: { value: 'resolved' } })
+
+    const row = screen.getByTestId('report-row-r-resolved')
+    fireEvent.click(within(row).getByRole('button', { name: 'Close report' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Close report?' })
+    fireEvent.change(within(dialog).getByLabelText('Closure summary'), {
+      target: { value: '  Resolved on scene  ' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close report' }))
+
+    await waitFor(() => {
+      expect(mockCloseReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reportId: 'r-resolved',
+          closureSummary: 'Resolved on scene',
+          idempotencyKey: expect.any(String),
+        }),
+      )
+    })
+    expect(await screen.findByText('Report closed')).toBeInTheDocument()
+  })
+
+  it('reopens a closed report only after a reason is provided', async () => {
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText('Status filter'), { target: { value: 'closed' } })
+
+    const row = screen.getByTestId('report-row-r-closed')
+    fireEvent.click(within(row).getByRole('button', { name: 'Reopen report' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reopen report?' })
+    // Confirming with an empty reason is a no-op.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reopen report' }))
+    expect(mockReopenReport).not.toHaveBeenCalled()
+
+    fireEvent.change(within(dialog).getByLabelText('Reopen reason'), {
+      target: { value: 'Closed in error' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reopen report' }))
+
+    await waitFor(() => {
+      expect(mockReopenReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reportId: 'r-closed',
+          reason: 'Closed in error',
+          idempotencyKey: expect.any(String),
+        }),
+      )
+    })
+    expect(await screen.findByText('Report reopened')).toBeInTheDocument()
+  })
+
+  it('hides lifecycle controls for roles without report-lifecycle authority', () => {
+    mockAuthState.role = 'agency_admin'
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: 'Merge duplicates' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByLabelText('Status filter')).queryByRole('option', { name: 'Resolved' }),
+    ).not.toBeInTheDocument()
+  })
 
   it('builds a CSV export for visible triage rows without private reporter fields', () => {
     const csv = buildTriageExportCsv([exportReport])

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { REPORT_STATES, REPORT_TRANSITIONS, DISPATCH_STATES, DISPATCH_TRANSITIONS, isValidReportTransition, isValidDispatchTransition, } from './index.js';
+import { REPORT_STATES, REPORT_TRANSITIONS, DISPATCH_STATES, DISPATCH_TRANSITIONS, CANCELLABLE_DISPATCH_STATUSES, isValidReportTransition, isValidDispatchTransition, } from './index.js';
 // Report state machine: exhaustive matrix — every declared transition valid, all
 // others invalid. This is the codegen source-of-truth for both TypeScript and
 // Firestore rules transition tables.
@@ -40,6 +40,16 @@ describe('report state machine', () => {
 // Dispatch state machine: only responder-direct transitions live in the rules
 // layer (spec §5.4). Server-authoritative transitions are enforced in callables.
 describe('dispatch state machine', () => {
+    it('keeps admin cancellation aligned with supported source states', () => {
+        expect(CANCELLABLE_DISPATCH_STATUSES).toEqual([
+            'pending',
+            'accepted',
+            'acknowledged',
+            'en_route',
+            'on_scene',
+            'escalated',
+        ]);
+    });
     it('DISPATCH_STATES has 13 members (needs_admin + escalated)', () => {
         expect(DISPATCH_STATES).toHaveLength(13);
     });

@@ -1,6 +1,6 @@
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { setDoc, doc } from 'firebase/firestore'
-import type { ReportStatus } from '@bantayog/shared-types'
+import type { DispatchStatus, ReportStatus } from '@bantayog/shared-types'
 
 export const ts = 1713350400000
 
@@ -349,17 +349,7 @@ export async function seedDispatch(
     responderUid: string
     agencyId?: string
     municipalityId?: string
-    status?:
-      | 'pending'
-      | 'accepted'
-      | 'acknowledged'
-      | 'en_route'
-      | 'on_scene'
-      | 'resolved'
-      | 'declined'
-      | 'timed_out'
-      | 'superseded'
-      | 'cancelled'
+    status?: DispatchStatus
   },
 ): Promise<{ dispatchId: string }> {
   const dispatchId = o.dispatchId ?? db.collection('dispatches').doc().id

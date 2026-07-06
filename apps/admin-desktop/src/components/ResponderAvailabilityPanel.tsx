@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { UserPlus, Users } from 'lucide-react'
-import { ResponderAvailabilityRow } from './ResponderAvailabilityRow'
+import { ResponderAvailabilityRow, type ResponderRowActions } from './ResponderAvailabilityRow'
 import type { ResponderFleetMember } from '../hooks/useResponderFleet'
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
     specializations?: string[]
   }) => Promise<void>
   creatingResponder?: boolean
+  rowActions?: ResponderRowActions
 }
 
 function CreateResponderForm({
@@ -144,6 +145,7 @@ export function ResponderAvailabilityPanel({
   responders,
   onCreateResponder,
   creatingResponder = false,
+  rowActions,
 }: Props) {
   const [expandedResponderId, setExpandedResponderId] = useState<string | null>(null)
 
@@ -185,6 +187,7 @@ export function ResponderAvailabilityPanel({
           <ResponderAvailabilityRow
             key={responder.uid}
             responder={responder}
+            {...(rowActions ? { actions: rowActions } : {})}
             expanded={expandedResponderId === responder.uid}
             onToggle={() => {
               setExpandedResponderId((current) =>

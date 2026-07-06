@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Search, Info } from 'lucide-react'
+import { CANCELLABLE_DISPATCH_STATUSES } from '@bantayog/shared-validators'
 import type { DispatchLifecycleRow, DispatchEvent } from '../hooks/useDispatchLifecycle'
 import { FcmStatusIcon } from './FcmStatusIcon'
 import { DispatchTimeline } from './DispatchTimeline'
@@ -8,6 +9,7 @@ import { Tooltip } from './Tooltip'
 interface Props {
   rows: DispatchLifecycleRow[]
   highlightDispatchId?: string | null
+  onCancelDispatch?: (dispatchId: string) => void
 }
 
 const STATUS_BADGE_MAP: Record<string, { label: string; style: React.CSSProperties }> = {
@@ -109,7 +111,7 @@ function RowRenderer({ row, expandedId, onToggle, highlightDispatchId }: RowRend
   )
 }
 
-export function DispatchLifecycleTable({ rows, highlightDispatchId }: Props) {
+export function DispatchLifecycleTable({ rows, highlightDispatchId, onCancelDispatch }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
@@ -215,8 +217,24 @@ export function DispatchLifecycleTable({ rows, highlightDispatchId }: Props) {
 
       {expandedRow && (
         <div className="mt-2 rounded-md border border-white/10 bg-[var(--color-surface-elevated)] p-3">
-          <div className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">
-            Timeline — {expandedRow.reportId.slice(0, 8)}
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium text-[var(--color-text-muted)]">
+              Timeline — {expandedRow.reportId.slice(0, 8)}
+            </span>
+            {onCancelDispatch &&
+              CANCELLABLE_DISPATCH_STATUSES.includes(
+                expandedRow.status as (typeof CANCELLABLE_DISPATCH_STATUSES)[number],
+              ) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCancelDispatch(expandedRow.dispatchId)
+                  }}
+                  className="rounded border border-[var(--color-danger)]/40 px-2 py-1 text-xs font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/50"
+                >
+                  Cancel dispatch
+                </button>
+              )}
           </div>
           <DispatchTimeline events={expandedTimeline} />
         </div>

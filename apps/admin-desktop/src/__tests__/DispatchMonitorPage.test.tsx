@@ -12,11 +12,35 @@ const mockEscalateDispatch = vi.hoisted(() =>
 const mockDispatchResponder = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ dispatchId: 'd-new', status: 'pending', reportId: 'rep-assign-1' }),
 )
+const mockCancelDispatch = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ dispatchId: 'd1', status: 'cancelled' }),
+)
+const mockSuspendResponder = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ uid: 'r1', status: 'suspended' }),
+)
+const mockRevokeResponder = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ uid: 'r1', status: 'revoked' }),
+)
+const mockBulkAvailabilityOverride = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ updated: 1, skipped: 0, skippedUids: [] }),
+)
+
+vi.mock('@bantayog/shared-ui', () => ({
+  useAuth: () => ({
+    signOut: () => undefined,
+    loading: false,
+    claims: { role: 'agency_admin', agencyId: 'bfp-daet', accountStatus: 'active' },
+  }),
+}))
 
 vi.mock('../services/callables', () => ({
   callables: {
     escalateDispatch: mockEscalateDispatch,
     dispatchResponder: mockDispatchResponder,
+    cancelDispatch: mockCancelDispatch,
+    suspendResponder: mockSuspendResponder,
+    revokeResponder: mockRevokeResponder,
+    bulkAvailabilityOverride: mockBulkAvailabilityOverride,
     createResponder: vi.fn().mockResolvedValue({ uid: 'new-responder' }),
     getOpsMetrics: vi.fn().mockResolvedValue({
       metrics: {
@@ -72,6 +96,12 @@ async function tabUntil(
   }
 
   throw new Error('Could not focus expected element by tabbing')
+}
+
+async function openResponderActionDialog(actionLabel: string) {
+  fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
+  fireEvent.click(screen.getByRole('button', { name: actionLabel }))
+  return within(await screen.findByRole('dialog'))
 }
 
 describe('DispatchMonitorPage', () => {
@@ -368,6 +398,90 @@ describe('DispatchMonitorPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Responder assigned')).toBeInTheDocument()
     })
+  })
+
+  it('cancels a dispatch through the confirmation modal with the chosen reason', async () => {
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    // Expand the pending (cancellable) lifecycle row to reveal its Cancel button
+    fireEvent.click(screen.getByRole('row'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel dispatch' }))
+
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText(/reason/i), {
+      target: { value: 'duplicate_report' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel dispatch' }))
+
+    await waitFor(() => {
+      expect(mockCancelDispatch).toHaveBeenCalledTimes(1)
+    })
+    expect(mockCancelDispatch).toHaveBeenCalledWith({
+      dispatchId: 'd1',
+      reason: 'duplicate_report',
+      idempotencyKey: expect.any(String),
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Dispatch cancelled')).toBeInTheDocument()
+    })
+  })
+
+  it('suspends a responder through the confirmation modal (agency_admin)', async () => {
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const dialog = await openResponderActionDialog('Suspend')
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }))
+
+    await waitFor(() => {
+      expect(mockSuspendResponder).toHaveBeenCalledTimes(1)
+    })
+    expect(mockSuspendResponder).toHaveBeenCalledWith({
+      uid: 'r1',
+      idempotencyKey: expect.any(String),
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Responder suspended')).toBeInTheDocument()
+    })
+  })
+
+  it('revokes responder access through the confirmation modal (agency_admin)', async () => {
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const dialog = await openResponderActionDialog('Revoke')
+    fireEvent.click(dialog.getByRole('button', { name: 'Revoke' }))
+
+    await waitFor(() => {
+      expect(mockRevokeResponder).toHaveBeenCalledWith({
+        uid: 'r1',
+        idempotencyKey: expect.any(String),
+      })
+    })
+  })
+
+  it('sets a responder off-duty through the confirmation modal (agency_admin)', async () => {
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const dialog = await openResponderActionDialog('Set off-duty')
+    fireEvent.click(dialog.getByRole('button', { name: 'Set off-duty' }))
+
+    await waitFor(() => {
+      expect(mockBulkAvailabilityOverride).toHaveBeenCalledWith({
+        uids: ['r1'],
+        status: 'off_duty',
+        idempotencyKey: expect.any(String),
+      })
+    })
+  })
+
+  it('closes the responder modal when an action fails', async () => {
+    mockSuspendResponder.mockRejectedValueOnce(new Error('Responder action failed'))
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    const dialog = await openResponderActionDialog('Suspend')
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Responder action failed')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('does not show escalation queue when no stalled dispatches', () => {

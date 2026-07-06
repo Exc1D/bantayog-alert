@@ -4,9 +4,8 @@ import { z } from 'zod'
 import {
   BantayogError,
   BantayogErrorCode,
-  isValidDispatchTransition,
+  CANCELLABLE_DISPATCH_STATUSES,
   logDimension,
-  type DispatchStatus,
   type ReportStatus,
   isTerminalReportStatus,
 } from '@bantayog/shared-validators'
@@ -33,14 +32,6 @@ const InputSchema = z
     idempotencyKey: z.uuid(),
   })
   .strict()
-
-const CANCELLABLE_FROM_STATES: readonly DispatchStatus[] = [
-  'pending',
-  'accepted',
-  'acknowledged',
-  'en_route',
-  'on_scene',
-]
 
 export interface CancelDispatchCoreDeps {
   dispatchId: string
@@ -82,16 +73,15 @@ export async function cancelDispatchCore(db: Firestore, deps: CancelDispatchCore
 
         const from = dispatch.status as string
         const to = 'cancelled' as const
-
-        if (!CANCELLABLE_FROM_STATES.includes(from as DispatchStatus)) {
+        if (
+          !CANCELLABLE_DISPATCH_STATUSES.includes(
+            from as (typeof CANCELLABLE_DISPATCH_STATUSES)[number],
+          )
+        ) {
           throw new BantayogError(
             BantayogErrorCode.FAILED_PRECONDITION,
-            `Cannot cancel dispatch in status ${from} (allowed: ${CANCELLABLE_FROM_STATES.join(', ')})`,
+            `Cannot cancel dispatch in status ${from}`,
           )
-        }
-
-        if (!isValidDispatchTransition(from as DispatchStatus, to)) {
-          throw new BantayogError(BantayogErrorCode.INVALID_STATUS_TRANSITION, 'invalid transition')
         }
 
         // Read report before any writes (Firestore transaction invariant).

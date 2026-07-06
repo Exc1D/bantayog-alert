@@ -26,6 +26,15 @@ export const DISPATCH_STATES = [
   'escalated',
 ] as const
 
+export const CANCELLABLE_DISPATCH_STATUSES = [
+  'pending',
+  'accepted',
+  'acknowledged',
+  'en_route',
+  'on_scene',
+  'escalated',
+] as const satisfies readonly DispatchStatus[]
+
 /**
  * Valid dispatch state transitions.
  *

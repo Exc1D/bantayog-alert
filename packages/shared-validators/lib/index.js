@@ -18,7 +18,7 @@ export { deadLetterDocSchema } from './dead-letters.js';
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js';
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES, mdrrmoLabelSchema, mdrrmoHotlineSchema, MDRRMO_HOTLINE_REGEX, MIN_MDRRMO_HOTLINE_DIGITS, countHotlineDigits, updateMunicipalityContactInputSchema, } from './municipalities.js';
 export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js';
-export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, isValidDispatchTransition, } from './state-machines/index.js';
+export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, CANCELLABLE_DISPATCH_STATUSES, isValidDispatchTransition, } from './state-machines/index.js';
 export { BantayogErrorCode, isBantayogErrorCode, isTerminalReportStatus, isTerminalDispatchStatus, BantayogError, notFoundError, invalidTransitionError, } from './errors.js';
 export { logEvent, logDimension, LOG_DIMENSION_MAX } from './logging.js';
 //# sourceMappingURL=index.js.map

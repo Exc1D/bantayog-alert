@@ -8,16 +8,35 @@ import type {
 
 type IdempotencyKey = string
 
+export type CancelDispatchReason =
+  | 'responder_unavailable'
+  | 'duplicate_report'
+  | 'admin_error'
+  | 'citizen_withdrew'
+
+export type AvailabilityStatus = 'available' | 'unavailable' | 'off_duty'
+
 /** Build a callable wrapper: `callable<Payload, Return>('functionName')` */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- P is the caller's contract
 function callable<P, R>(name: string) {
   return (payload: P) => httpsCallable<P, R>(functions, name)(payload).then((r) => r.data)
 }
 
-// Backend-only operations (cancelDispatch, closeReport, mergeDuplicates, user/responder
-// suspend/revoke, erasure, reopenReport, ...) have no frontend wrapper by design;
-// see docs/runbooks/pilot-demo.md#backend-only-operations.
+// Backend-only operations (user suspend/revoke, erasure, ...) have no frontend
+// wrapper by design; see docs/runbooks/pilot-demo.md#backend-only-operations.
 export const callables = {
+  suspendResponder: callable<
+    { uid: string; idempotencyKey: IdempotencyKey },
+    { uid: string; status: 'suspended' }
+  >('suspendResponder'),
+  revokeResponder: callable<
+    { uid: string; idempotencyKey: IdempotencyKey },
+    { uid: string; status: 'revoked' }
+  >('revokeResponder'),
+  bulkAvailabilityOverride: callable<
+    { uids: string[]; status: AvailabilityStatus; idempotencyKey: IdempotencyKey },
+    { updated: number; skipped: number; skippedUids: string[] }
+  >('bulkAvailabilityOverride'),
   verifyReport: callable<
     { reportId: string; idempotencyKey: IdempotencyKey; scrubbedDescription?: string },
     { status: ReportStatus; reportId: string }
@@ -31,6 +50,19 @@ export const callables = {
     },
     { status: ReportStatus; reportId: string }
   >('rejectReport'),
+  closeReport: callable<
+    { reportId: string; idempotencyKey: IdempotencyKey; closureSummary?: string },
+    { reportId: string; status: 'closed' }
+  >('closeReport'),
+  reopenReport: callable<
+    { reportId: string; reason: string; idempotencyKey: IdempotencyKey },
+    { reportId: string; status: 'reopened' }
+  >('reopenReport'),
+  // Backend core returns expected domain failures as data; transport/auth failures still reject.
+  mergeDuplicates: callable<
+    { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
+    { success: true; mergedCount: number } | { success: false; errorCode: string }
+  >('mergeDuplicates'),
   unpublishReport: callable<
     {
       reportId: string
@@ -64,6 +96,10 @@ export const callables = {
     { reportId: string; responderUid: string; idempotencyKey: IdempotencyKey },
     { dispatchId: string; status: DispatchStatus; reportId: string }
   >('dispatchResponder'),
+  cancelDispatch: callable<
+    { dispatchId: string; reason: CancelDispatchReason; idempotencyKey: IdempotencyKey },
+    { dispatchId: string; status: DispatchStatus }
+  >('cancelDispatch'),
   declareAlert: callable<
     {
       hazardType: string
