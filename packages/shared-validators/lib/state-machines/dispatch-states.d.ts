@@ -8,7 +8,7 @@
  */
 import type { DispatchStatus } from '@bantayog/shared-types';
 export declare const DISPATCH_STATES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene", "resolved", "declined", "timed_out", "cancelled", "superseded", "unable_to_complete", "needs_admin", "escalated"];
-export declare const CANCELLABLE_DISPATCH_STATUSES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene"];
+export declare const CANCELLABLE_DISPATCH_STATUSES: readonly ["pending", "accepted", "acknowledged", "en_route", "on_scene", "escalated"];
 /**
  * Valid dispatch state transitions.
  *

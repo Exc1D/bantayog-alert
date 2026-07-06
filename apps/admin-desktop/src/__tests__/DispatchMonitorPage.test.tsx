@@ -98,6 +98,12 @@ async function tabUntil(
   throw new Error('Could not focus expected element by tabbing')
 }
 
+async function openResponderActionDialog(actionLabel: string) {
+  fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
+  fireEvent.click(screen.getByRole('button', { name: actionLabel }))
+  return within(await screen.findByRole('dialog'))
+}
+
 describe('DispatchMonitorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -423,12 +429,8 @@ describe('DispatchMonitorPage', () => {
   it('suspends a responder through the confirmation modal (agency_admin)', async () => {
     render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
 
-    // Expand the responder row to reveal lifecycle actions, then suspend.
-    fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }))
-
-    const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspend' }))
+    const dialog = await openResponderActionDialog('Suspend')
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }))
 
     await waitFor(() => {
       expect(mockSuspendResponder).toHaveBeenCalledTimes(1)
@@ -445,10 +447,8 @@ describe('DispatchMonitorPage', () => {
   it('revokes responder access through the confirmation modal (agency_admin)', async () => {
     render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
 
-    fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }))
-    const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Revoke' }))
+    const dialog = await openResponderActionDialog('Revoke')
+    fireEvent.click(dialog.getByRole('button', { name: 'Revoke' }))
 
     await waitFor(() => {
       expect(mockRevokeResponder).toHaveBeenCalledWith({
@@ -461,10 +461,8 @@ describe('DispatchMonitorPage', () => {
   it('sets a responder off-duty through the confirmation modal (agency_admin)', async () => {
     render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
 
-    fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Set off-duty' }))
-    const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Set off-duty' }))
+    const dialog = await openResponderActionDialog('Set off-duty')
+    fireEvent.click(dialog.getByRole('button', { name: 'Set off-duty' }))
 
     await waitFor(() => {
       expect(mockBulkAvailabilityOverride).toHaveBeenCalledWith({
@@ -479,11 +477,8 @@ describe('DispatchMonitorPage', () => {
     mockSuspendResponder.mockRejectedValueOnce(new Error('Responder action failed'))
     render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
 
-    fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }))
-    fireEvent.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Suspend' }),
-    )
+    const dialog = await openResponderActionDialog('Suspend')
+    fireEvent.click(dialog.getByRole('button', { name: 'Suspend' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Responder action failed')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

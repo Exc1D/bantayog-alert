@@ -198,6 +198,14 @@ function renderPage() {
   return render(<TriagePage />, { wrapper: MemoryRouter })
 }
 
+async function openMergeDialog() {
+  renderPage()
+  fireEvent.click(screen.getByLabelText('Select report r-new'))
+  fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
+  fireEvent.click(screen.getByRole('button', { name: 'Merge duplicates' }))
+  return within(await screen.findByRole('dialog', { name: 'Merge duplicate reports?' }))
+}
+
 describe('TriagePage', () => {
   beforeEach(() => {
     mockNavigate.mockClear()
@@ -516,22 +524,16 @@ describe('TriagePage', () => {
   )
 
   it('merges selected duplicates through the chosen primary report', async () => {
-    renderPage()
-
-    fireEvent.click(screen.getByLabelText('Select report r-new'))
-    fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
-    fireEvent.click(screen.getByRole('button', { name: 'Merge duplicates' }))
-
-    const dialog = await screen.findByRole('dialog', { name: 'Merge duplicate reports?' })
+    const dialog = await openMergeDialog()
     expect(
-      within(dialog).getByRole('option', {
+      dialog.getByRole('option', {
         name: 'Water is rising near the creek · Daet · r-new',
       }),
     ).toBeInTheDocument()
-    fireEvent.change(within(dialog).getByLabelText('Primary report'), {
+    fireEvent.change(dialog.getByLabelText('Primary report'), {
       target: { value: 'r-new' },
     })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Merge duplicates' }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Merge duplicates' }))
 
     await waitFor(() => {
       expect(mockMergeDuplicates).toHaveBeenCalledWith(
@@ -550,13 +552,8 @@ describe('TriagePage', () => {
     mockMergeDuplicates
       .mockRejectedValueOnce(new Error('Network split'))
       .mockResolvedValueOnce({ success: true, mergedCount: 1 })
-    renderPage()
-
-    fireEvent.click(screen.getByLabelText('Select report r-new'))
-    fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
-    fireEvent.click(screen.getByRole('button', { name: 'Merge duplicates' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Merge duplicate reports?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Merge duplicates' }))
+    const dialog = await openMergeDialog()
+    fireEvent.click(dialog.getByRole('button', { name: 'Merge duplicates' }))
 
     await waitFor(() => {
       expect(mockMergeDuplicates).toHaveBeenCalledTimes(2)

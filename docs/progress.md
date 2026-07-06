@@ -692,3 +692,9 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 
 - Centralized cancellation eligibility in the shared state-machine module, hoisted triage lifecycle/merge idempotency keys outside retry callbacks, kept merge confirmation visible while busy, restored reopened reports to active triage, added readable primary-report labels, and dismissed failed responder-action modals so errors are visible.
 - Added revoke/off-duty/error-path responder coverage and a two-attempt merge regression proving key reuse. Skipped config-array/button-component and command-builder suggestions because they add indirection without behavioral value. No deploy, rules, indexes, schema, or migration changes.
+
+## 2026-07-06 - PR #283 Fallow follow-up
+
+- Added `escalated` to the shared cancellable dispatch statuses, matching the existing `escalated → cancelled` transition used by both Admin UI and Functions.
+- Consolidated responder and triage row actions locally, and extracted the two duplicated test interaction flows. The documented `mergeDuplicates` result union remains unchanged because the backend intentionally returns expected domain failures as data.
+- Red-first shared-validator coverage passed 11/11; focused Admin coverage passed 48/48; the emulator-backed cancellation matrix passed 13/13 including `escalated`; Admin/shared/Functions typechecks and Fallow `new-only` passed with zero introduced findings. No deploy, rules, indexes, schema, or migration changes.

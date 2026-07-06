@@ -53,13 +53,14 @@ describe('report state machine', () => {
 // Dispatch state machine: only responder-direct transitions live in the rules
 // layer (spec §5.4). Server-authoritative transitions are enforced in callables.
 describe('dispatch state machine', () => {
-  it('keeps admin cancellation limited to active field-progress states', () => {
+  it('keeps admin cancellation aligned with supported source states', () => {
     expect(CANCELLABLE_DISPATCH_STATUSES).toEqual([
       'pending',
       'accepted',
       'acknowledged',
       'en_route',
       'on_scene',
+      'escalated',
     ])
   })
 

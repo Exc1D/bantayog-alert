@@ -1,4 +1,5 @@
 import { Check, X, Send, Archive, RotateCcw } from 'lucide-react'
+import type { ComponentType } from 'react'
 import { SeverityBadge } from './SeverityBadge'
 import { ReportTypeIcon } from './ReportTypeIcon'
 import { EmptyTriageState } from './EmptyTriageState'
@@ -33,6 +34,124 @@ function actionFlags(status: string) {
   const canClose = status === 'resolved'
   const canReopen = status === 'closed'
   return { canVerify, canReject, canDispatch, canClose, canReopen }
+}
+
+function RowActionButton({
+  onClick,
+  loading,
+  icon: Icon,
+  label,
+  ariaLabel = label,
+  colorClass,
+}: {
+  onClick: () => void
+  loading: boolean
+  icon: ComponentType<{ className?: string }>
+  label: string
+  ariaLabel?: string
+  colorClass: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      disabled={loading}
+      className={`flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium ${colorClass} hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50`}
+      aria-label={ariaLabel}
+    >
+      {loading ? (
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      ) : (
+        <Icon className="h-4 w-4" />
+      )}
+      <span>{label}</span>
+    </button>
+  )
+}
+
+function ReportRowActions({
+  reportId,
+  actions,
+  loading,
+  onVerify,
+  onReject,
+  onDispatch,
+  onClose,
+  onReopen,
+}: {
+  reportId: string
+  actions: ReturnType<typeof actionFlags>
+  loading: boolean
+  onVerify: (id: string) => void
+  onReject: (id: string) => void
+  onDispatch: (id: string) => void
+  onClose: ((id: string) => void) | undefined
+  onReopen: ((id: string) => void) | undefined
+}) {
+  return (
+    <div className="flex gap-1">
+      {actions.canVerify && (
+        <RowActionButton
+          onClick={() => {
+            onVerify(reportId)
+          }}
+          loading={loading}
+          icon={Check}
+          label="Verify"
+          colorClass="text-[var(--color-success)]"
+        />
+      )}
+      {actions.canReject && (
+        <RowActionButton
+          onClick={() => {
+            onReject(reportId)
+          }}
+          loading={loading}
+          icon={X}
+          label="Reject"
+          colorClass="text-[var(--color-danger)]"
+        />
+      )}
+      {actions.canDispatch && (
+        <RowActionButton
+          onClick={() => {
+            onDispatch(reportId)
+          }}
+          loading={loading}
+          icon={Send}
+          label="Dispatch"
+          colorClass="text-[var(--color-info)]"
+        />
+      )}
+      {actions.canClose && onClose && (
+        <RowActionButton
+          onClick={() => {
+            onClose(reportId)
+          }}
+          loading={loading}
+          icon={Archive}
+          label="Close"
+          ariaLabel="Close report"
+          colorClass="text-[var(--color-text-secondary)]"
+        />
+      )}
+      {actions.canReopen && onReopen && (
+        <RowActionButton
+          onClick={() => {
+            onReopen(reportId)
+          }}
+          loading={loading}
+          icon={RotateCcw}
+          label="Reopen"
+          ariaLabel="Reopen report"
+          colorClass="text-[var(--color-warning)]"
+        />
+      )}
+    </div>
+  )
 }
 
 export function TriageQueueTable({
@@ -170,98 +289,16 @@ export function TriageQueueTable({
                 </td>
                 <td className="px-4 py-3 text-[var(--color-text-secondary)]">{report.barangay}</td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    {actions.canVerify && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onVerify(report.id)
-                        }}
-                        disabled={loadingIds.has(report.id)}
-                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-success)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label="Verify"
-                      >
-                        {loadingIds.has(report.id) ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                        <span>Verify</span>
-                      </button>
-                    )}
-                    {actions.canReject && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onReject(report.id)
-                        }}
-                        disabled={loadingIds.has(report.id)}
-                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-danger)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label="Reject"
-                      >
-                        {loadingIds.has(report.id) ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        ) : (
-                          <X className="h-4 w-4" />
-                        )}
-                        <span>Reject</span>
-                      </button>
-                    )}
-                    {actions.canDispatch && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDispatch(report.id)
-                        }}
-                        disabled={loadingIds.has(report.id)}
-                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-info)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label="Dispatch"
-                      >
-                        {loadingIds.has(report.id) ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                        <span>Dispatch</span>
-                      </button>
-                    )}
-                    {actions.canClose && onClose && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onClose(report.id)
-                        }}
-                        disabled={loadingIds.has(report.id)}
-                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label="Close report"
-                      >
-                        {loadingIds.has(report.id) ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        ) : (
-                          <Archive className="h-4 w-4" />
-                        )}
-                        <span>Close</span>
-                      </button>
-                    )}
-                    {actions.canReopen && onReopen && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onReopen(report.id)
-                        }}
-                        disabled={loadingIds.has(report.id)}
-                        className="flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium text-[var(--color-warning)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label="Reopen report"
-                      >
-                        {loadingIds.has(report.id) ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        ) : (
-                          <RotateCcw className="h-4 w-4" />
-                        )}
-                        <span>Reopen</span>
-                      </button>
-                    )}
-                  </div>
+                  <ReportRowActions
+                    reportId={report.id}
+                    actions={actions}
+                    loading={loadingIds.has(report.id)}
+                    onVerify={onVerify}
+                    onReject={onReject}
+                    onDispatch={onDispatch}
+                    onClose={onClose}
+                    onReopen={onReopen}
+                  />
                 </td>
               </tr>
             )

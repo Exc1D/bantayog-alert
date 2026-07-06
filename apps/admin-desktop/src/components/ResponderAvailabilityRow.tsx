@@ -61,6 +61,31 @@ export interface ResponderRowActions {
   onRevoke?: (uid: string) => void
 }
 
+const ACTION_CONFIG: {
+  key: keyof ResponderRowActions
+  label: string
+  className: string
+}[] = [
+  {
+    key: 'onSetOffDuty',
+    label: 'Set off-duty',
+    className:
+      'border-white/15 text-[var(--color-text-secondary)] hover:bg-white/5 focus-visible:ring-[var(--color-info)]/50',
+  },
+  {
+    key: 'onSuspend',
+    label: 'Suspend',
+    className:
+      'border-[var(--color-warning)]/40 text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 focus-visible:ring-[var(--color-warning)]/50',
+  },
+  {
+    key: 'onRevoke',
+    label: 'Revoke',
+    className:
+      'border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:ring-[var(--color-danger)]/50',
+  },
+]
+
 function ResponderDetails({
   detailsId,
   responder,
@@ -70,9 +95,7 @@ function ResponderDetails({
   responder: ResponderFleetMember
   actions?: ResponderRowActions
 }) {
-  const hasActions = Boolean(
-    actions && (actions.onSetOffDuty ?? actions.onSuspend ?? actions.onRevoke),
-  )
+  const hasActions = ACTION_CONFIG.some(({ key }) => actions?.[key])
   return (
     <div id={detailsId} className="border-t border-white/10 px-3 py-2">
       <dl className="grid grid-cols-2 gap-3 text-xs">
@@ -91,39 +114,21 @@ function ResponderDetails({
       </dl>
       {hasActions && (
         <div className="mt-2 flex flex-wrap gap-2 border-t border-white/5 pt-2">
-          {actions?.onSetOffDuty && (
-            <button
-              type="button"
-              onClick={() => {
-                actions.onSetOffDuty?.(responder.uid)
-              }}
-              className="rounded border border-white/15 px-2 py-1 text-[11px] font-medium text-[var(--color-text-secondary)] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-info)]/50"
-            >
-              Set off-duty
-            </button>
-          )}
-          {actions?.onSuspend && (
-            <button
-              type="button"
-              onClick={() => {
-                actions.onSuspend?.(responder.uid)
-              }}
-              className="rounded border border-[var(--color-warning)]/40 px-2 py-1 text-[11px] font-medium text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-warning)]/50"
-            >
-              Suspend
-            </button>
-          )}
-          {actions?.onRevoke && (
-            <button
-              type="button"
-              onClick={() => {
-                actions.onRevoke?.(responder.uid)
-              }}
-              className="rounded border border-[var(--color-danger)]/40 px-2 py-1 text-[11px] font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/50"
-            >
-              Revoke
-            </button>
-          )}
+          {ACTION_CONFIG.map(({ key, label, className }) => {
+            const handler = actions?.[key]
+            return handler ? (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  handler(responder.uid)
+                }}
+                className={`rounded border px-2 py-1 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 ${className}`}
+              >
+                {label}
+              </button>
+            ) : null
+          })}
         </div>
       )}
     </div>

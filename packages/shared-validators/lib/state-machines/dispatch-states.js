@@ -28,6 +28,7 @@ export const CANCELLABLE_DISPATCH_STATUSES = [
     'acknowledged',
     'en_route',
     'on_scene',
+    'escalated',
 ];
 /**
  * Valid dispatch state transitions.
