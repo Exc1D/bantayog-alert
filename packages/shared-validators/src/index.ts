@@ -98,6 +98,7 @@ export {
   isValidReportTransition,
   DISPATCH_STATES,
   DISPATCH_TRANSITIONS,
+  CANCELLABLE_DISPATCH_STATUSES,
   isValidDispatchTransition,
 } from './state-machines/index.js'
 export type { ReportStatus, DispatchStatus } from './state-machines/index.js'

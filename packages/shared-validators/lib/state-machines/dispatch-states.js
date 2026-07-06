@@ -22,6 +22,14 @@ export const DISPATCH_STATES = [
     'needs_admin',
     'escalated',
 ];
+export const CANCELLABLE_DISPATCH_STATUSES = [
+    'pending',
+    'accepted',
+    'acknowledged',
+    'en_route',
+    'on_scene',
+    'escalated',
+];
 /**
  * Valid dispatch state transitions.
  *

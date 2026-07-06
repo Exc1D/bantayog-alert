@@ -55,31 +55,83 @@ function JurisdictionChips({
   ))
 }
 
+export interface ResponderRowActions {
+  onSetOffDuty?: (uid: string) => void
+  onSuspend?: (uid: string) => void
+  onRevoke?: (uid: string) => void
+}
+
+const ACTION_CONFIG: {
+  key: keyof ResponderRowActions
+  label: string
+  className: string
+}[] = [
+  {
+    key: 'onSetOffDuty',
+    label: 'Set off-duty',
+    className:
+      'border-white/15 text-[var(--color-text-secondary)] hover:bg-white/5 focus-visible:ring-[var(--color-info)]/50',
+  },
+  {
+    key: 'onSuspend',
+    label: 'Suspend',
+    className:
+      'border-[var(--color-warning)]/40 text-[var(--color-warning)] hover:bg-[var(--color-warning)]/10 focus-visible:ring-[var(--color-warning)]/50',
+  },
+  {
+    key: 'onRevoke',
+    label: 'Revoke',
+    className:
+      'border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:ring-[var(--color-danger)]/50',
+  },
+]
+
 function ResponderDetails({
   detailsId,
   responder,
+  actions,
 }: {
   detailsId: string
   responder: ResponderFleetMember
+  actions?: ResponderRowActions
 }) {
+  const hasActions = ACTION_CONFIG.some(({ key }) => actions?.[key])
   return (
-    <dl
-      id={detailsId}
-      className="grid grid-cols-2 gap-3 border-t border-white/10 px-3 py-2 text-xs"
-    >
-      <div>
-        <dt className="text-[var(--color-text-muted)]">Availability</dt>
-        <dd className="mt-0.5 font-medium capitalize text-[var(--color-text-primary)]">
-          {responder.availabilityStatus.replaceAll('_', ' ')}
-        </dd>
-      </div>
-      <div className="text-right">
-        <dt className="text-[var(--color-text-muted)]">Last activity</dt>
-        <dd className="mt-0.5 font-medium tabular-nums text-[var(--color-text-primary)]">
-          {formatLastActivity(responder.lastActivityAt)}
-        </dd>
-      </div>
-    </dl>
+    <div id={detailsId} className="border-t border-white/10 px-3 py-2">
+      <dl className="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <dt className="text-[var(--color-text-muted)]">Availability</dt>
+          <dd className="mt-0.5 font-medium capitalize text-[var(--color-text-primary)]">
+            {responder.availabilityStatus.replaceAll('_', ' ')}
+          </dd>
+        </div>
+        <div className="text-right">
+          <dt className="text-[var(--color-text-muted)]">Last activity</dt>
+          <dd className="mt-0.5 font-medium tabular-nums text-[var(--color-text-primary)]">
+            {formatLastActivity(responder.lastActivityAt)}
+          </dd>
+        </div>
+      </dl>
+      {hasActions && (
+        <div className="mt-2 flex flex-wrap gap-2 border-t border-white/5 pt-2">
+          {ACTION_CONFIG.map(({ key, label, className }) => {
+            const handler = actions?.[key]
+            return handler ? (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  handler(responder.uid)
+                }}
+                className={`rounded border px-2 py-1 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 ${className}`}
+              >
+                {label}
+              </button>
+            ) : null
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -87,10 +139,12 @@ export function ResponderAvailabilityRow({
   expanded,
   onToggle,
   responder,
+  actions,
 }: {
   expanded: boolean
   onToggle: () => void
   responder: ResponderFleetMember
+  actions?: ResponderRowActions
 }) {
   const detailsId = `responder-details-${responder.uid}`
   const action = expanded ? 'Hide' : 'View'
@@ -135,7 +189,13 @@ export function ResponderAvailabilityRow({
           />
         </span>
       </button>
-      {expanded && <ResponderDetails detailsId={detailsId} responder={responder} />}
+      {expanded && (
+        <ResponderDetails
+          detailsId={detailsId}
+          responder={responder}
+          {...(actions ? { actions } : {})}
+        />
+      )}
     </li>
   )
 }
