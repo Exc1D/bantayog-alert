@@ -58,6 +58,7 @@ export const callables = {
     { reportId: string; reason: string; idempotencyKey: IdempotencyKey },
     { reportId: string; status: 'reopened' }
   >('reopenReport'),
+  // Backend core returns expected domain failures as data; transport/auth failures still reject.
   mergeDuplicates: callable<
     { primaryReportId: string; duplicateReportIds: string[]; idempotencyKey: IdempotencyKey },
     { success: true; mergedCount: number } | { success: false; errorCode: string }

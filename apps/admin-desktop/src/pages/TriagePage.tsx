@@ -22,13 +22,14 @@ import {
 } from '../constants/report'
 import type { Report } from '../types'
 
-const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified'])
+const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified', 'reopened'])
 const LIFECYCLE_STATUSES = new Set(['resolved', 'closed'])
 const STATUS_FILTERS = [
   { value: 'all', label: 'All statuses' },
   { value: 'new', label: 'New' },
   { value: 'awaiting_verify', label: 'Awaiting verification' },
   { value: 'verified', label: 'Verified' },
+  { value: 'reopened', label: 'Reopened' },
 ] as const
 const SEVERITY_FILTERS = [
   { value: 'all', label: 'All severities' },
@@ -558,7 +559,7 @@ export default function TriagePage() {
   }, [executeCommand, retryCommand])
 
   const openMergeConfirmation = useCallback(() => {
-    if (!canManageLifecycle) return
+    if (!canManageLifecycle || merging) return
     const ids = selectedReports.map((report) => report.id)
     if (ids.length < 2) return
     setActionError(null)
@@ -566,23 +567,23 @@ export default function TriagePage() {
     setRetryCommand(null)
     // ponytail: primary defaults to the first selected row; operator repicks in the modal.
     setPendingMerge({ primaryId: ids[0] ?? '', ids })
-  }, [canManageLifecycle, selectedReports])
+  }, [canManageLifecycle, merging, selectedReports])
 
   const handleConfirmMerge = useCallback(async () => {
     const pending = pendingMerge
     if (!pending) return
     const duplicateReportIds = pending.ids.filter((id) => id !== pending.primaryId)
     if (duplicateReportIds.length === 0) return
-    setPendingMerge(null)
     setMerging(true)
     setActionError(null)
     setSuccessMessage(null)
+    const idempotencyKey = generateIdempotencyKey()
     try {
       const result = await withRetry(() =>
         callables.mergeDuplicates({
           primaryReportId: pending.primaryId,
           duplicateReportIds,
-          idempotencyKey: generateIdempotencyKey(),
+          idempotencyKey,
         }),
       )
       if (result.success) {
@@ -594,6 +595,7 @@ export default function TriagePage() {
     } catch (err) {
       setActionError(actionErrorMessage(err, 'Merge failed'))
     } finally {
+      setPendingMerge(null)
       setMerging(false)
     }
   }, [clearSelection, pendingMerge])
@@ -619,12 +621,13 @@ export default function TriagePage() {
     setReportLoading(pending.reportId, true)
     setActionError(null)
     setSuccessMessage(null)
+    const idempotencyKey = generateIdempotencyKey()
     try {
       if (pending.kind === 'close') {
         await withRetry(() =>
           callables.closeReport({
             reportId: pending.reportId,
-            idempotencyKey: generateIdempotencyKey(),
+            idempotencyKey,
             ...(text ? { closureSummary: text } : {}),
           }),
         )
@@ -634,7 +637,7 @@ export default function TriagePage() {
           callables.reopenReport({
             reportId: pending.reportId,
             reason: text,
-            idempotencyKey: generateIdempotencyKey(),
+            idempotencyKey,
           }),
         )
         setSuccessMessage('Report reopened')
@@ -706,7 +709,7 @@ export default function TriagePage() {
                   <button
                     type="button"
                     onClick={openMergeConfirmation}
-                    disabled={selectedIds.size < 2}
+                    disabled={selectedIds.size < 2 || merging}
                     className="rounded border border-white/10 px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Merge duplicates
@@ -957,11 +960,14 @@ export default function TriagePage() {
             }}
             className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
           >
-            {pendingMerge?.ids.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
+            {pendingMerge?.ids.map((id) => {
+              const report = reports.find((candidate) => candidate.id === id)
+              return (
+                <option key={id} value={id}>
+                  {report ? `${report.description} · ${report.municipality} · ${id}` : id}
+                </option>
+              )
+            })}
           </select>
         </label>
       </ConfirmationModal>

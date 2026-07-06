@@ -442,6 +442,53 @@ describe('DispatchMonitorPage', () => {
     })
   })
 
+  it('revokes responder access through the confirmation modal (agency_admin)', async () => {
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Revoke' }))
+
+    await waitFor(() => {
+      expect(mockRevokeResponder).toHaveBeenCalledWith({
+        uid: 'r1',
+        idempotencyKey: expect.any(String),
+      })
+    })
+  })
+
+  it('sets a responder off-duty through the confirmation modal (agency_admin)', async () => {
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Set off-duty' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Set off-duty' }))
+
+    await waitFor(() => {
+      expect(mockBulkAvailabilityOverride).toHaveBeenCalledWith({
+        uids: ['r1'],
+        status: 'off_duty',
+        idempotencyKey: expect.any(String),
+      })
+    })
+  })
+
+  it('closes the responder modal when an action fails', async () => {
+    mockSuspendResponder.mockRejectedValueOnce(new Error('Responder action failed'))
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /View Alice responder details/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }))
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Suspend' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Responder action failed')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('does not show escalation queue when no stalled dispatches', () => {
     render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
     expect(screen.queryByLabelText('Escalation queue')).not.toBeInTheDocument()

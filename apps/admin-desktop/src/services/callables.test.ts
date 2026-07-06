@@ -56,12 +56,6 @@ describe('callables.escalateDispatch', () => {
 describe('retired admin callable wrappers', () => {
   const retiredCallableNames = [
     // Backend-only operations; see docs/runbooks/pilot-demo.md#backend-only-operations.
-    'cancelDispatch',
-    'closeReport',
-    'mergeDuplicates',
-    'suspendResponder',
-    'revokeResponder',
-    'bulkAvailabilityOverride',
     'setRetentionExempt',
     'setErasureLegalHold',
     'approveErasureRequest',
@@ -69,7 +63,6 @@ describe('retired admin callable wrappers', () => {
     'revokeUser',
     'resetUserTotp',
     'createUser',
-    'reopenReport',
     // Retired features.
     'addCommandChannelMessage',
     'enterFieldMode',

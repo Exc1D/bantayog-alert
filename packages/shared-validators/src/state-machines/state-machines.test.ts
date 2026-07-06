@@ -4,6 +4,7 @@ import {
   REPORT_TRANSITIONS,
   DISPATCH_STATES,
   DISPATCH_TRANSITIONS,
+  CANCELLABLE_DISPATCH_STATUSES,
   isValidReportTransition,
   isValidDispatchTransition,
 } from './index.js'
@@ -52,6 +53,16 @@ describe('report state machine', () => {
 // Dispatch state machine: only responder-direct transitions live in the rules
 // layer (spec §5.4). Server-authoritative transitions are enforced in callables.
 describe('dispatch state machine', () => {
+  it('keeps admin cancellation limited to active field-progress states', () => {
+    expect(CANCELLABLE_DISPATCH_STATUSES).toEqual([
+      'pending',
+      'accepted',
+      'acknowledged',
+      'en_route',
+      'on_scene',
+    ])
+  })
+
   it('DISPATCH_STATES has 13 members (needs_admin + escalated)', () => {
     expect(DISPATCH_STATES).toHaveLength(13)
   })

@@ -687,3 +687,8 @@ Removed in `9f520d99` (2026-05-11): SMS inbound pipeline, NDRRMC escalation, PAG
 ## 2026-07-05 - PR #278 Admin retry test stabilization
 
 - Replaced synchronous retry-button queries in both Dispatch Monitor retry paths with awaited accessible queries, matching the async callable rejection that renders the button. CI supplied the red proof; focused Dispatch Monitor passed 19/19, full Admin passed 589/589, and the root test gate passed on rerun after a separate Citizen route-test cleanup flake cleared. Root lint and typecheck passed. No production code, deploy, rules, indexes, schema, or migration files changed.
+
+## 2026-07-06 - PR #283 review fixes
+
+- Centralized cancellation eligibility in the shared state-machine module, hoisted triage lifecycle/merge idempotency keys outside retry callbacks, kept merge confirmation visible while busy, restored reopened reports to active triage, added readable primary-report labels, and dismissed failed responder-action modals so errors are visible.
+- Added revoke/off-duty/error-path responder coverage and a two-attempt merge regression proving key reuse. Skipped config-array/button-component and command-builder suggestions because they add indirection without behavioral value. No deploy, rules, indexes, schema, or migration changes.

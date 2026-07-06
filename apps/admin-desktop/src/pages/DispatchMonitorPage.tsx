@@ -419,6 +419,7 @@ export function DispatchMonitorPage() {
       }
       setResponderAction(null)
     } catch (err) {
+      setResponderAction(null)
       setDispatchError(actionErrorMessage(err, 'Responder action failed'))
     } finally {
       setManagingResponder(false)

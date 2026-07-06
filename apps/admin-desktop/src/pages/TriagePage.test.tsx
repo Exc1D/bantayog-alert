@@ -28,9 +28,18 @@ const mockReopenReport = vi.hoisted(() =>
   vi.fn(({ reportId }: { reportId: string }) => Promise.resolve({ reportId, status: 'reopened' })),
 )
 const mockMergeDuplicates = vi.hoisted(() =>
-  vi.fn(() => Promise.resolve({ success: true as const, mergedCount: 1 })),
+  vi
+    .fn<
+      (payload: {
+        primaryReportId: string
+        duplicateReportIds: string[]
+        idempotencyKey: string
+      }) => Promise<{ success: true; mergedCount: number }>
+    >()
+    .mockResolvedValue({ success: true, mergedCount: 1 }),
 )
 const mockAuthState = vi.hoisted(() => ({ role: 'municipal_admin' }))
+const mockRetryState = vi.hoisted(() => ({ attempts: 1 }))
 
 const exportReport = {
   id: 'r-export',
@@ -104,6 +113,17 @@ const mockReportDocs = vi.hoisted(() => [
     description: 'Resolved incident awaiting closure',
     status: 'resolved',
   },
+  {
+    id: 'r-reopened',
+    reportType: 'flood',
+    severity: 'medium',
+    municipalityLabel: 'Daet',
+    barangayId: 'Gahonon',
+    submittedAt: 1,
+    updatedAt: 1,
+    description: 'Reopened flood report',
+    status: 'reopened',
+  },
 ])
 const mockListenerState = vi.hoisted(() => ({
   loading: false,
@@ -145,6 +165,20 @@ vi.mock('../services/callables', () => ({
   },
 }))
 
+vi.mock('../utils/withRetry', () => ({
+  withRetry: async <T,>(fn: () => Promise<T>): Promise<T> => {
+    let lastError: unknown
+    for (let attempt = 0; attempt < mockRetryState.attempts; attempt += 1) {
+      try {
+        return await fn()
+      } catch (error) {
+        lastError = error
+      }
+    }
+    throw lastError
+  },
+}))
+
 vi.mock('../hooks/useFirestoreListeners', () => ({
   useFirestoreListeners: () => ({
     loading: mockListenerState.loading,
@@ -173,6 +207,7 @@ describe('TriagePage', () => {
     mockReopenReport.mockClear()
     mockMergeDuplicates.mockClear()
     mockAuthState.role = 'municipal_admin'
+    mockRetryState.attempts = 1
 
     // Reset mutable mock report docs between tests
     mockReportDocs[0]!.description = 'Water is rising near the creek'
@@ -190,6 +225,9 @@ describe('TriagePage', () => {
     mockReportDocs[4]!.description = 'Resolved incident awaiting closure'
     mockReportDocs[4]!.submittedAt = 1
     mockReportDocs[4]!.status = 'resolved'
+    mockReportDocs[5]!.description = 'Reopened flood report'
+    mockReportDocs[5]!.submittedAt = 1
+    mockReportDocs[5]!.status = 'reopened'
     mockListenerState.loading = false
     mockListenerState.error = null
   })
@@ -205,6 +243,10 @@ describe('TriagePage', () => {
     expect(screen.getByText('Smoke in a residential block')).toBeInTheDocument()
     expect(screen.getByText('Responder needed for an elderly resident')).toBeInTheDocument()
     expect(screen.queryByText('Already resolved')).not.toBeInTheDocument()
+    expect(screen.getByText('Reopened flood report')).toBeInTheDocument()
+    expect(
+      within(screen.getByLabelText('Status filter')).getByRole('option', { name: 'Reopened' }),
+    ).toBeInTheDocument()
   })
 
   it('filters triage reports by status, severity, type, and search text', () => {
@@ -481,6 +523,11 @@ describe('TriagePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Merge duplicates' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Merge duplicate reports?' })
+    expect(
+      within(dialog).getByRole('option', {
+        name: 'Water is rising near the creek · Daet · r-new',
+      }),
+    ).toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText('Primary report'), {
       target: { value: 'r-new' },
     })
@@ -496,6 +543,25 @@ describe('TriagePage', () => {
       )
     })
     expect(await screen.findByText('1 duplicate report(s) merged')).toBeInTheDocument()
+  })
+
+  it('retries a merge with the original idempotency key', async () => {
+    mockRetryState.attempts = 2
+    mockMergeDuplicates
+      .mockRejectedValueOnce(new Error('Network split'))
+      .mockResolvedValueOnce({ success: true, mergedCount: 1 })
+    renderPage()
+
+    fireEvent.click(screen.getByLabelText('Select report r-new'))
+    fireEvent.click(screen.getByLabelText('Select report r-awaiting'))
+    fireEvent.click(screen.getByRole('button', { name: 'Merge duplicates' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Merge duplicate reports?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Merge duplicates' }))
+
+    await waitFor(() => {
+      expect(mockMergeDuplicates).toHaveBeenCalledTimes(2)
+    })
+    expect(mockMergeDuplicates.mock.calls[1]?.[0]).toEqual(mockMergeDuplicates.mock.calls[0]?.[0])
   })
 
   it('closes a resolved report with an optional summary', async () => {

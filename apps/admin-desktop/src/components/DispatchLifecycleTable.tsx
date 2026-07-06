@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Search, Info } from 'lucide-react'
+import { CANCELLABLE_DISPATCH_STATUSES } from '@bantayog/shared-validators'
 import type { DispatchLifecycleRow, DispatchEvent } from '../hooks/useDispatchLifecycle'
 import { FcmStatusIcon } from './FcmStatusIcon'
 import { DispatchTimeline } from './DispatchTimeline'
@@ -10,15 +11,6 @@ interface Props {
   highlightDispatchId?: string | null
   onCancelDispatch?: (dispatchId: string) => void
 }
-
-// Matches CANCELLABLE_FROM_STATES in functions/src/domains/dispatches/cancel-dispatch.ts
-const CANCELLABLE_STATUSES = new Set([
-  'pending',
-  'accepted',
-  'acknowledged',
-  'en_route',
-  'on_scene',
-])
 
 const STATUS_BADGE_MAP: Record<string, { label: string; style: React.CSSProperties }> = {
   pending: {
@@ -229,17 +221,20 @@ export function DispatchLifecycleTable({ rows, highlightDispatchId, onCancelDisp
             <span className="text-xs font-medium text-[var(--color-text-muted)]">
               Timeline — {expandedRow.reportId.slice(0, 8)}
             </span>
-            {onCancelDispatch && CANCELLABLE_STATUSES.has(expandedRow.status) && (
-              <button
-                type="button"
-                onClick={() => {
-                  onCancelDispatch(expandedRow.dispatchId)
-                }}
-                className="rounded border border-[var(--color-danger)]/40 px-2 py-1 text-xs font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/50"
-              >
-                Cancel dispatch
-              </button>
-            )}
+            {onCancelDispatch &&
+              CANCELLABLE_DISPATCH_STATUSES.includes(
+                expandedRow.status as (typeof CANCELLABLE_DISPATCH_STATUSES)[number],
+              ) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCancelDispatch(expandedRow.dispatchId)
+                  }}
+                  className="rounded border border-[var(--color-danger)]/40 px-2 py-1 text-xs font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]/50"
+                >
+                  Cancel dispatch
+                </button>
+              )}
           </div>
           <DispatchTimeline events={expandedTimeline} />
         </div>
