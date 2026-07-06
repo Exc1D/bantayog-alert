@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-07-06 - Admin dashboard municipality heat strip (COP geography)
+
+- New `components/MunicipalHeatStrip.tsx`: a wrap-flex of per-municipality cells colored uncovered(danger)/active(warning)/calm(success) using the SAME `activeIncidents>0 && activeResponders===0` rule as `getUncoveredMunicipalityCount`. Each cell is a button reusing the existing `onSelectMunicipality` → `/map?municipalityId=` deep-link + `sendSync`, so no new nav logic. Wired as the always-visible first child of `DashboardMainContent`'s `space-y-4` block, including surge mode (where `MunicipalPerformanceTable` is hidden) — the strip becomes the surge-mode geography glance. Both `municipalData` and `onSelectMunicipality` were already in scope, so zero prop plumbing. 3 files: `MunicipalHeatStrip.tsx`, `DashboardPage.tsx` (import + 1 render line), `MunicipalHeatStrip.test.tsx`. No rules/schema/deploy.
+- Verification: focused `MunicipalHeatStrip.test.tsx` 2/2; all dashboard suites green; admin-desktop `tsc --noEmit` clean; `eslint src` clean on changed files.
+
 ## 2026-07-05 - Admin command-authority full set (responder + report lifecycle)
 
 - Completed the user-approved "full set": wired the remaining six backend callables the 2026-07-05 cancelDispatch entry had deferred, split into two file-disjoint slices (2-PR ready). Working-tree only, no commit, no rules/schema/deploy.
