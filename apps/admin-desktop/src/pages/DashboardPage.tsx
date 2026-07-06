@@ -8,6 +8,7 @@ import { DispatchVolumeChart } from '../components/DispatchVolumeChart'
 import { RecentEventsFeed } from '../components/RecentEventsFeed'
 import { ResponderAvailabilityPanel } from '../components/ResponderAvailabilityPanel'
 import { MunicipalPerformanceTable } from '../components/MunicipalPerformanceTable'
+import { MunicipalHeatStrip } from '../components/MunicipalHeatStrip'
 import { AllClearState } from '../components/AllClearState'
 import { HelpModal } from '../components/HelpModal'
 import { ReDispatchModal } from '../components/ReDispatchModal'
@@ -440,6 +441,7 @@ function DashboardMainContent({
         <AllClearState />
       ) : (
         <div className={`space-y-4 ${mode === 'degraded' ? 'opacity-50' : ''}`}>
+          <MunicipalHeatStrip data={municipalData} onSelect={onSelectMunicipality} />
           {mode !== 'calm' && (
             <EscalationQueueSection
               stalledDispatches={stalledDispatches}
