@@ -8,6 +8,7 @@ export type { ReportStatus } from './report-states.js'
 export {
   DISPATCH_STATES,
   DISPATCH_TRANSITIONS,
+  CANCELLABLE_DISPATCH_STATUSES,
   isValidDispatchTransition,
 } from './dispatch-states.js'
 export type { DispatchStatus } from '@bantayog/shared-types'

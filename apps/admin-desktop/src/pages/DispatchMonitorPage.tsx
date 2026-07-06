@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '@bantayog/shared-ui'
 import { getFirestoreInstance } from '../app/firebase'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
@@ -11,12 +12,13 @@ import { EscalationQueueSection } from '../components/EscalationQueueSection'
 import { DispatchLifecycleTable } from '../components/DispatchLifecycleTable'
 import { ResponderAvailabilityPanel } from '../components/ResponderAvailabilityPanel'
 import { ReDispatchModal } from '../components/ReDispatchModal'
+import { ConfirmationModal } from '../components/ConfirmationModal'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { SuccessBanner } from '../components/SuccessBanner'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { HelpModal } from '../components/HelpModal'
-import { callables } from '../services/callables'
+import { callables, type CancelDispatchReason } from '../services/callables'
 import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
@@ -54,6 +56,12 @@ type FailedDispatchCommand =
       successMessage: string
       errorFallback: string
     }
+  | {
+      kind: 'cancel'
+      payload: { dispatchId: string; reason: CancelDispatchReason; idempotencyKey: string }
+      successMessage: string
+      errorFallback: string
+    }
 
 const FIELD_PROGRESS_STATUSES = new Set([
   'pending',
@@ -68,6 +76,10 @@ const RESOLVED_DISPATCH_LIMIT = 5
 async function executeDispatchCommand(command: FailedDispatchCommand): Promise<void> {
   if (command.kind === 'escalate') {
     await withRetry(() => callables.escalateDispatch(command.payload))
+    return
+  }
+  if (command.kind === 'cancel') {
+    await withRetry(() => callables.cancelDispatch(command.payload))
     return
   }
   await withRetry(() => callables.dispatchResponder(command.payload))
@@ -141,6 +153,8 @@ export function DispatchMonitorPage() {
   const db = getFirestoreInstance()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { claims } = useAuth()
+  const canManageResponders = claims?.role === 'agency_admin'
 
   const { rows, loading, error } = useDispatchLifecycle(db)
   const { responders } = useResponderFleet(db)
@@ -152,12 +166,20 @@ export function DispatchMonitorPage() {
 
   const [selectedDispatchId, setSelectedDispatchId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null)
+  const [cancelReason, setCancelReason] = useState<CancelDispatchReason>('admin_error')
+  const [cancelling, setCancelling] = useState(false)
   const [isDispatching, setIsDispatching] = useState(false)
   const [dispatchError, setDispatchError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [assignmentSelections, setAssignmentSelections] = useState<Record<string, string>>({})
   const [assigningReportId, setAssigningReportId] = useState<string | null>(null)
   const [creatingResponder, setCreatingResponder] = useState(false)
+  const [responderAction, setResponderAction] = useState<{
+    uid: string
+    kind: 'off_duty' | 'suspend' | 'revoke'
+  } | null>(null)
+  const [managingResponder, setManagingResponder] = useState(false)
   const [retryCommand, setRetryCommand] = useState<FailedDispatchCommand | null>(null)
   const [retryingAction, setRetryingAction] = useState(false)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
@@ -275,6 +297,45 @@ export function DispatchMonitorPage() {
     setRetryCommand(null)
   }
 
+  const handleOpenCancel = (dispatchId: string) => {
+    setCancelTarget(dispatchId)
+    setCancelReason('admin_error')
+    setDispatchError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+  }
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return
+    const command: FailedDispatchCommand = {
+      kind: 'cancel',
+      payload: {
+        dispatchId: cancelTarget,
+        reason: cancelReason,
+        idempotencyKey: generateIdempotencyKey(),
+      },
+      successMessage: 'Dispatch cancelled',
+      errorFallback: 'Cancel failed',
+    }
+    setCancelling(true)
+    setDispatchError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    try {
+      await executeDispatchCommand(command)
+      setSuccessMessage(command.successMessage)
+      setCancelTarget(null)
+    } catch (err) {
+      setCancelTarget(null)
+      setDispatchError(actionErrorMessage(err, command.errorFallback))
+      if (isRetryableActionError(err)) {
+        setRetryCommand(command)
+      }
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   const handleDispatch = async (responderUid: string, forceOverride?: true) => {
     if (!selectedDispatchId) return
     const command: FailedDispatchCommand = {
@@ -333,6 +394,38 @@ export function DispatchMonitorPage() {
     }
   }
 
+  const handleConfirmResponderAction = async () => {
+    if (!responderAction) return
+    const { uid, kind } = responderAction
+    setManagingResponder(true)
+    setDispatchError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    const idempotencyKey = generateIdempotencyKey()
+    try {
+      if (kind === 'suspend') {
+        await withRetry(() => callables.suspendResponder({ uid, idempotencyKey }))
+        setSuccessMessage('Responder suspended')
+      } else if (kind === 'revoke') {
+        await withRetry(() => callables.revokeResponder({ uid, idempotencyKey }))
+        setSuccessMessage('Responder access revoked')
+      } else {
+        // ponytail: single-uid override; a roster dataset (non-available responders)
+        // is needed to bring someone back to available — not built yet.
+        await withRetry(() =>
+          callables.bulkAvailabilityOverride({ uids: [uid], status: 'off_duty', idempotencyKey }),
+        )
+        setSuccessMessage('Responder set off-duty')
+      }
+      setResponderAction(null)
+    } catch (err) {
+      setResponderAction(null)
+      setDispatchError(actionErrorMessage(err, 'Responder action failed'))
+    } finally {
+      setManagingResponder(false)
+    }
+  }
+
   const candidateRespondersFor = (assignment: AssignmentReport) => {
     if (!assignment.municipalityId) return responders
     const scoped = responders.filter((r) => r.municipalityId === assignment.municipalityId)
@@ -381,6 +474,9 @@ export function DispatchMonitorPage() {
     if (command.kind === 'escalate') {
       setIsModalOpen(false)
       setSelectedDispatchId(null)
+      return
+    }
+    if (command.kind === 'cancel') {
       return
     }
     setAssignmentSelections((current) =>
@@ -739,12 +835,31 @@ export function DispatchMonitorPage() {
             </section>
           ) : null}
 
-          <DispatchLifecycleTable rows={rows} highlightDispatchId={highlightDispatchId} />
+          <DispatchLifecycleTable
+            rows={rows}
+            highlightDispatchId={highlightDispatchId}
+            onCancelDispatch={handleOpenCancel}
+          />
 
           <ResponderAvailabilityPanel
             responders={responders}
             onCreateResponder={handleCreateResponder}
             creatingResponder={creatingResponder}
+            {...(canManageResponders
+              ? {
+                  rowActions: {
+                    onSetOffDuty: (uid: string) => {
+                      setResponderAction({ uid, kind: 'off_duty' })
+                    },
+                    onSuspend: (uid: string) => {
+                      setResponderAction({ uid, kind: 'suspend' })
+                    },
+                    onRevoke: (uid: string) => {
+                      setResponderAction({ uid, kind: 'revoke' })
+                    },
+                  },
+                }
+              : {})}
           />
         </div>
       </main>
@@ -767,6 +882,71 @@ export function DispatchMonitorPage() {
               isRetrying: retryingAction,
             }
           : {})}
+      />
+
+      <ConfirmationModal
+        open={cancelTarget !== null}
+        title="Cancel dispatch"
+        message="This returns the report to the verified queue for re-assignment and notifies the responder. Pick a reason."
+        confirmLabel="Cancel dispatch"
+        confirmVariant="danger"
+        confirmLoading={cancelling}
+        onConfirm={() => {
+          void handleConfirmCancel()
+        }}
+        onCancel={() => {
+          setCancelTarget(null)
+        }}
+      >
+        <label className="mt-4 block text-sm text-[var(--color-text-secondary)]">
+          Reason
+          <select
+            value={cancelReason}
+            onChange={(e) => {
+              setCancelReason(e.target.value as CancelDispatchReason)
+            }}
+            disabled={cancelling}
+            className="mt-1 block w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-carto-blue)] disabled:opacity-50"
+          >
+            <option value="admin_error">Dispatched by mistake</option>
+            <option value="responder_unavailable">Responder unavailable</option>
+            <option value="duplicate_report">Duplicate report</option>
+            <option value="citizen_withdrew">Citizen withdrew</option>
+          </select>
+        </label>
+      </ConfirmationModal>
+
+      <ConfirmationModal
+        open={responderAction !== null}
+        title={
+          responderAction?.kind === 'suspend'
+            ? 'Suspend responder'
+            : responderAction?.kind === 'revoke'
+              ? 'Revoke responder access'
+              : 'Set responder off-duty'
+        }
+        message={
+          responderAction?.kind === 'suspend'
+            ? 'The responder loses field access until reinstated and is signed out of active sessions.'
+            : responderAction?.kind === 'revoke'
+              ? 'Revoking permanently removes field access and signs the responder out. This is not a routine action.'
+              : 'The responder is marked off-duty and stops receiving new dispatches.'
+        }
+        confirmLabel={
+          responderAction?.kind === 'suspend'
+            ? 'Suspend'
+            : responderAction?.kind === 'revoke'
+              ? 'Revoke'
+              : 'Set off-duty'
+        }
+        confirmVariant={responderAction?.kind === 'off_duty' ? 'primary' : 'danger'}
+        confirmLoading={managingResponder}
+        onConfirm={() => {
+          void handleConfirmResponderAction()
+        }}
+        onCancel={() => {
+          setResponderAction(null)
+        }}
       />
 
       <HelpModal

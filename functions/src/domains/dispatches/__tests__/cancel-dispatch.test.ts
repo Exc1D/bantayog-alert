@@ -292,7 +292,13 @@ describe('cancelDispatchCore (3b branches)', () => {
 })
 
 describe('cancelDispatch — widened from-state (3c)', () => {
-  const CANCELLABLE_FROM = ['accepted', 'acknowledged', 'en_route', 'on_scene'] as const
+  const CANCELLABLE_FROM = [
+    'accepted',
+    'acknowledged',
+    'en_route',
+    'on_scene',
+    'escalated',
+  ] as const
 
   for (const from of CANCELLABLE_FROM) {
     itif(available)(
