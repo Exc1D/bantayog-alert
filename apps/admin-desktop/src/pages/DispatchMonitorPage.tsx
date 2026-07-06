@@ -5,12 +5,14 @@ import { getFirestoreInstance } from '../app/firebase'
 import { useDispatchLifecycle } from '../hooks/useDispatchLifecycle'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useResponderFleet } from '../hooks/useResponderFleet'
+import { useResponderRoster } from '../hooks/useResponderRoster'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { DispatchStatsCards } from '../components/DispatchStatsCards'
 import { EscalationQueueSection } from '../components/EscalationQueueSection'
 import { DispatchLifecycleTable } from '../components/DispatchLifecycleTable'
 import { ResponderAvailabilityPanel } from '../components/ResponderAvailabilityPanel'
+import { ResponderRosterSection } from '../components/ResponderRosterSection'
 import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ConfirmationModal } from '../components/ConfirmationModal'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -158,6 +160,7 @@ export function DispatchMonitorPage() {
 
   const { rows, loading, error } = useDispatchLifecycle(db)
   const { responders } = useResponderFleet(db)
+  const { members: rosterMembers } = useResponderRoster(db)
   const { reports: assignmentReportDocs, error: assignmentError } = useFirestoreListeners({
     windowType: 'dashboard',
     db,
@@ -180,6 +183,7 @@ export function DispatchMonitorPage() {
     kind: 'off_duty' | 'suspend' | 'revoke'
   } | null>(null)
   const [managingResponder, setManagingResponder] = useState(false)
+  const [reinstatingUid, setReinstatingUid] = useState<string | null>(null)
   const [retryCommand, setRetryCommand] = useState<FailedDispatchCommand | null>(null)
   const [retryingAction, setRetryingAction] = useState(false)
   const [helpModalOpen, setHelpModalOpen] = useState(false)
@@ -410,8 +414,8 @@ export function DispatchMonitorPage() {
         await withRetry(() => callables.revokeResponder({ uid, idempotencyKey }))
         setSuccessMessage('Responder access revoked')
       } else {
-        // ponytail: single-uid override; a roster dataset (non-available responders)
-        // is needed to bring someone back to available — not built yet.
+        // ponytail: off-duty here; the roster section reinstates via
+        // bulkAvailabilityOverride({ status: 'available' }) once someone is off-shift.
         await withRetry(() =>
           callables.bulkAvailabilityOverride({ uids: [uid], status: 'off_duty', idempotencyKey }),
         )
@@ -423,6 +427,24 @@ export function DispatchMonitorPage() {
       setDispatchError(actionErrorMessage(err, 'Responder action failed'))
     } finally {
       setManagingResponder(false)
+    }
+  }
+
+  const handleReinstateResponder = async (uid: string) => {
+    setReinstatingUid(uid)
+    setDispatchError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    const idempotencyKey = generateIdempotencyKey()
+    try {
+      await withRetry(() =>
+        callables.bulkAvailabilityOverride({ uids: [uid], status: 'available', idempotencyKey }),
+      )
+      setSuccessMessage('Responder set available')
+    } catch (err) {
+      setDispatchError(actionErrorMessage(err, 'Set available failed'))
+    } finally {
+      setReinstatingUid(null)
     }
   }
 
@@ -861,6 +883,16 @@ export function DispatchMonitorPage() {
                 }
               : {})}
           />
+
+          {canManageResponders && (
+            <ResponderRosterSection
+              members={rosterMembers}
+              onReinstate={(uid) => {
+                void handleReinstateResponder(uid)
+              }}
+              reinstatingUid={reinstatingUid}
+            />
+          )}
         </div>
       </main>
 

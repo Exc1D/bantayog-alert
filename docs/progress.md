@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-07-06 - Admin responder roster + reinstatement on /dispatches
+
+- New `hooks/useResponderRoster.ts` mirrors `useResponderFleet`'s scope/auth query but DROPS the `availabilityStatus=='available'` + `accountStatus=='active'` + `orderBy('lastSeenAt')` filters (client-sorts instead → no composite index), and carries `accountStatus`. NO rules change: `firestore.rules` already permits admins to read responders of any status in scope. New `components/ResponderRosterSection.tsx` with pure `partitionRoster` (non-available complement of the fleet panel) + `canReinstate` (active account & non-available); "Set available" fires the EXISTING `bulkAvailabilityOverride({ uids:[uid], status:'available' })` through `withRetry`+idempotency key (no new callable, no confirmation modal — reinstatement is constructive/reversible). Suspended/revoked shown read-only ("Reinstate via account tools") since un-suspend/un-revoke is backend-only. Gated behind `canManageResponders` (agency_admin), matching the fleet row-actions gate. Updated the stale `// ponytail:` off-duty comment (the roster it said "doesn't exist yet" now exists). 4 files: `useResponderRoster.ts`, `ResponderRosterSection.tsx`, `DispatchMonitorPage.tsx` (hook+state+handler+render), `ResponderRosterSection.test.tsx` (+ a reinstate case added to `DispatchMonitorPage.test.tsx`).
+- `useResponderFleet` deliberately left unchanged (dispatch-candidate boundary stays available+active only, per the "Dispatch candidates ≠ roster" ledger rule); the roster is a separate live listener. No rules/schema/deploy.
+- Verification: `ResponderRosterSection.test.tsx` 4/4; `DispatchMonitorPage.test.tsx` 25/25 (added `useResponderRoster` mock + reinstate payload test); admin-desktop `tsc --noEmit` clean; `eslint src` clean on changed files.
+
 ## 2026-07-05 - Admin command-authority full set (responder + report lifecycle)
 
 - Completed the user-approved "full set": wired the remaining six backend callables the 2026-07-05 cancelDispatch entry had deferred, split into two file-disjoint slices (2-PR ready). Working-tree only, no commit, no rules/schema/deploy.
