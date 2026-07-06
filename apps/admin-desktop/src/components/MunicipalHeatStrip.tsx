@@ -7,7 +7,6 @@ function isUncovered(m: MunicipalPerformance): boolean {
 }
 
 function cellColor(m: MunicipalPerformance): string {
-  const responders = m.activeResponders ?? 0
   if (isUncovered(m)) return 'var(--color-danger)'
   if (m.activeIncidents > 0) return 'var(--color-warning)'
   return 'var(--color-success)'
