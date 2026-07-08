@@ -41,29 +41,11 @@ afterAll(async () => {
 })
 
 describe('situation_updates rules', () => {
-  itif('allows any signed-in citizen context to create its own public update', async () => {
+  itif('rejects direct client creation even for valid payloads from active accounts', async () => {
+    // Posting goes through the createSituationUpdate callable (rate-limited);
+    // direct client writes are denied outright.
     const db = authed(env, 'citizen-1', staffClaims({ role: 'citizen' }))
-    await assertSucceeds(addDoc(collection(db, 'situation_updates'), validUpdate))
-  })
-
-  itif('rejects updates written for another uid', async () => {
-    const db = authed(env, 'citizen-2', {})
     await assertFails(addDoc(collection(db, 'situation_updates'), validUpdate))
-  })
-
-  itif('rejects unauthenticated update creation', async () => {
-    const db = unauthed(env)
-    await assertFails(addDoc(collection(db, 'situation_updates'), validUpdate))
-  })
-
-  itif('rejects overly long update bodies', async () => {
-    const db = authed(env, 'citizen-1', {})
-    await assertFails(
-      addDoc(collection(db, 'situation_updates'), {
-        ...validUpdate,
-        body: 'x'.repeat(501),
-      }),
-    )
   })
 
   itif('allows public reads without authentication', async () => {

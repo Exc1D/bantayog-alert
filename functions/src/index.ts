@@ -125,6 +125,8 @@ export { analyticsSnapshotWriter } from './domains/ops/analytics-snapshot-writer
 export { costSnapshotWriter } from './domains/ops/cost-snapshot-writer.js'
 export { auditExportBatch } from './domains/ops/audit-export-batch.js'
 export { auditExportHealthCheck } from './domains/ops/audit-export-health-check.js'
+export { situationFlagCounter } from './domains/ops/situation-flag-counter.js'
+export { createSituationUpdate } from './domains/ops/create-situation-update.js'
 export { declareAlert } from './domains/alerts/callables.js'
 export { setRetentionExempt } from './domains/erasure/set-retention-exempt.js'
 export { approveErasureRequest } from './domains/erasure/approve-erasure-request.js'

@@ -2,25 +2,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   mockAddDoc,
+  mockCallable,
   mockCollection,
   mockDb,
   mockEnsureSignedIn,
+  mockFns,
+  mockHttpsCallable,
   mockLimit,
   mockOnSnapshot,
   mockOrderBy,
   mockQuery,
   mockWhere,
-} = vi.hoisted(() => ({
-  mockAddDoc: vi.fn().mockResolvedValue({ id: 'new-update' }),
-  mockCollection: vi.fn((_db: unknown, ...path: string[]) => path.join('/')),
-  mockDb: vi.fn().mockReturnValue({}),
-  mockEnsureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
-  mockLimit: vi.fn((count: number) => ({ type: 'limit', count })),
-  mockOnSnapshot: vi.fn(),
-  mockOrderBy: vi.fn((field: string, direction: string) => ({ field, direction })),
-  mockQuery: vi.fn((...parts: unknown[]) => ({ parts })),
-  mockWhere: vi.fn((field: string, op: string, value: string) => ({ field, op, value })),
-}))
+} = vi.hoisted(() => {
+  const mockCallable = vi.fn().mockResolvedValue({ data: { updateId: 'new-update' } })
+  return {
+    mockAddDoc: vi.fn().mockResolvedValue({ id: 'new-update' }),
+    mockCallable,
+    mockCollection: vi.fn((_db: unknown, ...path: string[]) => path.join('/')),
+    mockDb: vi.fn().mockReturnValue({}),
+    mockEnsureSignedIn: vi.fn().mockResolvedValue('citizen-1'),
+    mockFns: vi.fn().mockReturnValue({}),
+    mockHttpsCallable: vi.fn(() => mockCallable),
+    mockLimit: vi.fn((count: number) => ({ type: 'limit', count })),
+    mockOnSnapshot: vi.fn(),
+    mockOrderBy: vi.fn((field: string, direction: string) => ({ field, direction })),
+    mockQuery: vi.fn((...parts: unknown[]) => ({ parts })),
+    mockWhere: vi.fn((field: string, op: string, value: string) => ({ field, op, value })),
+  }
+})
 
 vi.mock('firebase/firestore', () => ({
   addDoc: mockAddDoc,
@@ -32,9 +41,14 @@ vi.mock('firebase/firestore', () => ({
   where: mockWhere,
 }))
 
+vi.mock('firebase/functions', () => ({
+  httpsCallable: mockHttpsCallable,
+}))
+
 vi.mock('./firebase.js', () => ({
   db: mockDb,
   ensureSignedIn: mockEnsureSignedIn,
+  fns: mockFns,
 }))
 
 import {
@@ -47,6 +61,8 @@ describe('situation updates service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAddDoc.mockResolvedValue({ id: 'new-update' })
+    mockCallable.mockResolvedValue({ data: { updateId: 'new-update' } })
+    mockHttpsCallable.mockReturnValue(mockCallable)
     mockDb.mockReturnValue({})
     mockEnsureSignedIn.mockResolvedValue('citizen-1')
   })
@@ -55,9 +71,8 @@ describe('situation updates service', () => {
     vi.restoreAllMocks()
   })
 
-  it('writes a public situation update for the signed-in user', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(1234)
-    await createSituationUpdate({
+  it('posts through the createSituationUpdate callable for the signed-in user', async () => {
+    const updateId = await createSituationUpdate({
       municipalityId: 'daet',
       municipalityLabel: 'Daet',
       barangayLabel: 'San Jose',
@@ -66,18 +81,17 @@ describe('situation updates service', () => {
       body: '  Strong rain near the market.  ',
     })
 
-    expect(mockAddDoc).toHaveBeenCalledWith('situation_updates', {
-      authorUid: 'citizen-1',
-      createdAt: 1234,
+    expect(updateId).toBe('new-update')
+    expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'createSituationUpdate')
+    expect(mockCallable).toHaveBeenCalledWith({
       municipalityId: 'daet',
       municipalityLabel: 'Daet',
       barangayLabel: 'San Jose',
       hazardType: 'typhoon',
       condition: 'heavy_rain',
       body: 'Strong rain near the market.',
-      visibility: 'public',
-      reportedCount: 0,
     })
+    expect(mockAddDoc).not.toHaveBeenCalled()
   })
 
   it('omits blank optional barangay labels', async () => {
@@ -90,8 +104,22 @@ describe('situation updates service', () => {
       body: 'Strong rain near the market.',
     })
 
-    const payload = mockAddDoc.mock.calls[0]?.[1] as Record<string, unknown>
+    const payload = mockCallable.mock.calls[0]?.[0] as Record<string, unknown>
     expect(payload).not.toHaveProperty('barangayLabel')
+  })
+
+  it('rejects a malformed callable response', async () => {
+    mockCallable.mockResolvedValue({ data: {} })
+
+    await expect(
+      createSituationUpdate({
+        municipalityId: 'daet',
+        municipalityLabel: 'Daet',
+        hazardType: 'typhoon',
+        condition: 'heavy_rain',
+        body: 'Strong rain near the market.',
+      }),
+    ).rejects.toThrow('invalid server response')
   })
 
   it('writes moderation reports under the update', async () => {

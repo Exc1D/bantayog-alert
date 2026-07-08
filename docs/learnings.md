@@ -278,3 +278,11 @@
 - When a shared status allowlist intentionally mirrors permitted transitions, test every supported exception explicitly; `escalated → cancelled` drifted because the transition existed without an allowlist assertion.
 - Fallow can attribute complexity to a JSX row-mapper even after button markup is deduplicated; keep the shared button local, then move the conditional action group into a local component only when the gate still proves the mapper is over threshold.
 - Test seed factories must use the canonical `DispatchStatus` type instead of restating a partial literal union; otherwise valid state-machine additions compile in production but fail when added to integration matrices.
+
+## Feed Moderation Hardening (2026-07-09)
+
+- Admin moderation windows must cover everything the matching citizen surface can render: FeedPage's `.slice(0, 10)` vs the citizen 100-post feed meant 90 posts were visible to citizens but invisible to moderators. When a citizen query has a `limit(N)`, the admin surface reviewing that content needs ≥ N.
+- A flag/report subcollection without a consumer is a dead loop: citizen `reportSituationUpdate` wrote `situation_updates/{id}/reports` docs for months while nothing incremented `reportedCount`, so "flagged" content never sorted up anywhere. When adding a user-facing report button, ship the counter/consumer in the same change.
+- Firestore rules cannot rate-limit. Any anonymous-friendly client-side `addDoc` path (`allow create` with validation only) is unbounded write access under load; moving the write behind a callable with `checkRateLimit` is the only enforcement point. Keep payload validation parity by mirroring the rules validator in the callable's zod schema, then flip the rules `create` to `false`.
+- Deploy-order dependency when moving a client write behind a callable: functions deploy must land before the rules flip, or the client is bricked between the two. Note the ordering in the PR/runbook.
+- Client fan-out of a per-item moderation callable (hide-all-by-author) is fine below the callable's rate limit (60/min here); the loop must tolerate single-item failures (the wrapper catches internally) so one bad post doesn't strand the rest.

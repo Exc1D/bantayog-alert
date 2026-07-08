@@ -463,9 +463,8 @@ service cloud.firestore {
 
     match /situation_updates/{updateId} {
       allow read: if canReadSituationUpdate(resource.data);
-      allow create: if request.auth != null
-                    && request.auth.token.accountStatus == 'active'
-                    && validSituationUpdate(request.resource.data);
+      // Creates go through the rate-limited createSituationUpdate callable.
+      allow create: if false;
       allow update, delete: if false;
 
       match /reports/{reportId} {

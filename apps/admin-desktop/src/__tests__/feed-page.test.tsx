@@ -136,6 +136,56 @@ vi.mock('../hooks/useFirestoreListeners', () => ({
         visibility: 'public',
         reportedCount: 2,
       },
+      // Older but flagged harder than sit-1 — must sort first.
+      {
+        id: 'sit-flagged',
+        authorUid: 'spammer-1',
+        createdAt: 1713350000000,
+        municipalityId: 'daet',
+        municipalityLabel: 'Daet',
+        hazardType: 'flood',
+        condition: 'flooding',
+        body: 'Flagged spam post.',
+        visibility: 'public',
+        reportedCount: 7,
+      },
+      {
+        id: 'sit-spam-2',
+        authorUid: 'spammer-1',
+        createdAt: 1713350100000,
+        municipalityId: 'daet',
+        municipalityLabel: 'Daet',
+        hazardType: 'flood',
+        condition: 'flooding',
+        body: 'Second spam post.',
+        visibility: 'public',
+        reportedCount: 0,
+      },
+      // Newest of the spammer's posts, but already hidden — hide-all must skip it.
+      {
+        id: 'sit-spam-hidden',
+        authorUid: 'spammer-1',
+        createdAt: 1713351000000,
+        municipalityId: 'daet',
+        municipalityLabel: 'Daet',
+        hazardType: 'flood',
+        condition: 'flooding',
+        body: 'Already hidden spam post.',
+        visibility: 'internal',
+        reportedCount: 0,
+      },
+      ...Array.from({ length: 10 }, (_, i) => ({
+        id: `sit-bulk-${String(i)}`,
+        authorUid: `bulk-author-${String(i)}`,
+        createdAt: 1713340000000 + i,
+        municipalityId: 'daet',
+        municipalityLabel: 'Daet',
+        hazardType: 'other',
+        condition: 'safe',
+        body: `Bulk situation post ${String(i)}.`,
+        visibility: 'public',
+        reportedCount: 0,
+      })),
     ],
     responders: [],
   }),
@@ -241,6 +291,52 @@ describe('FeedPage', () => {
     const alerts = screen.getByRole('region', { name: 'Recent official alerts' })
     expect(within(alerts).getByText('Evacuate low-lying areas now.')).toBeInTheDocument()
     expect(within(alerts).getByText(/flood/i)).toBeInTheDocument()
+  })
+
+  it('shows every in-scope situation post, flagged-first, with author uid', () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    const communityFeed = screen.getByRole('region', { name: 'Citizen feed moderation' })
+    // No 10-post cap: all 14 mocked updates render.
+    expect(within(communityFeed).getAllByRole('article')).toHaveLength(14)
+    // Most-flagged first, even though sit-1 is newer.
+    const articles = within(communityFeed).getAllByRole('article')
+    expect(within(articles[0]!).getByText('Flagged spam post.')).toBeInTheDocument()
+    expect(within(articles[1]!).getByText('Heavy rain near the market.')).toBeInTheDocument()
+    // Author uid is visible so operators can spot repeat offenders.
+    expect(within(articles[0]!).getByText(/spammer-1/)).toBeInTheDocument()
+  })
+
+  it('hides all visible public posts by an author after confirmation', async () => {
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    // Every post by the author carries the same hide-all action — click the first.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Hide all posts by spammer-1' })[0]!)
+    // Confirmation modal names the count of affected public posts.
+    expect(screen.getByText(/2 public post/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all' }))
+
+    await waitFor(() => {
+      expect(mockSetCitizenContentVisibility).toHaveBeenCalledTimes(2)
+    })
+    const calledIds = mockSetCitizenContentVisibility.mock.calls.map(
+      (call) => (call[0] as { contentId: string }).contentId,
+    )
+    expect(calledIds).toContain('sit-flagged')
+    expect(calledIds).toContain('sit-spam-2')
+    // The already-hidden post is skipped.
+    expect(calledIds).not.toContain('sit-spam-hidden')
+    mockSetCitizenContentVisibility.mock.calls.forEach((call) => {
+      expect(call[0]).toMatchObject({ surface: 'feed', visibility: 'internal' })
+    })
   })
 
   it('lets admins hide citizen feed situation updates through the backend', async () => {

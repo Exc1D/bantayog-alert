@@ -5,7 +5,7 @@ import { ConfirmationModal } from '../components/ConfirmationModal'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { SuccessBanner } from '../components/SuccessBanner'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
-import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
+import { useFirestoreListeners, type SituationUpdateDoc } from '../hooks/useFirestoreListeners'
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
@@ -68,6 +68,31 @@ function isPublicVisibility(value: unknown): boolean {
   return value === 'public'
 }
 
+// Flagged-first so citizen-reported posts surface even under flood volume;
+// no cap — the admin moderation window must cover everything citizens can see.
+function sortFlaggedFirst(updates: SituationUpdateDoc[]): SituationUpdateDoc[] {
+  return [...updates].sort(
+    (a, b) =>
+      (b.reportedCount ?? 0) - (a.reportedCount ?? 0) ||
+      toMillis(b.createdAt) - toMillis(a.createdAt),
+  )
+}
+
+function visiblePublicPostsByAuthor(
+  updates: SituationUpdateDoc[],
+  authorUid: string | null,
+): SituationUpdateDoc[] {
+  if (authorUid === null) return []
+  return updates.filter(
+    (update) => update.authorUid === authorUid && isPublicVisibility(update.visibility),
+  )
+}
+
+function hideAuthorMessage(count: number, authorUid: string | null): string {
+  const plural = count === 1 ? '' : 's'
+  return `This will hide ${String(count)} public post${plural} by ${authorUid ?? ''} from the Citizen PWA.`
+}
+
 export default function FeedPage() {
   const { loading, error, reports, alerts, situationUpdates } = useFirestoreListeners({
     windowType: 'dashboard',
@@ -81,6 +106,7 @@ export default function FeedPage() {
   const [mediaUrlsByReport, setMediaUrlsByReport] = useState<Record<string, MediaItem[]>>({})
   const [mediaError, setMediaError] = useState<string | null>(null)
   const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
+  const [confirmHideAuthor, setConfirmHideAuthor] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'new' | 'pending' | 'live'>('new')
 
   const { optimisticReports, optimisticVerify, optimisticUnpublish, pendingIds } =
@@ -144,10 +170,7 @@ export default function FeedPage() {
   )
 
   const citizenSituationUpdates = useMemo(
-    () =>
-      [...situationUpdates]
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
-        .slice(0, 10),
+    () => sortFlaggedFirst(situationUpdates),
     [situationUpdates],
   )
 
@@ -206,6 +229,19 @@ export default function FeedPage() {
         next.delete(pendingKey)
         return next
       })
+    }
+  }
+
+  const hideAuthorTargets = useMemo(
+    () => visiblePublicPostsByAuthor(citizenSituationUpdates, confirmHideAuthor),
+    [citizenSituationUpdates, confirmHideAuthor],
+  )
+
+  const handleHideAllByAuthor = async (targets: typeof citizenSituationUpdates) => {
+    // ponytail: sequential fan-out of the per-post callable; a bulk endpoint
+    // only matters past the 60/min moderation rate limit (>60 posts/author).
+    for (const post of targets) {
+      await handleCitizenContentVisibility('feed', post.id, post.visibility)
     }
   }
 
@@ -553,6 +589,7 @@ export default function FeedPage() {
                                 update.reportedCount === 1 ? '' : 's'
                               }`
                             : ''}
+                          {update.authorUid ? ` · by ${update.authorUid}` : ''}
                         </p>
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <span
@@ -564,23 +601,38 @@ export default function FeedPage() {
                           >
                             {isPublic ? 'Visible to citizens' : 'Hidden from citizens'}
                           </span>
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() => {
-                              void handleCitizenContentVisibility(
-                                'feed',
-                                update.id,
-                                update.visibility,
-                              )
-                            }}
-                            className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label={`${isPublic ? 'Hide' : 'Restore'} situation update ${
-                              update.id
-                            }`}
-                          >
-                            {pending ? 'Updating...' : isPublic ? 'Hide' : 'Restore'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {update.authorUid && (
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() => {
+                                  setConfirmHideAuthor(update.authorUid ?? null)
+                                }}
+                                className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label={`Hide all posts by ${update.authorUid}`}
+                              >
+                                Hide all by author
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => {
+                                void handleCitizenContentVisibility(
+                                  'feed',
+                                  update.id,
+                                  update.visibility,
+                                )
+                              }}
+                              className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`${isPublic ? 'Hide' : 'Restore'} situation update ${
+                                update.id
+                              }`}
+                            >
+                              {pending ? 'Updating...' : isPublic ? 'Hide' : 'Restore'}
+                            </button>
+                          </div>
                         </div>
                       </article>
                     )
@@ -678,6 +730,20 @@ export default function FeedPage() {
           </aside>
         </div>
       </main>
+      <ConfirmationModal
+        open={confirmHideAuthor !== null}
+        title="Hide all posts by author"
+        message={hideAuthorMessage(hideAuthorTargets.length, confirmHideAuthor)}
+        confirmLabel="Hide all"
+        confirmVariant="danger"
+        onConfirm={() => {
+          void handleHideAllByAuthor(hideAuthorTargets)
+          setConfirmHideAuthor(null)
+        }}
+        onCancel={() => {
+          setConfirmHideAuthor(null)
+        }}
+      />
       <ConfirmationModal
         open={confirmUnpublishReport !== null}
         title="Unpublish Report"
