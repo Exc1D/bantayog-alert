@@ -64,6 +64,7 @@ vi.mock('../app/firebase', () => ({
 
 const mockUseDispatchLifecycle = vi.hoisted(() => vi.fn())
 const mockUseResponderFleet = vi.hoisted(() => vi.fn())
+const mockUseResponderRoster = vi.hoisted(() => vi.fn())
 const mockUseOpsMetrics = vi.hoisted(() => vi.fn())
 const mockUseFirestoreListeners = vi.hoisted(() => vi.fn())
 
@@ -73,6 +74,10 @@ vi.mock('../hooks/useDispatchLifecycle', () => ({
 
 vi.mock('../hooks/useResponderFleet', () => ({
   useResponderFleet: mockUseResponderFleet,
+}))
+
+vi.mock('../hooks/useResponderRoster', () => ({
+  useResponderRoster: mockUseResponderRoster,
 }))
 
 vi.mock('../hooks/useOpsMetrics', () => ({
@@ -113,6 +118,7 @@ describe('DispatchMonitorPage', () => {
       loading: false,
       error: null,
     })
+    mockUseResponderRoster.mockReturnValue({ members: [], loading: false, error: null })
     mockUseFirestoreListeners.mockReturnValue({
       reports: [],
       loading: false,
@@ -470,6 +476,36 @@ describe('DispatchMonitorPage', () => {
         status: 'off_duty',
         idempotencyKey: expect.any(String),
       })
+    })
+  })
+
+  it('reinstates an off-shift responder to available (agency_admin)', async () => {
+    mockUseResponderRoster.mockReturnValue({
+      members: [
+        {
+          uid: 'r-off',
+          displayName: 'Off Shift',
+          availabilityStatus: 'off_duty',
+          accountStatus: 'active',
+          lastActivityAt: 0,
+        },
+      ],
+      loading: false,
+      error: null,
+    })
+    render(<DispatchMonitorPage />, { wrapper: MemoryRouterWrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /set available/i }))
+
+    await waitFor(() => {
+      expect(mockBulkAvailabilityOverride).toHaveBeenCalledWith({
+        uids: ['r-off'],
+        status: 'available',
+        idempotencyKey: expect.any(String),
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Responder set available')).toBeInTheDocument()
     })
   })
 
