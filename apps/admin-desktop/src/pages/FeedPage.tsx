@@ -107,6 +107,7 @@ export default function FeedPage() {
   const [mediaError, setMediaError] = useState<string | null>(null)
   const [confirmUnpublishReport, setConfirmUnpublishReport] = useState<Report | null>(null)
   const [confirmHideAuthor, setConfirmHideAuthor] = useState<string | null>(null)
+  const [hidingAuthorBusy, setHidingAuthorBusy] = useState(false)
   const [activeTab, setActiveTab] = useState<'new' | 'pending' | 'live'>('new')
 
   const { optimisticReports, optimisticVerify, optimisticUnpublish, pendingIds } =
@@ -196,7 +197,7 @@ export default function FeedPage() {
     surface: 'feed' | 'alerts',
     contentId: string,
     currentVisibility: unknown,
-  ) => {
+  ): Promise<boolean> => {
     const visibility = isPublicVisibility(currentVisibility) ? 'internal' : 'public'
     const pendingKey = `${surface}:${contentId}`
     setModeratingContentIds((prev) => new Set(prev).add(pendingKey))
@@ -221,8 +222,10 @@ export default function FeedPage() {
             ? 'Naibalik sa Citizen PWA.'
             : 'Naitago sa Citizen PWA.',
       )
+      return true
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Visibility update failed')
+      return false
     } finally {
       setModeratingContentIds((prev) => {
         const next = new Set(prev)
@@ -240,8 +243,21 @@ export default function FeedPage() {
   const handleHideAllByAuthor = async (targets: typeof citizenSituationUpdates) => {
     // ponytail: sequential fan-out of the per-post callable; a bulk endpoint
     // only matters past the 60/min moderation rate limit (>60 posts/author).
+    setHidingAuthorBusy(true)
+    let failureCount = 0
     for (const post of targets) {
-      await handleCitizenContentVisibility('feed', post.id, post.visibility)
+      const succeeded = await handleCitizenContentVisibility('feed', post.id, post.visibility)
+      if (!succeeded) failureCount += 1
+    }
+    setHidingAuthorBusy(false)
+    setConfirmHideAuthor(null)
+    if (failureCount > 0) {
+      setActionError(
+        `Hid ${String(targets.length - failureCount)} of ${String(targets.length)} posts; ${String(failureCount)} failed.`,
+      )
+    } else {
+      setActionError(null)
+      setSuccessMessage(`Hid ${String(targets.length)} post${targets.length === 1 ? '' : 's'}.`)
     }
   }
 
@@ -736,10 +752,8 @@ export default function FeedPage() {
         message={hideAuthorMessage(hideAuthorTargets.length, confirmHideAuthor)}
         confirmLabel="Hide all"
         confirmVariant="danger"
-        onConfirm={() => {
-          void handleHideAllByAuthor(hideAuthorTargets)
-          setConfirmHideAuthor(null)
-        }}
+        confirmLoading={hidingAuthorBusy}
+        onConfirm={() => handleHideAllByAuthor(hideAuthorTargets)}
         onCancel={() => {
           setConfirmHideAuthor(null)
         }}

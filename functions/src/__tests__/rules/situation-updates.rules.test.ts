@@ -48,6 +48,11 @@ describe('situation_updates rules', () => {
     await assertFails(addDoc(collection(db, 'situation_updates'), validUpdate))
   })
 
+  itif('rejects unauthenticated creation attempts', async () => {
+    const db = unauthed(env)
+    await assertFails(addDoc(collection(db, 'situation_updates'), validUpdate))
+  })
+
   itif('allows public reads without authentication', async () => {
     const db = unauthed(env)
     await assertSucceeds(getDoc(doc(db, 'situation_updates/seed-public')))

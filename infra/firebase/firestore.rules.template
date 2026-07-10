@@ -110,44 +110,6 @@ service cloud.firestore {
               && ('municipalityId' in data)
               && adminOf(data.municipalityId));
     }
-    function validSituationUpdate(data) {
-      return data.keys().hasOnly([
-             'authorUid', 'createdAt', 'updatedAt', 'municipalityId', 'municipalityLabel',
-             'barangayLabel', 'hazardType', 'condition', 'body',
-             'visibility', 'reportedCount'
-          ])
-          && data.keys().hasAll([
-             'authorUid', 'createdAt', 'municipalityId', 'municipalityLabel',
-             'hazardType', 'condition', 'body', 'visibility'
-          ])
-          && data.authorUid == uid()
-          && data.createdAt is number
-          && data.municipalityId is string
-          && data.municipalityId.size() >= 2
-          && data.municipalityId.size() <= 80
-          && data.municipalityLabel is string
-          && data.municipalityLabel.size() >= 2
-          && data.municipalityLabel.size() <= 80
-          && data.hazardType is string
-          && data.hazardType in [
-             'typhoon', 'flood', 'storm_surge', 'landslide', 'earthquake',
-             'fire', 'medical', 'power_outage', 'road_blocked', 'other'
-          ]
-          && data.condition is string
-          && data.condition in [
-             'safe', 'light_rain', 'heavy_rain', 'flooding', 'strong_wind',
-             'needs_help', 'blocked_road', 'power_outage', 'other'
-          ]
-          && data.body is string
-          && data.body.size() >= 3
-          && data.body.size() <= 500
-          && data.visibility == 'public'
-          && (!('updatedAt' in data) || data.updatedAt is number)
-          && (!('barangayLabel' in data)
-              || (data.barangayLabel is string
-                  && data.barangayLabel.size() <= 80))
-          && (!('reportedCount' in data) || data.reportedCount == 0);
-    }
     // @@TRANSITION_TABLES@@
 
     // ================================================================

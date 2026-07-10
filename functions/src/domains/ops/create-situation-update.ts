@@ -65,7 +65,7 @@ export const createSituationUpdate = onCall(
     region: 'asia-southeast1',
     cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
-    maxInstances: 10,
+    maxInstances: 50,
   },
   async (request) => {
     // Auth parity with the removed rule: any active signed-in account

@@ -339,6 +339,46 @@ describe('FeedPage', () => {
     })
   })
 
+  it('keeps the confirmation modal open while hide-all runs and reports partial failures', async () => {
+    let resolveFirst: (() => void) | undefined
+    mockSetCitizenContentVisibility.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFirst = () => {
+            resolve({ visibility: 'internal', contentId: 'sit-flagged' })
+          }
+        }),
+    )
+    mockSetCitizenContentVisibility.mockImplementationOnce(() =>
+      Promise.reject(new Error('network down')),
+    )
+
+    render(
+      <MemoryRouter>
+        <FeedPage />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Hide all posts by spammer-1' })[0]!)
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all' }))
+
+    // The first callable hasn't resolved yet — the modal must stay open and
+    // show a loading state, not close immediately on click.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Processing...' })).toBeInTheDocument()
+    })
+    expect(screen.getByText(/2 public post/)).toBeInTheDocument()
+
+    resolveFirst?.()
+
+    // Only after the whole fan-out settles does the modal close, and the
+    // partial failure is surfaced instead of silently dropped.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Hide all' })).not.toBeInTheDocument()
+    })
+    expect(screen.getByText(/Hid 1 of 2 posts; 1 failed\./)).toBeInTheDocument()
+  })
+
   it('lets admins hide citizen feed situation updates through the backend', async () => {
     render(
       <MemoryRouter>
