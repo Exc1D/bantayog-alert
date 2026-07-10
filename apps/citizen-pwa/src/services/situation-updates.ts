@@ -1,6 +1,7 @@
 import { addDoc, collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore'
 import type { QueryDocumentSnapshot, Unsubscribe } from 'firebase/firestore'
-import { db, ensureSignedIn } from './firebase.js'
+import { httpsCallable } from 'firebase/functions'
+import { db, ensureSignedIn, fns } from './firebase.js'
 
 const COLLECTION = 'situation_updates'
 const FEED_LIMIT = 100
@@ -163,16 +164,17 @@ export function subscribeSituationUpdates(
 }
 
 export async function createSituationUpdate(input: SituationUpdateInput): Promise<string> {
-  const uid = await ensureSignedIn()
+  // Rules now deny direct client creates; the callable owns rate limiting
+  // (5 posts / 10 min per uid) and writes the same doc shape server-side.
+  await ensureSignedIn()
   const normalized = normalizeInput(input)
-  const docRef = await addDoc(collection(db(), COLLECTION), {
-    authorUid: uid,
-    createdAt: Date.now(),
-    ...normalized,
-    visibility: 'public',
-    reportedCount: 0,
-  })
-  return docRef.id
+  const callable = httpsCallable(fns(), 'createSituationUpdate')
+  const result = await callable(normalized)
+  const data = result.data as Record<string, unknown>
+  if (typeof data.updateId !== 'string') {
+    throw new Error('invalid server response')
+  }
+  return data.updateId
 }
 
 export async function reportSituationUpdate(
