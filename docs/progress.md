@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-07-10 - PR #294 round 2 review comment fixes
+
+- Fixed a second, adjacent bug in `FeedPage.handleHideAllByAuthor` left over from the round-1 fix: on partial failure the per-post success toast (e.g. "Naitago sa Citizen PWA.") from an earlier-succeeding post in the fan-out was never cleared, so it rendered alongside the "Hid N of M; K failed" error — two contradictory banners at once. `setSuccessMessage(null)` now runs in the partial-failure branch. TDD red-first: added an assertion that the stale success text is absent after a partial-failure fan-out — failed against the old code (found the exact stale toast in the DOM), passed after the one-line fix.
+- Wrapped the fan-out loop in try/finally so `setHidingAuthorBusy(false)` always runs even if a future change makes `handleCitizenContentVisibility` throw instead of returning `false` (it currently catches internally and never rejects, but the modal-stuck failure mode is cheap to close off permanently).
+- Skipped the coderabbitai suggestion to extract a shared test-utility layer (mock factory + `expectRejectsUnauthenticated`/`expectRejectsInactive` helpers) between `create-situation-update.test.ts` and `submit-report-feedback.callable.test.ts`: only 2 usages (YAGNI — wait for the 3rd), the two callables diverge in mechanism (inline `accountStatus` check vs `isAccountActive`) and error copy, and the exact duplication is already `// fallow-ignore-next-line code-duplication`-suppressed in `create-situation-update.test.ts` — a previously accepted tradeoff, not a fresh gap.
+- Verification: focused `feed-page.test.tsx` 14/14 (red before the fix, green after); admin-desktop `tsc --noEmit` and `eslint` clean on both changed files; Prettier clean.
+
 ## 2026-07-10 - PR #294 review comment fixes
 
 - Fixed a real race condition sourcery-ai flagged in `FeedPage.handleHideAllByAuthor`: the confirmation modal closed (`setConfirmHideAuthor(null)`) immediately on click while the fire-and-forget fan-out loop was still awaiting each `setCitizenContentVisibility` call, and per-iteration failures were silently dropped. `handleCitizenContentVisibility` now returns `Promise<boolean>`; the modal stays open (`confirmLoading`) until the whole sequential fan-out settles, then reports `"Hid N of M posts; K failed."` on partial failure instead of a fabricated blanket success. TDD red-first: new test asserted "Processing..." stays visible mid-fan-out and a partial-failure message renders — failed against the old code, passed after the fix (14/14).

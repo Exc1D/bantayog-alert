@@ -377,6 +377,7 @@ describe('FeedPage', () => {
       expect(screen.queryByRole('button', { name: 'Hide all' })).not.toBeInTheDocument()
     })
     expect(screen.getByText(/Hid 1 of 2 posts; 1 failed\./)).toBeInTheDocument()
+    expect(screen.queryByText('Naitago sa Citizen PWA.')).not.toBeInTheDocument()
   })
 
   it('lets admins hide citizen feed situation updates through the backend', async () => {

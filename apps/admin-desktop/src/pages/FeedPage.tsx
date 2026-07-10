@@ -245,13 +245,17 @@ export default function FeedPage() {
     // only matters past the 60/min moderation rate limit (>60 posts/author).
     setHidingAuthorBusy(true)
     let failureCount = 0
-    for (const post of targets) {
-      const succeeded = await handleCitizenContentVisibility('feed', post.id, post.visibility)
-      if (!succeeded) failureCount += 1
+    try {
+      for (const post of targets) {
+        const succeeded = await handleCitizenContentVisibility('feed', post.id, post.visibility)
+        if (!succeeded) failureCount += 1
+      }
+    } finally {
+      setHidingAuthorBusy(false)
     }
-    setHidingAuthorBusy(false)
     setConfirmHideAuthor(null)
     if (failureCount > 0) {
+      setSuccessMessage(null)
       setActionError(
         `Hid ${String(targets.length - failureCount)} of ${String(targets.length)} posts; ${String(failureCount)} failed.`,
       )
