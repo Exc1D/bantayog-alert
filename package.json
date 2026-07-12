@@ -44,7 +44,7 @@
     "eslint-plugin-jsx-a11y": "^6.10.0",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "firebase": "^12.15.0",
+    "firebase": "^12.16.0",
     "firebase-admin": "^14.1.0",
     "globals": "^17.6.0",
     "happy-dom": "^20.9.0",

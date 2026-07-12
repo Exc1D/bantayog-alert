@@ -14,7 +14,7 @@
   "dependencies": {
     "@bantayog/shared-types": "workspace:*",
     "@bantayog/shared-validators": "workspace:*",
-    "firebase": "^12.15.0",
+    "firebase": "^12.16.0",
     "leaflet": "^1.9.4",
     "localforage": "^1.10.0",
     "lucide-react": "^1.18.0",
