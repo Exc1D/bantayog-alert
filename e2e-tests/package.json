@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
-    "firebase-admin": "^14.1.0",
+    "firebase-admin": "^14.2.0",
     "typescript": "^6.0.3"
   }
 }
