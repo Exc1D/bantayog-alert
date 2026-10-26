@@ -56,7 +56,7 @@ terraform apply -var="surge_min_instances=3"
 
 ## Automation gap
 
-This runbook is human-executed. There is no automated trigger. If the team adopts PagerDuty or OpsGenie before Phase 9 exit, migrate this runbook there before the pilot launches (tracked in `docs/progress.md`).
+This runbook is human-executed. There is no automated trigger. If the team adopts PagerDuty or OpsGenie before Phase 9 exit, migrate this runbook there before the pilot launches (tracked in a GitHub issue).
 
 ---
 
@@ -65,4 +65,4 @@ This runbook is human-executed. There is no automated trigger. If the team adopt
 1. Declare a test TCWS signal on System Health page.
 2. Execute apply (Option A or B above) — verify `minInstances: 20` in Firebase Console.
 3. Execute revert — verify `minInstances: 3` in Firebase Console.
-4. Record drill date in `docs/progress.md`.
+4. Record drill date in the tracking issue.

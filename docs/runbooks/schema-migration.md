@@ -59,4 +59,4 @@ The migration is not complete until:
 - [ ] Monitoring signal shows zero old-version writes for 7 consecutive days
 - [ ] Old-version trigger branches removed
 - [ ] Runbook entry closed in `docs/runbooks/migrations/`
-- [ ] Post-migration review logged in `docs/learnings.md`
+- [ ] Post-migration review logged in the migration PR

@@ -110,11 +110,8 @@ Start here:
 - [Architecture](docs/architecture/README.md)
 - [Architecture decision records](docs/adr/)
 - [Runbooks](docs/runbooks/)
-- [Durable learnings](docs/learnings.md)
-- [Progress log](docs/progress.md)
 
-Keep docs current and small. Historical planning notes belong in issues or the
-append-only progress log, not as permanent repository navigation.
+Keep docs current and small. Historical planning notes belong in issues or PRs, not as permanent repository navigation.
 
 ## Pull Requests
 
