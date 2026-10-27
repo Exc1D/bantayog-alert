@@ -8,6 +8,7 @@ import { streamAuditEvent } from '../ops/audit-stream.js'
 const log = logDimension('deleteOwnAnonymousAccount')
 export const deleteOwnAnonymousAccount = onCall(
   {
+    region: 'asia-southeast1',
     cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,

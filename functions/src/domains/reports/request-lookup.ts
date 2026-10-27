@@ -123,6 +123,7 @@ export async function requestLookupImpl(input: RequestLookupInput): Promise<Requ
 
 export const requestLookup = onCall(
   {
+    region: 'asia-southeast1',
     cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,

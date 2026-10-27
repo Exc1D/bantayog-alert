@@ -96,6 +96,7 @@ export async function requestUploadUrlImpl(
 
 export const requestUploadUrl = onCall(
   {
+    region: 'asia-southeast1',
     cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,

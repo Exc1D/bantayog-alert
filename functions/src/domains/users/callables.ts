@@ -7,6 +7,7 @@ import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 
 export const registerCitizen = onCall(
   {
+    region: 'asia-southeast1',
     cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,
