@@ -1,79 +1,32 @@
-import { getApps, initializeApp } from 'firebase-admin/app'
-import { getAuth } from 'firebase-admin/auth'
-import { getFirestore, Timestamp } from 'firebase-admin/firestore'
+import { Timestamp } from 'firebase-admin/firestore'
 import { dispatchDocSchema } from '../../packages/shared-validators/lib/index.js'
+import { db, ensureUser } from './admin-seed.js'
 
-const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID ?? 'bantayog-alert-dev'
-
-process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099'
-process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8081'
-
-const app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID })
-const auth = getAuth(app)
-const db = getFirestore(app)
-
-function isUserNotFoundError(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    (err.message.includes('auth/user-not-found') ||
-      err.message.includes('user not found') ||
-      err.message.includes('There is no user record corresponding to the provided identifier'))
-  )
-}
-
-async function getUserByEmailOrNull(email: string) {
-  return auth.getUserByEmail(email).catch((err: unknown) => {
-    if (isUserNotFoundError(err)) return null
-    throw err
-  })
+const RESPONDER_CLAIMS = {
+  role: 'responder',
+  accountStatus: 'active',
+  municipalityId: 'daet',
+  agencyId: 'bfp-daet',
 }
 
 async function ensureResponderUser() {
-  const email = 'bfp-responder-test-01@test.local'
-  const password = 'test123456'
   const uid = 'bfp-responder-test-01'
-  const user = await getUserByEmailOrNull(email)
-  if (user) {
-    await auth.updateUser(user.uid, { password })
-  } else {
-    await auth.createUser({ uid, email, password })
-  }
-  await auth.setCustomUserClaims(uid, {
-    role: 'responder',
-    accountStatus: 'active',
-    municipalityId: 'daet',
-    agencyId: 'bfp-daet',
-  })
-  await db.collection('active_accounts').doc(uid).set({
+  return ensureUser({
     uid,
-    role: 'responder',
-    accountStatus: 'active',
-    municipalityId: 'daet',
-    agencyId: 'bfp-daet',
-    permittedMunicipalityIds: [],
-    mfaEnrolled: true,
-    lastClaimIssuedAt: Date.now(),
-    updatedAt: Date.now(),
+    email: 'bfp-responder-test-01@test.local',
+    password: 'test123456',
+    claims: RESPONDER_CLAIMS,
+    activeAccount: { uid, ...RESPONDER_CLAIMS, permittedMunicipalityIds: [], mfaEnrolled: true },
   })
-  return { email, password, uid }
 }
 
 async function ensureCitizenUser() {
-  const email = 'citizen-test-01@test.local'
-  const password = 'test123456'
-  const uid = 'citizen-test-01'
-  const user = await getUserByEmailOrNull(email)
-  if (user) {
-    await auth.updateUser(user.uid, { password })
-  } else {
-    await auth.createUser({ uid, email, password })
-  }
-  await auth.setCustomUserClaims(uid, {
-    role: 'citizen',
-    accountStatus: 'active',
-    municipalityId: 'daet',
+  return ensureUser({
+    uid: 'citizen-test-01',
+    email: 'citizen-test-01@test.local',
+    password: 'test123456',
+    claims: { role: 'citizen', accountStatus: 'active', municipalityId: 'daet' },
   })
-  return { email, password, uid }
 }
 
 export async function seedAuthUsers() {
