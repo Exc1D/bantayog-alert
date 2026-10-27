@@ -73,6 +73,10 @@ const srcPkg = JSON.parse(readFileSync(resolve(FUNCTIONS, 'package.json'), 'utf8
   devDependencies?: Record<string, string>
   engines?: Record<string, string>
 }
+function installedVersion(name: string): string {
+  const pkgPath = resolve(FUNCTIONS, 'node_modules', name, 'package.json')
+  return (JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string }).version
+}
 const distPkg = {
   name: '@bantayog/functions',
   version: '0.0.0',
@@ -80,8 +84,13 @@ const distPkg = {
   type: 'module',
   main: './lib/index.js',
   engines: srcPkg.engines,
+  // Pin to the versions pnpm installed (the lockfile's), not the ^ranges: there is no
+  // lockfile here, so ranges drift (firebase-admin 14.5 pulled a Node-22-only optional
+  // @google-cloud/firestore that npm silently skipped on Node 20, breaking the E2E emulator).
   dependencies: Object.fromEntries(
-    Object.entries(srcPkg.dependencies ?? {}).filter(([k]) => !k.startsWith('@bantayog/')),
+    Object.keys(srcPkg.dependencies ?? {})
+      .filter((k) => !k.startsWith('@bantayog/'))
+      .map((k) => [k, installedVersion(k)]),
   ),
 }
 writeFileSync(resolve(DIST, 'package.json'), JSON.stringify(distPkg, null, 2) + '\n')
