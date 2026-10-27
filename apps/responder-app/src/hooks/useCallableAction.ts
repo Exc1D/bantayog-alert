@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
 import { auth } from '../app/firebase'
 import { awaitFreshAuthToken } from '../app/await-auth-token'
@@ -15,12 +15,15 @@ export function useCallableAction(tag: string, keyScope: string) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | undefined>()
   const keyRef = useRef(crypto.randomUUID())
-
-  useEffect(() => {
-    keyRef.current = crypto.randomUUID()
-  }, [keyScope])
+  const scopeRef = useRef(keyScope)
 
   async function run<T>(action: (ctx: ActionContext) => Promise<T>): Promise<T> {
+    // Rotate synchronously on scope change so the first action on a new
+    // dispatch can never reuse the previous dispatch's key.
+    if (scopeRef.current !== keyScope) {
+      scopeRef.current = keyScope
+      keyRef.current = crypto.randomUUID()
+    }
     setLoading(true)
     setError(undefined)
     try {
