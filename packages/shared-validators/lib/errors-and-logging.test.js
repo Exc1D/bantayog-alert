@@ -1,21 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { BantayogErrorCode, isBantayogErrorCode, isTerminalReportStatus, isTerminalDispatchStatus, } from './errors.js';
+import { BantayogErrorCode, isTerminalReportStatus, } from './errors.js';
 import { logEvent, LOG_DIMENSION_MAX } from './logging.js';
 // ─── BantayogErrorCode enum ────────────────────────────────────────────────
 describe('BantayogErrorCode', () => {
     it('has 19 named error codes', () => {
         const codes = Object.values(BantayogErrorCode);
         expect(codes).toHaveLength(19);
-    });
-    it('isBantayogErrorCode returns true for every enum member', () => {
-        for (const code of Object.values(BantayogErrorCode)) {
-            expect(isBantayogErrorCode(code), `${code} should be valid`).toBe(true);
-        }
-    });
-    it('isBantayogCode returns false for unknown strings', () => {
-        expect(isBantayogErrorCode('UNKNOWN_CODE')).toBe(false);
-        expect(isBantayogErrorCode('')).toBe(false);
-        expect(isBantayogErrorCode('validation_error')).toBe(false);
     });
 });
 // ─── Terminal status helpers ─────────────────────────────────────────────────
@@ -42,27 +32,6 @@ describe('isTerminalReportStatus', () => {
         ];
         for (const s of nonTerminal) {
             expect(isTerminalReportStatus(s), `${s} should not be terminal`).toBe(false);
-        }
-    });
-});
-describe('isTerminalDispatchStatus', () => {
-    it('returns true for resolved and declined', () => {
-        expect(isTerminalDispatchStatus('resolved')).toBe(true);
-        expect(isTerminalDispatchStatus('declined')).toBe(true);
-    });
-    it('returns false for all other dispatch statuses', () => {
-        const nonTerminal = [
-            'pending',
-            'accepted',
-            'acknowledged',
-            'en_route',
-            'on_scene',
-            'timed_out',
-            'cancelled',
-            'superseded',
-        ];
-        for (const s of nonTerminal) {
-            expect(isTerminalDispatchStatus(s), `${s} should not be terminal`).toBe(false);
         }
     });
 });

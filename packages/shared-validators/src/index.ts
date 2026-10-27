@@ -66,8 +66,6 @@ export { hazardZoneDocSchema, hazardZoneHistoryDocSchema } from './hazard.js'
 export type { HazardZoneDoc, HazardZoneHistoryDoc } from './hazard.js'
 export { moderationIncidentDocSchema } from './moderation.js'
 export type { ModerationIncidentDoc } from './moderation.js'
-export { rateLimitDocSchema } from './rate-limits.js'
-export type { RateLimitDoc } from './rate-limits.js'
 export { idempotencyKeyDocSchema } from './idempotency-keys.js'
 export type { IdempotencyKeyDoc } from './idempotency-keys.js'
 export { deadLetterDocSchema } from './dead-letters.js'
@@ -104,11 +102,8 @@ export {
 export type { ReportStatus, DispatchStatus } from './state-machines/index.js'
 export {
   BantayogErrorCode,
-  isBantayogErrorCode,
   isTerminalReportStatus,
-  isTerminalDispatchStatus,
   BantayogError,
-  notFoundError,
   invalidTransitionError,
 } from './errors.js'
 export { logEvent, logDimension, LOG_DIMENSION_MAX } from './logging.js'
