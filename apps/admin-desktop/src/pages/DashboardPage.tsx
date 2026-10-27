@@ -14,7 +14,6 @@ import { HelpModal } from '../components/HelpModal'
 import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { StatusBar } from '../components/StatusBar'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { deriveDashboardMode } from '../utils/dashboard-mode'
 import type { DashboardMode } from '../utils/dashboard-mode'
@@ -579,7 +578,7 @@ export default function DashboardPage() {
       setIsDispatching(true)
       setActionError(null)
       try {
-        const idempotencyKey = generateIdempotencyKey()
+        const idempotencyKey = crypto.randomUUID()
         await withRetry(() =>
           callables.redispatchReport({
             oldDispatchId: selectedDispatchId,
@@ -613,7 +612,7 @@ export default function DashboardPage() {
   const handleVerifyReport = useCallback(async (reportId: string) => {
     setVerifyingReportIds((prev) => new Set(prev).add(reportId))
     setActionError(null)
-    const idempotencyKey = generateIdempotencyKey()
+    const idempotencyKey = crypto.randomUUID()
     try {
       const result = await withRetry(() => callables.verifyReport({ reportId, idempotencyKey }))
       setSuccessMessage(result.status === 'verified' ? 'Report verified' : 'Report sent to review')

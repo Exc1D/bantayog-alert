@@ -21,7 +21,6 @@ import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { HelpModal } from '../components/HelpModal'
 import { callables, type CancelDispatchReason } from '../services/callables'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
@@ -316,7 +315,7 @@ export function DispatchMonitorPage() {
       payload: {
         dispatchId: cancelTarget,
         reason: cancelReason,
-        idempotencyKey: generateIdempotencyKey(),
+        idempotencyKey: crypto.randomUUID(),
       },
       successMessage: 'Dispatch cancelled',
       errorFallback: 'Cancel failed',
@@ -347,7 +346,7 @@ export function DispatchMonitorPage() {
       payload: {
         dispatchId: selectedDispatchId,
         newResponderUid: responderUid,
-        idempotencyKey: generateIdempotencyKey(),
+        idempotencyKey: crypto.randomUUID(),
         ...(forceOverride ? { forceOverride } : {}),
       },
       successMessage: 'Re-dispatched successfully',
@@ -382,7 +381,7 @@ export function DispatchMonitorPage() {
     setCreatingResponder(true)
     setDispatchError(null)
     setRetryCommand(null)
-    const idempotencyKey = generateIdempotencyKey()
+    const idempotencyKey = crypto.randomUUID()
     try {
       await withRetry(() =>
         callables.createResponder({
@@ -405,7 +404,7 @@ export function DispatchMonitorPage() {
     setDispatchError(null)
     setSuccessMessage(null)
     setRetryCommand(null)
-    const idempotencyKey = generateIdempotencyKey()
+    const idempotencyKey = crypto.randomUUID()
     try {
       if (kind === 'suspend') {
         await withRetry(() => callables.suspendResponder({ uid, idempotencyKey }))
@@ -435,7 +434,7 @@ export function DispatchMonitorPage() {
     setDispatchError(null)
     setSuccessMessage(null)
     setRetryCommand(null)
-    const idempotencyKey = generateIdempotencyKey()
+    const idempotencyKey = crypto.randomUUID()
     try {
       await withRetry(() =>
         callables.bulkAvailabilityOverride({ uids: [uid], status: 'available', idempotencyKey }),
@@ -467,7 +466,7 @@ export function DispatchMonitorPage() {
       payload: {
         reportId,
         responderUid,
-        idempotencyKey: generateIdempotencyKey(),
+        idempotencyKey: crypto.randomUUID(),
       },
       successMessage: 'Responder assigned',
       errorFallback: 'Responder assignment failed',

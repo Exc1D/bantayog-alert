@@ -12,7 +12,6 @@ import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { db } from '../app/firebase'
 import { callables } from '../services/callables'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
 import {
@@ -330,7 +329,7 @@ export default function TriagePage() {
       const report = sortedReports.find((item) => item.id === reportId)
       return {
         kind: 'verify',
-        payload: { reportId, idempotencyKey: generateIdempotencyKey() },
+        payload: { reportId, idempotencyKey: crypto.randomUUID() },
         successMessage: report?.status === 'new' ? 'Report sent to review' : 'Report verified',
         errorFallback: 'Report verification failed',
       }
@@ -345,7 +344,7 @@ export default function TriagePage() {
         reportId,
         reason,
         ...(note ? { notes: note } : {}),
-        idempotencyKey: generateIdempotencyKey(),
+        idempotencyKey: crypto.randomUUID(),
       },
       successMessage: 'Report rejected',
       errorFallback: 'Report rejection failed',
@@ -577,7 +576,7 @@ export default function TriagePage() {
     setMerging(true)
     setActionError(null)
     setSuccessMessage(null)
-    const idempotencyKey = generateIdempotencyKey()
+    const idempotencyKey = crypto.randomUUID()
     try {
       const result = await withRetry(() =>
         callables.mergeDuplicates({
@@ -621,7 +620,7 @@ export default function TriagePage() {
     setReportLoading(pending.reportId, true)
     setActionError(null)
     setSuccessMessage(null)
-    const idempotencyKey = generateIdempotencyKey()
+    const idempotencyKey = crypto.randomUUID()
     try {
       if (pending.kind === 'close') {
         await withRetry(() =>

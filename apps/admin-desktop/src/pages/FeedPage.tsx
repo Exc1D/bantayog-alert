@@ -9,7 +9,6 @@ import { useFirestoreListeners, type SituationUpdateDoc } from '../hooks/useFire
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { useOptimisticFeedActions } from '../hooks/useOptimisticFeedActions'
 import { resolveReportMedia, type MediaItem } from '../utils/media-fetch'
@@ -115,11 +114,11 @@ export default function FeedPage() {
       reports,
       verifyReport: async (reportId) => {
         // Keys generated before withRetry so every attempt replays the same key.
-        const idempotencyKey = generateIdempotencyKey()
+        const idempotencyKey = crypto.randomUUID()
         await withRetry(() => callables.verifyReport({ reportId, idempotencyKey }))
       },
       unpublishReport: async (reportId) => {
-        const idempotencyKey = generateIdempotencyKey()
+        const idempotencyKey = crypto.randomUUID()
         await withRetry(() =>
           callables.unpublishReport({
             reportId,
@@ -202,7 +201,7 @@ export default function FeedPage() {
     const pendingKey = `${surface}:${contentId}`
     setModeratingContentIds((prev) => new Set(prev).add(pendingKey))
     try {
-      const idempotencyKey = generateIdempotencyKey()
+      const idempotencyKey = crypto.randomUUID()
       await withRetry(() =>
         callables.setCitizenContentVisibility({
           surface,
@@ -334,7 +333,7 @@ export default function FeedPage() {
     }
     setPublishingIds((prev) => new Set(prev).add(report.id))
     try {
-      const idempotencyKey = generateIdempotencyKey()
+      const idempotencyKey = crypto.randomUUID()
       await withRetry(() =>
         callables.verifyReport({
           reportId: report.id,
