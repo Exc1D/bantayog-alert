@@ -1,34 +1,15 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { type Firestore, Timestamp } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
-import { z } from 'zod'
 import { adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
-
-const unsubscribeSchema = z.object({
-  token: z.string().min(1),
-})
+import { tokenSchema, verifyTokenOwnership } from './subscribe-to-alerts.js'
 
 export interface UnsubscribeFromAlertsDeps {
   token: string
   actor: { uid: string }
   now: Timestamp
-}
-
-async function verifyTokenOwnership(db: Firestore, uid: string, token: string): Promise<void> {
-  const userSnap = await db.collection('users').doc(uid).get()
-  if (userSnap.exists && userSnap.data()?.fcmToken === token) {
-    return
-  }
-
-  const responderSnap = await db.collection('responders').doc(uid).get()
-  const tokens = responderSnap.data()?.fcmTokens
-  if (Array.isArray(tokens) && tokens.includes(token)) {
-    return
-  }
-
-  throw new HttpsError('permission-denied', 'Token does not belong to caller')
 }
 
 export async function unsubscribeFromAlertsCore(
@@ -61,7 +42,7 @@ export const unsubscribeFromAlerts = onCall(
       throw new HttpsError('unauthenticated', 'Must be signed in')
     }
 
-    const parsed = unsubscribeSchema.safeParse(request.data)
+    const parsed = tokenSchema.safeParse(request.data)
     if (!parsed.success) {
       throw new HttpsError('invalid-argument', 'malformed payload')
     }

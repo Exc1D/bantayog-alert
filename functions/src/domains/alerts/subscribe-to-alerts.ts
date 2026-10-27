@@ -7,7 +7,7 @@ import { adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 
-const subscribeSchema = z.object({
+export const tokenSchema = z.object({
   token: z.string().min(1),
 })
 
@@ -17,7 +17,11 @@ export interface SubscribeToAlertsCoreDeps {
   now: Timestamp
 }
 
-async function verifyTokenOwnership(db: Firestore, uid: string, token: string): Promise<void> {
+export async function verifyTokenOwnership(
+  db: Firestore,
+  uid: string,
+  token: string,
+): Promise<void> {
   const userSnap = await db.collection('users').doc(uid).get()
   if (userSnap.exists && userSnap.data()?.fcmToken === token) {
     return
@@ -72,7 +76,7 @@ export const subscribeToAlerts = onCall(
       throw new HttpsError('unauthenticated', 'Must be signed in')
     }
 
-    const parsed = subscribeSchema.safeParse(request.data)
+    const parsed = tokenSchema.safeParse(request.data)
     if (!parsed.success) {
       throw new HttpsError('invalid-argument', 'malformed payload')
     }
