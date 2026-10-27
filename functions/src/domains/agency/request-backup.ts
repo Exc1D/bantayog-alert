@@ -30,7 +30,6 @@ export async function requestBackupCore(
 ): Promise<{ status: 'requested'; backupRequestId: string }> {
   const { dispatchId, reason, idempotencyKey, actor, now } = deps
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
 
   const { result } = await withIdempotency(

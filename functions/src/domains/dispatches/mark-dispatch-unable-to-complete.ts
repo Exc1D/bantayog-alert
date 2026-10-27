@@ -35,7 +35,6 @@ export async function markDispatchUnableToCompleteCore(
 ): Promise<{ status: 'unable_to_complete'; dispatchId: string }> {
   const { dispatchId, reason, idempotencyKey, actor, now } = deps
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
 
   const { result } = await withIdempotency(

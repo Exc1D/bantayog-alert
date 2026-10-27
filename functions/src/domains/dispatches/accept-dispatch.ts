@@ -39,7 +39,6 @@ export async function acceptDispatchCore(
 ): Promise<{ status: 'accepted'; dispatchId: string; fromCache: boolean }> {
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result, fromCache } = await withIdempotency(
     db,

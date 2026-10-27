@@ -64,7 +64,6 @@ export async function declineDispatchCore(
   }
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = {
     ...deps,
     declineReason: normalizedDeclineReason,

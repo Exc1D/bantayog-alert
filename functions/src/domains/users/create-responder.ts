@@ -43,7 +43,6 @@ export async function createResponderCore(
 ): Promise<{ uid: string; agencyId: string; availabilityStatus: 'available' }> {
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency<
     Omit<CreateResponderCoreDeps, 'now'>,

@@ -51,6 +51,8 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      // `const { now: _now, ...payload } = deps` strips a key; don't flag it.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       // TODO(phase-2): enable @typescript-eslint/no-unsafe-assignment
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error',

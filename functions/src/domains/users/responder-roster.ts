@@ -101,7 +101,6 @@ async function suspendOrRevokeResponderCore(
 ): Promise<{ uid: string; status: 'suspended' | 'revoked' }> {
   const { uid, idempotencyKey, actor, now, targetStatus } = deps
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, targetStatus: _targetStatus, ...idempotentPayload } = deps
 
   const nowMillis = now.toMillis()
@@ -238,7 +237,6 @@ export async function bulkAvailabilityOverrideCore(
 ): Promise<{ updated: number; skipped: number; skippedUids: string[] }> {
   const { uids, status, idempotencyKey, actor, now } = deps
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
 
   const { result } = await withIdempotency(

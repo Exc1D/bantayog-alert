@@ -69,7 +69,6 @@ export const advanceDispatchCore = async (
 ) => {
   const { dispatchId, to, resolutionSummary, idempotencyKey, actor, now } = req
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = req
   const { result } = await withIdempotency(
     db,

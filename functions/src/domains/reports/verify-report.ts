@@ -59,7 +59,6 @@ export async function verifyReportCore(
 ): Promise<VerifyReportResult> {
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency<Omit<VerifyReportCoreDeps, 'now'>, VerifyReportResult>(
     db,
