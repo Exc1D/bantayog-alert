@@ -13,7 +13,7 @@ import { isAccountActive } from '../ops/admin-auth.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { logDimension } from '@bantayog/shared-validators'
 
 const InputSchema = z
@@ -186,17 +186,12 @@ export const verifyReport = onCall(
       throw new HttpsError('invalid-argument', 'malformed payload')
     }
 
-    const rl = await checkRateLimit(adminDb, {
+    await enforceRateLimit(adminDb, {
       key: `verifyReport:${req.auth.uid}`,
       limit: 60,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit', {
-        retryAfterSeconds: rl.retryAfterSeconds,
-      })
-    }
 
     try {
       return await verifyReportCore(adminDb, {

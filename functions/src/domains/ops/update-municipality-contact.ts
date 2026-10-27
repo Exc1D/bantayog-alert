@@ -10,7 +10,7 @@ import { PROVINCIAL_SUPERADMIN } from '../../constants/roles.js'
 import { requireAuth } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { streamAuditEvent } from './audit-stream.js'
 
 export interface UpdateMunicipalityContactDeps {
@@ -114,17 +114,12 @@ export const updateMunicipalityContact = onCall(
       throw new HttpsError('invalid-argument', 'malformed payload')
     }
 
-    const rl = await checkRateLimit(getFirestore(), {
+    await enforceRateLimit(getFirestore(), {
       key: `updateMunicipalityContact:${uid}`,
       limit: 10,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit', {
-        retryAfterSeconds: rl.retryAfterSeconds,
-      })
-    }
 
     const actorClaims: UpdateMunicipalityContactDeps['actor']['claims'] = {
       ...(typeof claims.role === 'string' ? { role: claims.role } : {}),

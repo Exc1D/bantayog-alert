@@ -11,7 +11,7 @@ import {
 } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { isAccountActive } from '../ops/admin-auth.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
@@ -217,17 +217,12 @@ export const closeReport = onCall(
     const parsed = closeReportRequestSchema.safeParse(req.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 
-    const rl = await checkRateLimit(adminDb, {
+    await enforceRateLimit(adminDb, {
       key: `closeReport:${req.auth.uid}`,
       limit: 60,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit', {
-        retryAfterSeconds: rl.retryAfterSeconds,
-      })
-    }
 
     try {
       return await closeReportCore(adminDb, {

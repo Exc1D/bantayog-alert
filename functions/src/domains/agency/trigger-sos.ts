@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
 export const triggerSosSchema = z
@@ -25,17 +25,12 @@ export async function triggerSosCore(
 ): Promise<{ status: 'sos_triggered'; dispatchId: string }> {
   const { dispatchId, actor, now } = deps
 
-  const rl = await checkRateLimit(db, {
+  await enforceRateLimit(db, {
     key: `triggerSOS:${actor.uid}`,
     limit: 5,
     windowSeconds: 300,
     now,
   })
-  if (!rl.allowed) {
-    throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-      retryAfterSeconds: rl.retryAfterSeconds,
-    })
-  }
 
   return db.runTransaction(async (tx) => {
     const dispatchRef = db.collection('dispatches').doc(dispatchId)

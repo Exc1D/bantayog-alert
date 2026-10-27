@@ -4,7 +4,7 @@ import { getMessaging } from 'firebase-admin/messaging'
 import { z } from 'zod'
 import { adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 
 const unsubscribeSchema = z.object({
   token: z.string().min(1),
@@ -35,17 +35,12 @@ export async function unsubscribeFromAlertsCore(
   db: Firestore,
   deps: UnsubscribeFromAlertsDeps,
 ): Promise<{ success: true }> {
-  const rl = await checkRateLimit(db, {
+  await enforceRateLimit(db, {
     key: `unsubscribeFromAlerts:${deps.actor.uid}`,
     limit: 20,
     windowSeconds: 60,
     now: deps.now,
   })
-  if (!rl.allowed) {
-    throw new HttpsError('resource-exhausted', 'rate limit exceeded', {
-      retryAfterSeconds: rl.retryAfterSeconds,
-    })
-  }
 
   await verifyTokenOwnership(db, deps.actor.uid, deps.token)
 

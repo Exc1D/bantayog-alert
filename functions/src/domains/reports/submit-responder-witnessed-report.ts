@@ -5,7 +5,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { randomBytes, createHash, randomInt } from 'node:crypto'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
@@ -82,17 +82,12 @@ export async function submitResponderWitnessedReportCore(
       now: () => now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `submitResponderWitnessedReport:${actor.uid}`,
         limit: 30,
         windowSeconds: 60,
         now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       return db.runTransaction(async (tx) => {
         const dispatchRef = db.collection('dispatches').doc(dispatchId)

@@ -10,7 +10,7 @@ import { adminAuth, adminDb } from '../../admin-init.js'
 // fallow-ignore-next-line code-duplication
 import { withIdempotency } from '../../idempotency/guard.js'
 // fallow-ignore-next-line code-duplication
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 // fallow-ignore-next-line code-duplication
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 // fallow-ignore-next-line code-duplication
@@ -113,17 +113,12 @@ async function suspendOrRevokeResponderCore(
       now: () => nowMillis,
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `${targetStatus}Responder:${actor.uid}`,
         limit: 60,
         windowSeconds: 60,
         now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       return db.runTransaction(async (tx) => {
         const responderRef = db.collection('responders').doc(uid)
@@ -255,17 +250,12 @@ export async function bulkAvailabilityOverrideCore(
     },
     async () => {
       // fallow-ignore-next-line code-duplication
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `bulkAvailabilityOverride:${actor.uid}`,
         limit: 5,
         windowSeconds: 60,
         now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       const batch = db.batch()
       let updated = 0
