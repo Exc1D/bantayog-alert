@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@bantayog/shared-ui'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -9,6 +9,7 @@ import { ConfirmationModal } from '../components/ConfirmationModal'
 import { PermissionDeniedState } from '../components/PermissionDeniedState'
 import { TriageQueueTable } from '../components/TriageQueueTable'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
+import { usePendingIds } from '../hooks/usePendingIds'
 import { db } from '../app/firebase'
 import { callables } from '../services/callables'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
@@ -169,7 +170,7 @@ export default function TriagePage() {
 
   const [bulkLoading, setBulkLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
+  const [loadingIds, whileLoading] = usePendingIds()
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -232,20 +233,20 @@ export default function TriagePage() {
     () => [...filteredReports].sort(sortTriageReports),
     [filteredReports],
   )
-  const clearSelection = useCallback(() => {
+  const clearSelection = () => {
     setSelectedIds(new Set())
-  }, [])
-  const clearFilters = useCallback(() => {
+  }
+  const clearFilters = () => {
     setStatusFilter('all')
     setSeverityFilter('all')
     setTypeFilter('all')
     setSearchQuery('')
     clearSelection()
-  }, [clearSelection])
-  const handleExportCsv = useCallback(() => {
+  }
+  const handleExportCsv = () => {
     const date = new Date().toISOString().slice(0, 10)
     downloadCsv(`bantayog-triage-${date}.csv`, buildTriageExportCsv(sortedReports))
-  }, [sortedReports])
+  }
 
   const reportSnapshotKey = useMemo(
     () =>
@@ -281,145 +282,106 @@ export default function TriagePage() {
   const staleMinutes = Math.round(staleAgeMs / 60000)
   const isPermissionDenied = isPermissionDeniedError(error)
 
-  const setReportLoading = useCallback((reportId: string, isLoading: boolean) => {
-    setLoadingIds((current) => {
+  const executeVerify = async (payload: VerifyReportPayload) => {
+    await whileLoading(payload.reportId, () => withRetry(() => callables.verifyReport(payload)))
+    setSelectedIds((current) => {
       const next = new Set(current)
-      if (isLoading) next.add(reportId)
-      else next.delete(reportId)
+      next.delete(payload.reportId)
       return next
     })
-  }, [])
+  }
 
-  const executeVerify = useCallback(
-    async (payload: VerifyReportPayload) => {
-      setReportLoading(payload.reportId, true)
-      try {
-        await withRetry(() => callables.verifyReport(payload))
-        setSelectedIds((current) => {
-          const next = new Set(current)
-          next.delete(payload.reportId)
-          return next
-        })
-      } finally {
-        setReportLoading(payload.reportId, false)
+  const executeReject = async (payload: RejectReportPayload) => {
+    await whileLoading(payload.reportId, () => withRetry(() => callables.rejectReport(payload)))
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      next.delete(payload.reportId)
+      return next
+    })
+  }
+
+  const buildVerifyCommand = (reportId: string): FailedTriageCommand => {
+    const report = sortedReports.find((item) => item.id === reportId)
+    return {
+      kind: 'verify',
+      payload: { reportId, idempotencyKey: crypto.randomUUID() },
+      successMessage: report?.status === 'new' ? 'Report sent to review' : 'Report verified',
+      errorFallback: 'Report verification failed',
+    }
+  }
+
+  const buildRejectCommand = (
+    reportId: string,
+    reason: RejectionReason,
+    note: string,
+  ): FailedTriageCommand => ({
+    kind: 'reject',
+    payload: {
+      reportId,
+      reason,
+      ...(note ? { notes: note } : {}),
+      idempotencyKey: crypto.randomUUID(),
+    },
+    successMessage: 'Report rejected',
+    errorFallback: 'Report rejection failed',
+  })
+
+  const executeCommand = async (command: FailedTriageCommand) => {
+    if (command.kind === 'verify') {
+      await executeVerify(command.payload)
+      return
+    }
+    await executeReject(command.payload)
+  }
+
+  const handleVerify = async (reportId: string) => {
+    const command = buildVerifyCommand(reportId)
+    setActionError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    try {
+      await executeCommand(command)
+      setSuccessMessage(command.successMessage)
+    } catch (err) {
+      setActionError(actionErrorMessage(err, command.errorFallback))
+      if (isRetryableActionError(err)) {
+        setRetryCommand(command)
       }
-    },
-    [setReportLoading],
-  )
+    }
+  }
 
-  const executeReject = useCallback(
-    async (payload: RejectReportPayload) => {
-      setReportLoading(payload.reportId, true)
-      try {
-        await withRetry(() => callables.rejectReport(payload))
-        setSelectedIds((current) => {
-          const next = new Set(current)
-          next.delete(payload.reportId)
-          return next
-        })
-      } finally {
-        setReportLoading(payload.reportId, false)
-      }
-    },
-    [setReportLoading],
-  )
+  const openRejectConfirmation = (reportIds: string[], scope: PendingRejection['scope']) => {
+    if (reportIds.length === 0) return
+    setActionError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    setPendingRejection({
+      reportIds,
+      reason: 'insufficient_detail',
+      note: '',
+      scope,
+    })
+  }
 
-  const buildVerifyCommand = useCallback(
-    (reportId: string): FailedTriageCommand => {
-      const report = sortedReports.find((item) => item.id === reportId)
-      return {
-        kind: 'verify',
-        payload: { reportId, idempotencyKey: crypto.randomUUID() },
-        successMessage: report?.status === 'new' ? 'Report sent to review' : 'Report verified',
-        errorFallback: 'Report verification failed',
-      }
-    },
-    [sortedReports],
-  )
+  const handleReject = (reportId: string) => {
+    openRejectConfirmation([reportId], 'single')
+  }
 
-  const buildRejectCommand = useCallback(
-    (reportId: string, reason: RejectionReason, note: string): FailedTriageCommand => ({
-      kind: 'reject',
-      payload: {
-        reportId,
-        reason,
-        ...(note ? { notes: note } : {}),
-        idempotencyKey: crypto.randomUUID(),
-      },
-      successMessage: 'Report rejected',
-      errorFallback: 'Report rejection failed',
-    }),
-    [],
-  )
-
-  const executeCommand = useCallback(
-    async (command: FailedTriageCommand) => {
-      if (command.kind === 'verify') {
-        await executeVerify(command.payload)
-        return
-      }
-      await executeReject(command.payload)
-    },
-    [executeReject, executeVerify],
-  )
-
-  const handleVerify = useCallback(
-    async (reportId: string) => {
-      const command = buildVerifyCommand(reportId)
-      setActionError(null)
-      setSuccessMessage(null)
-      setRetryCommand(null)
-      try {
-        await executeCommand(command)
-        setSuccessMessage(command.successMessage)
-      } catch (err) {
-        setActionError(actionErrorMessage(err, command.errorFallback))
-        if (isRetryableActionError(err)) {
-          setRetryCommand(command)
-        }
-      }
-    },
-    [buildVerifyCommand, executeCommand],
-  )
-
-  const openRejectConfirmation = useCallback(
-    (reportIds: string[], scope: PendingRejection['scope']) => {
-      if (reportIds.length === 0) return
-      setActionError(null)
-      setSuccessMessage(null)
-      setRetryCommand(null)
-      setPendingRejection({
-        reportIds,
-        reason: 'insufficient_detail',
-        note: '',
-        scope,
-      })
-    },
-    [],
-  )
-
-  const handleReject = useCallback(
-    (reportId: string) => {
-      openRejectConfirmation([reportId], 'single')
-    },
-    [openRejectConfirmation],
-  )
-
-  const handleToggleSelect = useCallback((reportId: string) => {
+  const handleToggleSelect = (reportId: string) => {
     setSelectedIds((current) => {
       const next = new Set(current)
       if (next.has(reportId)) next.delete(reportId)
       else next.add(reportId)
       return next
     })
-  }, [])
+  }
 
-  const handleSelectAll = useCallback(() => {
+  const handleSelectAll = () => {
     setSelectedIds((current) => {
       if (current.size === sortedReports.length) return new Set()
       return new Set(sortedReports.map((report) => report.id))
     })
-  }, [sortedReports])
+  }
 
   const selectedReports = useMemo(
     () => sortedReports.filter((r) => selectedIds.has(r.id)),
@@ -439,54 +401,48 @@ export default function TriagePage() {
     [selectedReports],
   )
 
-  const handleBulkVerify = useCallback(
-    async (ids: Set<string>) => {
-      const eligibleIds = Array.from(ids).filter((id) => {
-        const report = sortedReports.find((r) => r.id === id)
-        return report && (report.status === 'new' || report.status === 'awaiting_verify')
-      })
-      if (eligibleIds.length === 0) return
-      setBulkLoading(true)
-      setActionError(null)
-      setSuccessMessage(null)
-      setRetryCommand(null)
-      const errors: string[] = []
-      for (const reportId of eligibleIds) {
-        const command = buildVerifyCommand(reportId)
-        try {
-          await executeCommand(command)
-        } catch (err) {
-          errors.push(actionErrorMessage(err, `Failed to verify ${reportId}`))
-        }
+  const handleBulkVerify = async (ids: Set<string>) => {
+    const eligibleIds = Array.from(ids).filter((id) => {
+      const report = sortedReports.find((r) => r.id === id)
+      return report && (report.status === 'new' || report.status === 'awaiting_verify')
+    })
+    if (eligibleIds.length === 0) return
+    setBulkLoading(true)
+    setActionError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    const errors: string[] = []
+    for (const reportId of eligibleIds) {
+      const command = buildVerifyCommand(reportId)
+      try {
+        await executeCommand(command)
+      } catch (err) {
+        errors.push(actionErrorMessage(err, `Failed to verify ${reportId}`))
       }
-      if (errors.length > 0) {
-        setActionError(
-          `Bulk verify completed with ${String(errors.length)} error(s): ${errors.join('; ')}`,
-        )
-      } else {
-        setSuccessMessage(`${String(eligibleIds.length)} report(s) verified`)
-      }
-      setBulkLoading(false)
-    },
-    [buildVerifyCommand, executeCommand, sortedReports],
-  )
+    }
+    if (errors.length > 0) {
+      setActionError(
+        `Bulk verify completed with ${String(errors.length)} error(s): ${errors.join('; ')}`,
+      )
+    } else {
+      setSuccessMessage(`${String(eligibleIds.length)} report(s) verified`)
+    }
+    setBulkLoading(false)
+  }
 
-  const handleBulkReject = useCallback(
-    (ids: Set<string>) => {
-      const eligibleIds = Array.from(ids).filter((id) => {
-        const report = sortedReports.find((r) => r.id === id)
-        return report?.status === 'awaiting_verify'
-      })
-      if (eligibleIds.length === 0) return
-      setActionError(null)
-      setSuccessMessage(null)
-      setRetryCommand(null)
-      openRejectConfirmation(eligibleIds, 'bulk')
-    },
-    [openRejectConfirmation, sortedReports],
-  )
+  const handleBulkReject = (ids: Set<string>) => {
+    const eligibleIds = Array.from(ids).filter((id) => {
+      const report = sortedReports.find((r) => r.id === id)
+      return report?.status === 'awaiting_verify'
+    })
+    if (eligibleIds.length === 0) return
+    setActionError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    openRejectConfirmation(eligibleIds, 'bulk')
+  }
 
-  const handleConfirmReject = useCallback(async () => {
+  const handleConfirmReject = async () => {
     const pending = pendingRejection
     if (!pending) return
 
@@ -532,9 +488,9 @@ export default function TriagePage() {
       setSuccessMessage(`${String(commands.length)} report(s) rejected`)
     }
     setBulkLoading(false)
-  }, [buildRejectCommand, executeCommand, pendingRejection])
+  }
 
-  const handleRetryAction = useCallback(async () => {
+  const handleRetryAction = async () => {
     const command = retryCommand
     if (!command) return
 
@@ -555,9 +511,9 @@ export default function TriagePage() {
     } finally {
       setRetryingAction(false)
     }
-  }, [executeCommand, retryCommand])
+  }
 
-  const openMergeConfirmation = useCallback(() => {
+  const openMergeConfirmation = () => {
     if (!canManageLifecycle || merging) return
     const ids = selectedReports.map((report) => report.id)
     if (ids.length < 2) return
@@ -566,9 +522,9 @@ export default function TriagePage() {
     setRetryCommand(null)
     // ponytail: primary defaults to the first selected row; operator repicks in the modal.
     setPendingMerge({ primaryId: ids[0] ?? '', ids })
-  }, [canManageLifecycle, merging, selectedReports])
+  }
 
-  const handleConfirmMerge = useCallback(async () => {
+  const handleConfirmMerge = async () => {
     const pending = pendingMerge
     if (!pending) return
     const duplicateReportIds = pending.ids.filter((id) => id !== pending.primaryId)
@@ -597,57 +553,54 @@ export default function TriagePage() {
       setPendingMerge(null)
       setMerging(false)
     }
-  }, [clearSelection, pendingMerge])
+  }
 
-  const openLifecycle = useCallback(
-    (kind: 'close' | 'reopen', reportId: string) => {
-      if (!canManageLifecycle) return
-      setActionError(null)
-      setSuccessMessage(null)
-      setRetryCommand(null)
-      setPendingLifecycle({ kind, reportId, text: '' })
-    },
-    [canManageLifecycle],
-  )
+  const openLifecycle = (kind: 'close' | 'reopen', reportId: string) => {
+    if (!canManageLifecycle) return
+    setActionError(null)
+    setSuccessMessage(null)
+    setRetryCommand(null)
+    setPendingLifecycle({ kind, reportId, text: '' })
+  }
 
-  const handleConfirmLifecycle = useCallback(async () => {
+  const handleConfirmLifecycle = async () => {
     const pending = pendingLifecycle
     if (!pending) return
     const text = pending.text.trim()
     if (pending.kind === 'reopen' && !text) return
     setPendingLifecycle(null)
     setLifecycleBusy(true)
-    setReportLoading(pending.reportId, true)
     setActionError(null)
     setSuccessMessage(null)
     const idempotencyKey = crypto.randomUUID()
     try {
-      if (pending.kind === 'close') {
-        await withRetry(() =>
-          callables.closeReport({
-            reportId: pending.reportId,
-            idempotencyKey,
-            ...(text ? { closureSummary: text } : {}),
-          }),
-        )
-        setSuccessMessage('Report closed')
-      } else {
-        await withRetry(() =>
-          callables.reopenReport({
-            reportId: pending.reportId,
-            reason: text,
-            idempotencyKey,
-          }),
-        )
-        setSuccessMessage('Report reopened')
-      }
+      await whileLoading(pending.reportId, async () => {
+        if (pending.kind === 'close') {
+          await withRetry(() =>
+            callables.closeReport({
+              reportId: pending.reportId,
+              idempotencyKey,
+              ...(text ? { closureSummary: text } : {}),
+            }),
+          )
+          setSuccessMessage('Report closed')
+        } else {
+          await withRetry(() =>
+            callables.reopenReport({
+              reportId: pending.reportId,
+              reason: text,
+              idempotencyKey,
+            }),
+          )
+          setSuccessMessage('Report reopened')
+        }
+      })
     } catch (err) {
       setActionError(actionErrorMessage(err, 'Report lifecycle action failed'))
     } finally {
-      setReportLoading(pending.reportId, false)
       setLifecycleBusy(false)
     }
-  }, [pendingLifecycle, setReportLoading])
+  }
 
   const pendingRejectionCount = pendingRejection?.reportIds.length ?? 0
   const pendingRejectionCountLabel = reportCountLabel(pendingRejectionCount)
@@ -657,14 +610,11 @@ export default function TriagePage() {
     ? `Reject ${pendingRejectionCountLabel}`
     : 'Reject report'
 
-  const handleRowClick = useCallback(
-    (report: Report) => {
-      if (report.status === 'verified') {
-        void navigate(`/map?reportId=${report.id}`)
-      }
-    },
-    [navigate],
-  )
+  const handleRowClick = (report: Report) => {
+    if (report.status === 'verified') {
+      void navigate(`/map?reportId=${report.id}`)
+    }
+  }
 
   if (loading) return <PageSkeleton variant="dashboard" />
 
