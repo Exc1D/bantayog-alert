@@ -1,61 +1,30 @@
-/**
- * Returns the CORS origin allowlist for admin-facing callable functions.
- *
- * These origins must match every environment where the admin-desktop app
- * is served: local Vite dev server, Firebase Hosting staging, and
- * Firebase Hosting production.
- *
- * Localhost origins are only included when FUNCTIONS_EMULATOR=true or
- * NODE_ENV=development. Production deploys must NOT include localhost.
- */
-export function getAdminCallableCorsOrigins(): string[] {
+// CORS origin allowlists for callable functions, one per client app. Each must
+// match every environment that app is served from. Localhost is only added
+// when FUNCTIONS_EMULATOR=true or NODE_ENV=development; production deploys
+// must NOT include it.
+function corsOrigins(devOrigin: string, hosted: string[]): string[] {
   const isDev = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.NODE_ENV === 'development'
-  const base = [
+  return isDev ? [devOrigin, ...hosted] : hosted
+}
+
+export const getAdminCallableCorsOrigins = (): string[] =>
+  corsOrigins('http://localhost:5175', [
     'https://bantayog-alert-staging.web.app',
     'https://bantayogalert-staging.web.app',
     'https://bantayog-alert.web.app',
-  ]
-  if (isDev) {
-    return ['http://localhost:5175', ...base]
-  }
-  return base
-}
+  ])
 
-/**
- * Returns the CORS origin allowlist for citizen-facing callable functions.
- *
- * Localhost origins are only included when FUNCTIONS_EMULATOR=true or
- * NODE_ENV=development.
- */
-export function getCitizenCallableCorsOrigins(): string[] {
-  const isDev = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.NODE_ENV === 'development'
-  const base = [
+export const getCitizenCallableCorsOrigins = (): string[] =>
+  corsOrigins('http://localhost:5173', [
     'https://bantayog-citizen-staging.web.app',
     'https://bantayogalert-citizen-stg.web.app',
     'https://bantayog-citizen-dev.web.app',
     'https://bantayog-citizen.web.app',
-  ]
-  if (isDev) {
-    return ['http://localhost:5173', ...base]
-  }
-  return base
-}
+  ])
 
-/**
- * Returns the CORS origin allowlist for responder-facing callable functions.
- *
- * Localhost origins are only included when FUNCTIONS_EMULATOR=true or
- * NODE_ENV=development.
- */
-export function getResponderCallableCorsOrigins(): string[] {
-  const isDev = process.env.FUNCTIONS_EMULATOR === 'true' || process.env.NODE_ENV === 'development'
-  const base = [
+export const getResponderCallableCorsOrigins = (): string[] =>
+  corsOrigins('http://localhost:5174', [
     'https://bantayog-responder-staging.web.app',
     'https://bantayogalert-responder-stg.web.app',
     'https://bantayog-responder.web.app',
-  ]
-  if (isDev) {
-    return ['http://localhost:5174', ...base]
-  }
-  return base
-}
+  ])
