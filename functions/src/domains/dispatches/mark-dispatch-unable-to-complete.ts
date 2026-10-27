@@ -12,6 +12,7 @@ import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { readActiveAssignedDispatch } from './assigned-dispatch.js'
 
 export const markDispatchUnableToCompleteSchema = z
   .object({
@@ -53,30 +54,7 @@ export async function markDispatchUnableToCompleteCore(
       })
 
       return db.runTransaction(async (tx) => {
-        const dispatchRef = db.collection('dispatches').doc(dispatchId)
-        const dispatchSnap = await tx.get(dispatchRef)
-
-        if (!dispatchSnap.exists) {
-          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found')
-        }
-
-        const dispatch = dispatchSnap.data() as {
-          status: string
-          assignedTo?: { uid: string; agencyId: string; municipalityId: string }
-          reportId: string
-        }
-
-        if (dispatch.assignedTo?.uid !== actor.uid) {
-          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Not assigned to this dispatch')
-        }
-
-        const activeStates = ['accepted', 'acknowledged', 'en_route', 'on_scene']
-        if (!activeStates.includes(dispatch.status)) {
-          throw new BantayogError(
-            BantayogErrorCode.FAILED_PRECONDITION,
-            `Dispatch must be active (current: ${dispatch.status})`,
-          )
-        }
+        const dispatch = await readActiveAssignedDispatch(db, tx, dispatchId, actor.uid)
 
         const reportRef = db.collection('reports').doc(dispatch.reportId)
         const reportSnap = await tx.get(reportRef)
@@ -89,7 +67,7 @@ export async function markDispatchUnableToCompleteCore(
         const currentReportStatus = (reportSnap.data() as { status?: ReportStatus }).status
         const isReportTerminal = currentReportStatus && isTerminalReportStatus(currentReportStatus)
 
-        tx.update(dispatchRef, {
+        tx.update(db.collection('dispatches').doc(dispatchId), {
           status: 'unable_to_complete',
           unableToCompleteReason: reason,
           statusUpdatedAt: now.toMillis(),

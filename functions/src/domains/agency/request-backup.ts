@@ -1,12 +1,13 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
+import { BantayogError } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { readActiveAssignedDispatch } from '../dispatches/assigned-dispatch.js'
 
 export const requestBackupSchema = z
   .object({
@@ -48,30 +49,7 @@ export async function requestBackupCore(
       })
 
       return db.runTransaction(async (tx) => {
-        const dispatchRef = db.collection('dispatches').doc(dispatchId)
-        const dispatchSnap = await tx.get(dispatchRef)
-
-        if (!dispatchSnap.exists) {
-          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found')
-        }
-
-        const dispatch = dispatchSnap.data() as {
-          status: string
-          assignedTo?: { uid: string; agencyId: string; municipalityId: string }
-          reportId: string
-        }
-
-        if (dispatch.assignedTo?.uid !== actor.uid) {
-          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Not assigned to this dispatch')
-        }
-
-        const activeStates = ['accepted', 'acknowledged', 'en_route', 'on_scene']
-        if (!activeStates.includes(dispatch.status)) {
-          throw new BantayogError(
-            BantayogErrorCode.FAILED_PRECONDITION,
-            `Dispatch must be active (current: ${dispatch.status})`,
-          )
-        }
+        const dispatch = await readActiveAssignedDispatch(db, tx, dispatchId, actor.uid)
 
         const backupRequestRef = db.collection('backup_requests').doc()
         const backupRequestId = backupRequestRef.id
