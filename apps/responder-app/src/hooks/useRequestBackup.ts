@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { auth, functions } from '../app/firebase'
-import { awaitFreshAuthToken } from '../app/await-auth-token'
+import { functions } from '../app/firebase'
+import { useCallableAction } from './useCallableAction'
 
 interface RequestBackupRequest {
   dispatchId: string
@@ -10,43 +9,20 @@ interface RequestBackupRequest {
 }
 
 export function useRequestBackup(dispatchId: string) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | undefined>()
-  const keyRef = useRef(crypto.randomUUID())
-
-  useEffect(() => {
-    keyRef.current = crypto.randomUUID()
-  }, [dispatchId])
+  const { run, fail, loading, error } = useCallableAction('useRequestBackup', dispatchId)
 
   async function request(reason: string) {
     const trimmedReason = reason.trim()
-    if (!trimmedReason) {
-      const err = new Error('reason_required')
-      setError(err)
-      throw err
-    }
-    if (!dispatchId) {
-      const err = new Error('dispatch_id_required')
-      setError(err)
-      throw err
-    }
-    setLoading(true)
-    setError(undefined)
-    try {
-      const user = await awaitFreshAuthToken(auth)
-      if (!user) throw new Error('auth_required')
+    if (!trimmedReason) fail('reason_required')
+    if (!dispatchId) fail('dispatch_id_required')
+
+    await run(async ({ idempotencyKey }) => {
       const fn = httpsCallable<
         RequestBackupRequest,
         { status: 'requested'; backupRequestId: string }
       >(functions, 'requestBackup')
-      await fn({ dispatchId, reason: trimmedReason, idempotencyKey: keyRef.current })
-    } catch (err: unknown) {
-      const normalized = err instanceof Error ? err : new Error(String(err))
-      setError(normalized)
-      throw normalized
-    } finally {
-      setLoading(false)
-    }
+      await fn({ dispatchId, reason: trimmedReason, idempotencyKey })
+    })
   }
 
   return { request, loading, error }
