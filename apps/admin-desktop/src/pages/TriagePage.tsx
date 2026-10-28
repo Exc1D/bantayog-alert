@@ -5,21 +5,26 @@ import { OfflineBanner } from '../components/OfflineBanner'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { SuccessBanner } from '../components/SuccessBanner'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
-import { ConfirmationModal } from '../components/ConfirmationModal'
 import { PermissionDeniedState } from '../components/PermissionDeniedState'
 import { TriageQueueTable } from '../components/TriageQueueTable'
+import { TriageFilters, type TriageFilterValues } from '../components/TriageFilters'
+import {
+  LifecycleDialog,
+  MergeDialog,
+  RejectDialog,
+  type PendingLifecycle,
+  type PendingMerge,
+  type PendingRejection,
+} from '../components/TriageDialogs'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { usePendingIds } from '../hooks/usePendingIds'
 import { db } from '../app/firebase'
 import { callables } from '../services/callables'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
 import { withRetry } from '../utils/withRetry'
+import { buildTriageExportCsv, downloadCsv } from '../utils/triage-export'
 import { actionErrorMessage, isRetryableActionError } from '../utils/errorClassification'
-import {
-  REJECTION_REASONS,
-  isValidRejectionReason,
-  type RejectionReason,
-} from '../constants/report'
+import type { RejectionReason } from '../constants/report'
 import type { Report } from '../types'
 
 const TRIAGE_STATUSES = new Set(['new', 'awaiting_verify', 'verified', 'reopened'])
@@ -31,12 +36,13 @@ const STATUS_FILTERS = [
   { value: 'verified', label: 'Verified' },
   { value: 'reopened', label: 'Reopened' },
 ] as const
-const SEVERITY_FILTERS = [
-  { value: 'all', label: 'All severities' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' },
-] as const
+const DEFAULT_FILTERS: TriageFilterValues = {
+  status: 'all',
+  severity: 'all',
+  type: 'all',
+  search: '',
+}
+
 interface VerifyReportPayload {
   reportId: string
   idempotencyKey: string
@@ -63,13 +69,6 @@ type FailedTriageCommand =
       errorFallback: string
     }
 
-interface PendingRejection {
-  reportIds: string[]
-  reason: RejectionReason
-  note: string
-  scope: 'single' | 'bulk'
-}
-
 function isPermissionDeniedError(error: string | null): boolean {
   return ['unauthorized', 'permission-denied', 'permission_denied', 'denied'].includes(error ?? '')
 }
@@ -95,64 +94,6 @@ function reportMatchesSearch(report: Report, query: string): boolean {
   return haystack.includes(query)
 }
 
-function filterLabel(value: string): string {
-  return value
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
-function reportCountLabel(count: number): string {
-  return `${String(count)} report${count === 1 ? '' : 's'}`
-}
-
-function csvCell(value: string | number): string {
-  let text = String(value)
-  if (/^[=+\-@\t\r]/.test(text)) {
-    text = `'${text}`
-  }
-  if (!/[",\n\r]/.test(text)) return text
-  return `"${text.replaceAll('"', '""')}"`
-}
-
-export function buildTriageExportCsv(reports: readonly Report[]): string {
-  const rows = [
-    [
-      'reportId',
-      'type',
-      'severity',
-      'status',
-      'municipality',
-      'barangay',
-      'description',
-      'createdAt',
-    ],
-    ...reports.map((report) => [
-      report.id,
-      report.type,
-      report.severity,
-      report.status,
-      report.municipality,
-      report.barangay,
-      report.description,
-      report.createdAt,
-    ]),
-  ]
-  return rows.map((row) => row.map(csvCell).join(',')).join('\n')
-}
-
-function downloadCsv(filename: string, csv: string): void {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
-
 // fallow-ignore-next-line complexity
 export default function TriagePage() {
   const { signOut, claims } = useAuth()
@@ -173,24 +114,15 @@ export default function TriagePage() {
   const [loadingIds, whileLoading] = usePendingIds()
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [severityFilter, setSeverityFilter] = useState('all')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState<TriageFilterValues>(DEFAULT_FILTERS)
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
   const [pendingRejection, setPendingRejection] = useState<PendingRejection | null>(null)
   const [retryCommand, setRetryCommand] = useState<FailedTriageCommand | null>(null)
   const [retryingAction, setRetryingAction] = useState(false)
-  const [pendingMerge, setPendingMerge] = useState<{ primaryId: string; ids: string[] } | null>(
-    null,
-  )
+  const [pendingMerge, setPendingMerge] = useState<PendingMerge | null>(null)
   const [merging, setMerging] = useState(false)
-  const [pendingLifecycle, setPendingLifecycle] = useState<{
-    kind: 'close' | 'reopen'
-    reportId: string
-    text: string
-  } | null>(null)
+  const [pendingLifecycle, setPendingLifecycle] = useState<PendingLifecycle | null>(null)
   const [lifecycleBusy, setLifecycleBusy] = useState(false)
 
   const reports = useMemo<Report[]>(
@@ -220,15 +152,16 @@ export default function TriagePage() {
     [canManageLifecycle],
   )
   const filteredReports = useMemo<Report[]>(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase()
+    const { status, severity, type, search } = filters
+    const normalizedSearch = search.trim().toLowerCase()
     return reports.filter((report) => {
-      if (statusFilter === 'all' && LIFECYCLE_STATUSES.has(report.status)) return false
-      if (statusFilter !== 'all' && report.status !== statusFilter) return false
-      if (severityFilter !== 'all' && report.severity !== severityFilter) return false
-      if (typeFilter !== 'all' && report.type !== typeFilter) return false
+      if (status === 'all' && LIFECYCLE_STATUSES.has(report.status)) return false
+      if (status !== 'all' && report.status !== status) return false
+      if (severity !== 'all' && report.severity !== severity) return false
+      if (type !== 'all' && report.type !== type) return false
       return reportMatchesSearch(report, normalizedSearch)
     })
-  }, [reports, searchQuery, severityFilter, statusFilter, typeFilter])
+  }, [reports, filters])
   const sortedReports = useMemo<Report[]>(
     () => [...filteredReports].sort(sortTriageReports),
     [filteredReports],
@@ -236,12 +169,13 @@ export default function TriagePage() {
   const clearSelection = () => {
     setSelectedIds(new Set())
   }
-  const clearFilters = () => {
-    setStatusFilter('all')
-    setSeverityFilter('all')
-    setTypeFilter('all')
-    setSearchQuery('')
+  // Any filter change invalidates the selection: hidden rows must not stay selected.
+  const updateFilters = (patch: Partial<TriageFilterValues>) => {
+    setFilters((current) => ({ ...current, ...patch }))
     clearSelection()
+  }
+  const clearFilters = () => {
+    updateFilters(DEFAULT_FILTERS)
   }
   const handleExportCsv = () => {
     const date = new Date().toISOString().slice(0, 10)
@@ -282,24 +216,6 @@ export default function TriagePage() {
   const staleMinutes = Math.round(staleAgeMs / 60000)
   const isPermissionDenied = isPermissionDeniedError(error)
 
-  const executeVerify = async (payload: VerifyReportPayload) => {
-    await whileLoading(payload.reportId, () => withRetry(() => callables.verifyReport(payload)))
-    setSelectedIds((current) => {
-      const next = new Set(current)
-      next.delete(payload.reportId)
-      return next
-    })
-  }
-
-  const executeReject = async (payload: RejectReportPayload) => {
-    await whileLoading(payload.reportId, () => withRetry(() => callables.rejectReport(payload)))
-    setSelectedIds((current) => {
-      const next = new Set(current)
-      next.delete(payload.reportId)
-      return next
-    })
-  }
-
   const buildVerifyCommand = (reportId: string): FailedTriageCommand => {
     const report = sortedReports.find((item) => item.id === reportId)
     return {
@@ -327,11 +243,19 @@ export default function TriagePage() {
   })
 
   const executeCommand = async (command: FailedTriageCommand) => {
-    if (command.kind === 'verify') {
-      await executeVerify(command.payload)
-      return
-    }
-    await executeReject(command.payload)
+    const { reportId } = command.payload
+    await whileLoading(reportId, () =>
+      withRetry(() =>
+        command.kind === 'verify'
+          ? callables.verifyReport(command.payload)
+          : callables.rejectReport(command.payload),
+      ),
+    )
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      next.delete(reportId)
+      return next
+    })
   }
 
   const handleVerify = async (reportId: string) => {
@@ -602,14 +526,6 @@ export default function TriagePage() {
     }
   }
 
-  const pendingRejectionCount = pendingRejection?.reportIds.length ?? 0
-  const pendingRejectionCountLabel = reportCountLabel(pendingRejectionCount)
-  const isBulkRejection = pendingRejection?.scope === 'bulk'
-  const pendingRejectionTitle = isBulkRejection ? 'Reject selected reports?' : 'Reject report?'
-  const pendingRejectionConfirmLabel = isBulkRejection
-    ? `Reject ${pendingRejectionCountLabel}`
-    : 'Reject report'
-
   const handleRowClick = (report: Report) => {
     if (report.status === 'verified') {
       void navigate(`/map?reportId=${report.id}`)
@@ -677,86 +593,13 @@ export default function TriagePage() {
                 </div>
               </div>
             </section>
-            <section
-              aria-label="Triage filters"
-              className="grid gap-3 rounded border border-white/10 bg-[var(--color-surface-elevated)] p-4 md:grid-cols-6"
-            >
-              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-                Status filter
-                <select
-                  value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(event.target.value)
-                    clearSelection()
-                  }}
-                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                >
-                  {statusFilterOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-                Severity filter
-                <select
-                  value={severityFilter}
-                  onChange={(event) => {
-                    setSeverityFilter(event.target.value)
-                    clearSelection()
-                  }}
-                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                >
-                  {SEVERITY_FILTERS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-                Type filter
-                <select
-                  value={typeFilter}
-                  onChange={(event) => {
-                    setTypeFilter(event.target.value)
-                    clearSelection()
-                  }}
-                  className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                >
-                  <option value="all">All types</option>
-                  {typeOptions.map((type) => (
-                    <option key={type} value={type}>
-                      {filterLabel(type)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="text-xs font-semibold uppercase text-[var(--color-text-muted)] md:col-span-2">
-                <label htmlFor="triage-search">Search triage reports</label>
-                <div className="mt-1 flex gap-2">
-                  <input
-                    id="triage-search"
-                    type="search"
-                    value={searchQuery}
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value)
-                      clearSelection()
-                    }}
-                    className="min-w-0 flex-1 rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-                    placeholder="Search summary, place, type, or report ID"
-                  />
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="rounded border border-white/10 px-3 py-2 text-sm font-medium normal-case text-[var(--color-text-secondary)] hover:bg-white/10"
-                  >
-                    Clear filters
-                  </button>
-                </div>
-              </div>
-            </section>
+            <TriageFilters
+              values={filters}
+              statusOptions={statusFilterOptions}
+              typeOptions={typeOptions}
+              onChange={updateFilters}
+              onClear={clearFilters}
+            />
             {successMessage && (
               <SuccessBanner
                 message={successMessage}
@@ -826,138 +669,45 @@ export default function TriagePage() {
           </div>
         )}
       </main>
-      <ConfirmationModal
-        open={pendingRejection !== null}
-        title={pendingRejectionTitle}
-        message="Rejecting keeps the report out of active triage while preserving the audit trail."
-        confirmLabel={pendingRejectionConfirmLabel}
-        confirmVariant="danger"
+      <RejectDialog
+        pending={pendingRejection}
+        onChange={(patch) => {
+          setPendingRejection((current) => (current ? { ...current, ...patch } : current))
+        }}
         onConfirm={() => {
           void handleConfirmReject()
         }}
         onCancel={() => {
           setPendingRejection(null)
         }}
-      >
-        <div className="mt-4 grid gap-3 rounded border border-white/10 bg-white/[0.03] p-3 text-sm">
-          <div className="flex items-start justify-between gap-3">
-            <span className="text-[var(--color-text-secondary)]">Reports</span>
-            <span className="font-medium text-[var(--color-text-primary)]">
-              {pendingRejectionCountLabel}
-            </span>
-          </div>
-          <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-            Rejection reason
-            <select
-              aria-label="Rejection reason"
-              value={pendingRejection?.reason ?? 'insufficient_detail'}
-              onChange={(event) => {
-                const value = event.target.value
-                if (!isValidRejectionReason(value)) return
-                setPendingRejection((current) =>
-                  current ? { ...current, reason: value } : current,
-                )
-              }}
-              className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-            >
-              {REJECTION_REASONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-            Admin note
-            <textarea
-              aria-label="Admin note"
-              value={pendingRejection?.note ?? ''}
-              onChange={(event) => {
-                const note = event.target.value
-                setPendingRejection((current) => (current ? { ...current, note } : current))
-              }}
-              maxLength={500}
-              rows={3}
-              className="mt-1 w-full resize-y rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-              placeholder="Optional context saved with rejected reports"
-            />
-          </label>
-        </div>
-      </ConfirmationModal>
-      <ConfirmationModal
-        open={pendingMerge !== null}
-        title="Merge duplicate reports?"
-        message="The primary report is kept; the others are marked as duplicates and removed from active triage."
-        confirmLabel="Merge duplicates"
-        confirmVariant="primary"
-        confirmLoading={merging}
+      />
+      <MergeDialog
+        pending={pendingMerge}
+        reports={reports}
+        merging={merging}
+        onPrimaryChange={(primaryId) => {
+          setPendingMerge((current) => (current ? { ...current, primaryId } : current))
+        }}
         onConfirm={() => {
           void handleConfirmMerge()
         }}
         onCancel={() => {
           setPendingMerge(null)
         }}
-      >
-        <label className="mt-4 block text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-          Primary report (kept)
-          <select
-            aria-label="Primary report"
-            value={pendingMerge?.primaryId ?? ''}
-            onChange={(event) => {
-              const value = event.target.value
-              setPendingMerge((current) => (current ? { ...current, primaryId: value } : current))
-            }}
-            className="mt-1 w-full rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-          >
-            {pendingMerge?.ids.map((id) => {
-              const report = reports.find((candidate) => candidate.id === id)
-              return (
-                <option key={id} value={id}>
-                  {report ? `${report.description} · ${report.municipality} · ${id}` : id}
-                </option>
-              )
-            })}
-          </select>
-        </label>
-      </ConfirmationModal>
-      <ConfirmationModal
-        open={pendingLifecycle !== null}
-        title={pendingLifecycle?.kind === 'reopen' ? 'Reopen report?' : 'Close report?'}
-        message={
-          pendingLifecycle?.kind === 'reopen'
-            ? 'Reopening returns the report to active handling. A reason is required.'
-            : 'Closing archives a resolved report. You can add an optional closure summary.'
-        }
-        confirmLabel={pendingLifecycle?.kind === 'reopen' ? 'Reopen report' : 'Close report'}
-        confirmVariant={pendingLifecycle?.kind === 'reopen' ? 'primary' : 'danger'}
-        confirmLoading={lifecycleBusy}
+      />
+      <LifecycleDialog
+        pending={pendingLifecycle}
+        busy={lifecycleBusy}
+        onTextChange={(text) => {
+          setPendingLifecycle((current) => (current ? { ...current, text } : current))
+        }}
         onConfirm={() => {
           void handleConfirmLifecycle()
         }}
         onCancel={() => {
           setPendingLifecycle(null)
         }}
-      >
-        <label className="mt-4 block text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-          {pendingLifecycle?.kind === 'reopen' ? 'Reopen reason' : 'Closure summary'}
-          <textarea
-            aria-label={pendingLifecycle?.kind === 'reopen' ? 'Reopen reason' : 'Closure summary'}
-            value={pendingLifecycle?.text ?? ''}
-            onChange={(event) => {
-              const text = event.target.value
-              setPendingLifecycle((current) => (current ? { ...current, text } : current))
-            }}
-            maxLength={pendingLifecycle?.kind === 'reopen' ? 500 : 2000}
-            rows={3}
-            className="mt-1 w-full resize-y rounded border border-white/10 bg-[var(--color-surface)] px-3 py-2 text-sm normal-case text-[var(--color-text-primary)]"
-            placeholder={
-              pendingLifecycle?.kind === 'reopen'
-                ? 'A reason is required to reopen this report'
-                : 'Optional summary saved with the closed report'
-            }
-          />
-        </label>
-      </ConfirmationModal>
+      />
     </div>
   )
 }
