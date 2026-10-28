@@ -32,8 +32,6 @@
     "@bantayog/shared-validators": "workspace:*",
     "@google-cloud/bigquery": "^7.9.2",
     "@google-cloud/logging": "^11.2.2",
-    "@turf/boolean-point-in-polygon": "^7.3.5",
-    "@turf/buffer": "^7.3.5",
     "@turf/distance": "^7.3.5",
     "@turf/helpers": "^7.3.5",
     "file-type": "^22.0.1",

@@ -33,7 +33,6 @@ export {
   revokeResponder,
   bulkAvailabilityOverride,
 } from './domains/users/responder-roster.js'
-export { borderAutoShareTrigger } from './domains/reports/border-auto-share.js'
 export { duplicateClusterTrigger } from './domains/reports/duplicate-cluster-trigger.js'
 export { mergeDuplicates } from './domains/reports/merge-duplicates.js'
 
@@ -121,8 +120,6 @@ export { inboxReconciliationSweep } from './domains/reports/inbox-reconciliation
 export { dispatchMirrorToReport } from './domains/reports/dispatch-mirror-to-report.js'
 export { adminOperationsSweep } from './domains/ops/admin-operations-sweep.js'
 export { projectResponderLocations } from './domains/ops/project-responder-locations.js'
-export { analyticsSnapshotWriter } from './domains/ops/analytics-snapshot-writer.js'
-export { costSnapshotWriter } from './domains/ops/cost-snapshot-writer.js'
 export { auditExportBatch } from './domains/ops/audit-export-batch.js'
 export { auditExportHealthCheck } from './domains/ops/audit-export-health-check.js'
 export { situationFlagCounter } from './domains/ops/situation-flag-counter.js'
