@@ -264,8 +264,8 @@ describe('reportDocSchema Phase 3 deltas', () => {
         expect(() => reportDocSchema.parse(validBase)).not.toThrow();
     });
     it('rejects a missing municipalityLabel', () => {
-        const { municipalityLabel, ...rest } = validBase;
-        void municipalityLabel;
+        const rest = { ...validBase };
+        delete rest.municipalityLabel;
         expect(() => reportDocSchema.parse(rest)).toThrow();
     });
     it('rejects a non-UUID correlationId', () => {

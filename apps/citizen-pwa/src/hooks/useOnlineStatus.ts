@@ -34,8 +34,7 @@ export function useOnlineStatus() {
         signal: controller.signal,
       })
       setProbeOnline(true)
-    } catch (_err: unknown) {
-      void _err
+    } catch {
       setProbeOnline(false)
     } finally {
       clearTimeout(timeoutId)
