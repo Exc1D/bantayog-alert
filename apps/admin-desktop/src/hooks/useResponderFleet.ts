@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react'
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  type Firestore,
-  type Query,
-} from 'firebase/firestore'
+import { collection, onSnapshot, query, where, orderBy, type Firestore } from 'firebase/firestore'
 import { useAuth } from '@bantayog/shared-ui'
+import { isAuthorized, scopeQuery, snapshotError } from './admin-scope'
 
 export interface ResponderFleetMember {
   uid: string
@@ -32,43 +25,11 @@ interface ResponderDoc {
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 const THIRTY_MINUTES_MS = 30 * 60 * 1000
-const ALLOWED_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
-
 function deriveOnlineStatus(lastSeenAt: number): ResponderFleetMember['onlineStatus'] {
   const elapsed = Date.now() - lastSeenAt
   if (elapsed < FIVE_MINUTES_MS) return 'online'
   if (elapsed < THIRTY_MINUTES_MS) return 'away'
   return 'offline'
-}
-
-function isAuthorized(
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-): boolean {
-  if (!ALLOWED_ROLES.has(role ?? '')) return false
-  if (role === 'municipal_admin' && !municipalityId) return false
-  if (role === 'agency_admin' && !agencyId) return false
-  return true
-}
-
-function scopeQuery(
-  base: Query,
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-): Query {
-  if (role === 'municipal_admin' && municipalityId) {
-    return query(base, where('municipalityId', '==', municipalityId))
-  }
-  if (role === 'agency_admin' && agencyId) {
-    return query(base, where('agencyId', '==', agencyId))
-  }
-  return base
-}
-
-function snapshotError(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
 }
 
 export function useResponderFleet(db: Firestore) {

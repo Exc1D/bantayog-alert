@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { auth, functions } from '../app/firebase'
-import { awaitFreshAuthToken } from '../app/await-auth-token'
+import { functions } from '../app/firebase'
+import { useCallableAction } from './useCallableAction'
 
 interface DeclineDispatchRequest {
   dispatchId: string
@@ -10,44 +9,19 @@ interface DeclineDispatchRequest {
 }
 
 export function useDeclineDispatch(dispatchId: string) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | undefined>()
-  const keyRef = useRef(crypto.randomUUID())
-
-  useEffect(() => {
-    keyRef.current = crypto.randomUUID()
-  }, [dispatchId])
+  const { run, fail, loading, error } = useCallableAction('useDeclineDispatch', dispatchId)
 
   async function decline(declineReason: string) {
     const trimmedReason = declineReason.trim()
-    if (!trimmedReason) {
-      const error = new Error('declineReason_required')
-      setError(error)
-      throw error
-    }
+    if (!trimmedReason) fail('declineReason_required')
 
-    setLoading(true)
-    setError(undefined)
-    try {
-      const user = await awaitFreshAuthToken(auth)
-      if (!user) throw new Error('auth_required')
+    await run(async ({ idempotencyKey }) => {
       const fn = httpsCallable<DeclineDispatchRequest, { status: string }>(
         functions,
         'declineDispatch',
       )
-      await fn({
-        dispatchId,
-        declineReason: trimmedReason,
-        idempotencyKey: keyRef.current,
-      })
-    } catch (err: unknown) {
-      console.error('[useDeclineDispatch] decline failed:', err)
-      const normalized = err instanceof Error ? err : new Error(String(err))
-      setError(normalized)
-      throw normalized
-    } finally {
-      setLoading(false)
-    }
+      await fn({ dispatchId, declineReason: trimmedReason, idempotencyKey })
+    })
   }
 
   return { decline, loading, error }

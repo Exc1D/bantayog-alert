@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 
 const payloadSchema = z.union([
@@ -130,15 +130,12 @@ export const requestLookup = onCall(
   },
   async (request) => {
     const rlKey = request.auth?.uid ?? `anon:${request.rawRequest.ip ?? 'unknown'}`
-    const rl = await checkRateLimit(getFirestore(), {
+    await enforceRateLimit(getFirestore(), {
       key: `requestLookup:${rlKey}`,
       limit: 30,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit exceeded')
-    }
     try {
       return await requestLookupImpl({
         db: getFirestore(),

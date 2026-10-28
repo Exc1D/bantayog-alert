@@ -3,7 +3,7 @@ import { Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import { adminDb } from '../../admin-init.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 
 // Mirrors the retired validSituationUpdate() client-write rule; direct
@@ -82,15 +82,16 @@ export const createSituationUpdate = onCall(
       throw new HttpsError('invalid-argument', 'Invalid situation update payload.')
     }
 
-    const rl = await checkRateLimit(adminDb, {
-      key: `createSituationUpdate:${request.auth.uid}`,
-      limit: 5,
-      windowSeconds: 600,
-      now: Timestamp.now(),
-    })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'Too many posts. Try again in a few minutes.')
-    }
+    await enforceRateLimit(
+      adminDb,
+      {
+        key: `createSituationUpdate:${request.auth.uid}`,
+        limit: 5,
+        windowSeconds: 600,
+        now: Timestamp.now(),
+      },
+      'Too many posts. Try again in a few minutes.',
+    )
 
     return createSituationUpdateCore(adminDb, {
       uid: request.auth.uid,

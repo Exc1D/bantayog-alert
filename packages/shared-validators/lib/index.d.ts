@@ -21,8 +21,6 @@ export { hazardZoneDocSchema, hazardZoneHistoryDocSchema } from './hazard.js';
 export type { HazardZoneDoc, HazardZoneHistoryDoc } from './hazard.js';
 export { moderationIncidentDocSchema } from './moderation.js';
 export type { ModerationIncidentDoc } from './moderation.js';
-export { rateLimitDocSchema } from './rate-limits.js';
-export type { RateLimitDoc } from './rate-limits.js';
 export { idempotencyKeyDocSchema } from './idempotency-keys.js';
 export type { IdempotencyKeyDoc } from './idempotency-keys.js';
 export { deadLetterDocSchema } from './dead-letters.js';
@@ -35,7 +33,7 @@ export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js'
 export type { BarangayEntry } from './barangays.js';
 export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, CANCELLABLE_DISPATCH_STATUSES, isValidDispatchTransition, } from './state-machines/index.js';
 export type { ReportStatus, DispatchStatus } from './state-machines/index.js';
-export { BantayogErrorCode, isBantayogErrorCode, isTerminalReportStatus, isTerminalDispatchStatus, BantayogError, notFoundError, invalidTransitionError, } from './errors.js';
+export { BantayogErrorCode, isTerminalReportStatus, BantayogError, invalidTransitionError, } from './errors.js';
 export { logEvent, logDimension, LOG_DIMENSION_MAX } from './logging.js';
 export type { LogEntry, LogSeverity } from './logging.js';
 //# sourceMappingURL=index.d.ts.map

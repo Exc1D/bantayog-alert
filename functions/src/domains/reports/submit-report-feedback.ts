@@ -11,7 +11,7 @@ import { isAccountActive } from '../ops/admin-auth.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 
 export interface SubmitReportFeedbackCoreDeps {
   reportId: string
@@ -119,17 +119,12 @@ export const submitReportFeedback = onCall(
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 
     const now = Timestamp.now()
-    const rateLimit = await checkRateLimit(adminDb, {
+    await enforceRateLimit(adminDb, {
       key: `submitReportFeedback:${request.auth.uid}`,
       limit: 30,
       windowSeconds: 60,
       now,
     })
-    if (!rateLimit.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit exceeded', {
-        retryAfterSeconds: rateLimit.retryAfterSeconds,
-      })
-    }
 
     try {
       return await submitReportFeedbackCore(adminDb, {

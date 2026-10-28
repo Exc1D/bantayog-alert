@@ -281,7 +281,7 @@ describe('acceptDispatchCore', () => {
             actor: { uid: 'responder-rate-limit' },
             now: Timestamp.now(),
           }),
-        ).rejects.toMatchObject({ code: 'RATE_LIMITED' })
+        ).rejects.toMatchObject({ code: 'resource-exhausted' })
       })
     },
   )

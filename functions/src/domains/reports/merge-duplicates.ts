@@ -10,7 +10,7 @@ import {
   IdempotencyInProgressError,
   IdempotencyMismatchError,
 } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import {
   buildMergeDuplicateReportUpdate,
@@ -216,17 +216,12 @@ export const mergeDuplicates = onCall(
     const parsed = inputSchema.safeParse(req.data)
     if (!parsed.success) throw new HttpsError('invalid-argument', 'malformed payload')
 
-    const rl = await checkRateLimit(adminDb, {
+    await enforceRateLimit(adminDb, {
       key: `mergeDuplicates:${req.auth.uid}`,
       limit: 60,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit', {
-        retryAfterSeconds: rl.retryAfterSeconds,
-      })
-    }
 
     try {
       const correlationId = crypto.randomUUID()

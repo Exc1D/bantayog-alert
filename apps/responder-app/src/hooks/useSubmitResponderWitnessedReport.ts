@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { auth, functions } from '../app/firebase'
-import { awaitFreshAuthToken } from '../app/await-auth-token'
+import { functions } from '../app/firebase'
+import { useCallableAction } from './useCallableAction'
 
 interface SubmitResponderWitnessedReportRequest {
   dispatchId: string
@@ -14,13 +13,10 @@ interface SubmitResponderWitnessedReportRequest {
 }
 
 export function useSubmitResponderWitnessedReport(dispatchId: string) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | undefined>()
-  const keyRef = useRef(crypto.randomUUID())
-
-  useEffect(() => {
-    keyRef.current = crypto.randomUUID()
-  }, [dispatchId])
+  const { run, fail, loading, error } = useCallableAction(
+    'useSubmitResponderWitnessedReport',
+    dispatchId,
+  )
 
   async function submit(payload: {
     reportType: string
@@ -30,9 +26,7 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
   }) {
     const normalizedDispatchId = dispatchId.trim()
     if (!normalizedDispatchId) {
-      const err = new Error('dispatch_id_required')
-      setError(err)
-      throw err
+      fail('dispatch_id_required')
     }
     const normalizedDescription = payload.description.trim()
     const normalizedPhotoUrl = payload.photoUrl?.trim()
@@ -43,9 +37,7 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
           throw new Error('invalid protocol')
         }
       } catch {
-        const err = new Error('photo_url_invalid')
-        setError(err)
-        throw err
+        fail('photo_url_invalid')
       }
     }
     const allowedSeverity = new Set(['low', 'medium', 'high'])
@@ -68,25 +60,15 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
       !normalizedDescription ||
       !allowedSeverity.has(payload.severity)
     ) {
-      const err = new Error('required_fields_missing')
-      setError(err)
-      throw err
+      fail('required_fields_missing')
     }
-    setLoading(true)
-    setError(undefined)
-    try {
+    await run(async ({ idempotencyKey }) => {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 10000,
         })
       })
-      const publicLocation = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      }
-      const user = await awaitFreshAuthToken(auth)
-      if (!user) throw new Error('auth_required')
       const fn = httpsCallable<
         SubmitResponderWitnessedReportRequest,
         { reportId: string; publicTrackingRef: string }
@@ -97,17 +79,10 @@ export function useSubmitResponderWitnessedReport(dispatchId: string) {
         description: normalizedDescription,
         severity: payload.severity,
         ...(normalizedPhotoUrl ? { photoUrl: normalizedPhotoUrl } : {}),
-        publicLocation,
-        idempotencyKey: keyRef.current,
+        publicLocation: { lat: position.coords.latitude, lng: position.coords.longitude },
+        idempotencyKey,
       })
-    } catch (err: unknown) {
-      const normalized = err instanceof Error ? err : new Error(String(err))
-      console.error('[useSubmitResponderWitnessedReport] submit failed:', normalized)
-      setError(normalized)
-      throw normalized
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return { submit, loading, error }

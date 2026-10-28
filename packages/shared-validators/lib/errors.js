@@ -29,25 +29,11 @@ export var BantayogErrorCode;
     BantayogErrorCode["IDEMPOTENCY_KEY_CONFLICT"] = "IDEMPOTENCY_KEY_CONFLICT";
 })(BantayogErrorCode || (BantayogErrorCode = {}));
 /**
- * Returns true if the given string is a valid BantayogErrorCode.
- * Useful for narrowing unknown error code values from external sources.
- */
-export function isBantayogErrorCode(value) {
-    return Object.values(BantayogErrorCode).includes(value);
-}
-/**
  * Returns true if the given report status is terminal (no further transitions
  * are valid — spec §5.3).
  */
 export function isTerminalReportStatus(status) {
     return status === 'closed' || status === 'resolved';
-}
-/**
- * Returns true if the given dispatch status is terminal (no further transitions
- * are valid for the responder — spec §5.4).
- */
-export function isTerminalDispatchStatus(status) {
-    return status === 'resolved' || status === 'declined';
 }
 /**
  * BantayogError is a structured error with a machine-readable code, a safe
@@ -75,17 +61,6 @@ export class BantayogError extends Error {
             ...(this.data ? { data: this.data } : {}),
         };
     }
-}
-/**
- * Create a BantayogError with a NOT_FOUND code and entity identifiers.
- * Convenience factory used across callables and triggers.
- */
-export function notFoundError(entity, id, data) {
-    return new BantayogError(BantayogErrorCode.NOT_FOUND, `${entity} '${id}' not found`, {
-        entityId: id,
-        entityType: entity,
-        ...data,
-    });
 }
 /**
  * Create a BantayogError with a INVALID_STATUS_TRANSITION code.

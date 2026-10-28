@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  type Firestore,
-  type Query,
-} from 'firebase/firestore'
+import { collection, onSnapshot, query, where, type Firestore } from 'firebase/firestore'
 import { useAuth } from '@bantayog/shared-ui'
+import { isAuthorized, scopeQuery, snapshotError } from './admin-scope'
 import { publishReportSnapshot } from './useNewReportSignal'
 
 interface Props {
@@ -66,45 +60,6 @@ export function isReportOpsDoc(doc: unknown): doc is ReportOpsDoc {
 
 const MAX_RETRIES = 3
 const LOADING_TIMEOUT_MS = 5000
-const ALLOWED_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
-
-function isAuthorized(
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-): boolean {
-  if (!ALLOWED_ROLES.has(role ?? '')) return false
-  if (role === 'municipal_admin' && !municipalityId) return false
-  if (role === 'agency_admin' && !agencyId) return false
-  return true
-}
-
-interface ScopeFields {
-  municipal: string
-  agency: string
-  agencyOperator?: '==' | 'array-contains'
-}
-
-function scopeQuery(
-  base: Query,
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-  fields: ScopeFields,
-): Query {
-  if (role === 'municipal_admin' && municipalityId) {
-    return query(base, where(fields.municipal, '==', municipalityId))
-  }
-  if (role === 'agency_admin' && agencyId) {
-    return query(base, where(fields.agency, fields.agencyOperator ?? '==', agencyId))
-  }
-  return base
-}
-
-function snapshotError(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
-}
-
 export function useFirestoreListeners({ windowType, db }: Props) {
   const { claims, loading: authLoading } = useAuth()
   const role = typeof claims?.role === 'string' ? claims.role : null

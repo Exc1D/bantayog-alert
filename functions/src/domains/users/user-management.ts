@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { getAuth } from 'firebase-admin/auth'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
@@ -134,17 +134,12 @@ export async function suspendUserCore(
       now: () => now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `suspendUser:${actor.uid}`,
         limit: 60,
         windowSeconds: 60,
         now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       const txResult = await db.runTransaction(async (tx) => {
         const userRef = db.collection('users').doc(uid)
@@ -234,17 +229,12 @@ export async function revokeUserCore(
       now: () => now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `revokeUser:${actor.uid}`,
         limit: 60,
         windowSeconds: 60,
         now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       const txResult = await db.runTransaction(async (tx) => {
         const userRef = db.collection('users').doc(uid)
@@ -332,17 +322,12 @@ export async function resetUserTotpCore(
       now: () => now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `resetUserTotp:${actor.uid}`,
         limit: 60,
         windowSeconds: 60,
         now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       const txResult = await db.runTransaction(async (tx) => {
         const userRef = db.collection('users').doc(uid)

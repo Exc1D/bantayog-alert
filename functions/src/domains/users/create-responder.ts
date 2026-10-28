@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminAuth, adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import {
@@ -43,7 +43,6 @@ export async function createResponderCore(
 ): Promise<{ uid: string; agencyId: string; availabilityStatus: 'available' }> {
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency<
     Omit<CreateResponderCoreDeps, 'now'>,
@@ -56,17 +55,12 @@ export async function createResponderCore(
       now: () => deps.now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `createResponder:${deps.actor.uid}`,
         limit: 10,
         windowSeconds: 60,
         now: deps.now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       // Verify caller agency matches payload agency.
       const callerAgencyId = deps.actor.claims.agencyId as string | undefined
