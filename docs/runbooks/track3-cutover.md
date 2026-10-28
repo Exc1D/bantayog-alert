@@ -173,7 +173,7 @@ git tag v1.0.0-pilot-live
 git push origin v1.0.0-pilot-live
 ```
 
-Update docs/progress.md:
+Record in the Phase 9 tracking issue:
 
 - Mark Phase 9 COMPLETE
 - Record: 30-day pilot clock start date/time
@@ -190,5 +190,5 @@ Update docs/progress.md:
 - [ ] Public report intake confirmed via Citizen PWA test submission
 - [ ] First report confirmed resolved in prod; SLO baseline measurements recorded
 - [ ] PDRRMO Director signature obtained; signed PDF filed at docs/pilot-launch-statement-signed.pdf
-- [ ] 30-day clock start time recorded in docs/progress.md
+- [ ] 30-day clock start time recorded in the Phase 9 tracking issue
 - [ ] v1.0.0-pilot-live tag pushed

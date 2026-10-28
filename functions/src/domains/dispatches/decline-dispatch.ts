@@ -10,7 +10,7 @@ import {
 import { adminDb } from '../../admin-init.js'
 import { IdempotencyMismatchError, withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getResponderCallableCorsOrigins } from '../shared/callable-config.js'
 
@@ -64,7 +64,6 @@ export async function declineDispatchCore(
   }
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = {
     ...deps,
     declineReason: normalizedDeclineReason,
@@ -78,18 +77,13 @@ export async function declineDispatchCore(
       now: () => now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `decline::${actor.uid}`,
         limit: 30,
         windowSeconds: 60,
         now,
         updatedAt: now.toMillis(),
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       return db.runTransaction(async (transaction) => {
         const dispatchRef = db.collection('dispatches').doc(dispatchId)

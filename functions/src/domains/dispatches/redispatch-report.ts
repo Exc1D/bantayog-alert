@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import {
@@ -50,7 +50,6 @@ export async function redispatchReportCore(
 ): Promise<{ newDispatchId: string; status: 'pending'; reportId: string }> {
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency<
     Omit<RedispatchReportCoreDeps, 'now'>,
@@ -63,17 +62,12 @@ export async function redispatchReportCore(
       now: () => deps.now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `redispatchReport:${deps.actor.uid}`,
         limit: 30,
         windowSeconds: 60,
         now: deps.now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       return db.runTransaction(async (tx) => {
         const oldDispatchRef = db.collection('dispatches').doc(deps.oldDispatchId)

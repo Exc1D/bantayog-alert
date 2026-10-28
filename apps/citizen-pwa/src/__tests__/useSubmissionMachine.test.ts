@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { Draft } from '../services/draft-store'
 import { submitDraftOnline } from '../hooks/useSubmissionMachine'
+import type { SubmitCitizenReportInput } from '../services/callables'
 
 // Minimal unit tests for submission state machine transitions.
 // These tests focus on state transition logic without Firebase mocks.
@@ -215,6 +216,44 @@ describe('useSubmissionMachine — state machine logic', () => {
           },
         },
       ])
+    })
+
+    it('uploads the saved photo and sends its uploadId as pendingMediaIds', async () => {
+      const photo = new Blob(['x'], { type: 'image/jpeg' })
+      const uploadPhoto = vi.fn().mockResolvedValue('upload-1')
+      const calls: SubmitCitizenReportInput[] = []
+
+      await submitDraftOnline(makeDraft(), {
+        ensureSignedIn: () => Promise.resolve('citizen-1'),
+        photoBlob: photo,
+        uploadPhoto,
+        submitCitizenReport: (input) => {
+          calls.push(input)
+          return Promise.resolve({
+            reportId: 'report-1',
+            publicRef: input.publicRef,
+            materialized: true,
+            replayed: false,
+          })
+        },
+      })
+
+      expect(uploadPhoto).toHaveBeenCalledWith(photo)
+      expect(calls[0]?.payload.pendingMediaIds).toEqual(['upload-1'])
+    })
+
+    it('does not submit when the photo upload fails', async () => {
+      const submit = vi.fn()
+
+      await expect(
+        submitDraftOnline(makeDraft(), {
+          ensureSignedIn: () => Promise.resolve('citizen-1'),
+          photoBlob: new Blob(['x'], { type: 'image/jpeg' }),
+          uploadPhoto: () => Promise.reject(new Error('upload failed')),
+          submitCitizenReport: submit,
+        }),
+      ).rejects.toThrow('upload failed')
+      expect(submit).not.toHaveBeenCalled()
     })
   })
 

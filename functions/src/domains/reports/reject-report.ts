@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { BantayogError, BantayogErrorCode, logDimension } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { isAccountActive } from '../ops/admin-auth.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
@@ -71,7 +71,6 @@ const log = logDimension('rejectReport')
 export async function rejectReportCore(db: Firestore, deps: RejectReportCoreDeps) {
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency(
     db,
@@ -202,17 +201,12 @@ export const rejectReport = onCall(
       console.error('rejectReport validation failed:', z.treeifyError(parsed.error))
       throw new HttpsError('invalid-argument', 'malformed payload')
     }
-    const rl = await checkRateLimit(adminDb, {
+    await enforceRateLimit(adminDb, {
       key: `rejectReport:${req.auth.uid}`,
       limit: 60,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit', {
-        retryAfterSeconds: rl.retryAfterSeconds,
-      })
-    }
 
     try {
       return await rejectReportCore(adminDb, {

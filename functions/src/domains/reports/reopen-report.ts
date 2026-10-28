@@ -10,7 +10,7 @@ import {
 } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 
@@ -41,7 +41,6 @@ export async function reopenReportCore(
 ): Promise<{ reportId: string; status: 'reopened' }> {
   const correlationId = crypto.randomUUID()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   const { result } = await withIdempotency<
     Omit<ReopenReportCoreDeps, 'now'>,
@@ -54,17 +53,12 @@ export async function reopenReportCore(
       now: () => deps.now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `reopenReport:${deps.actor.uid}`,
         limit: 30,
         windowSeconds: 60,
         now: deps.now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       return db.runTransaction(async (tx) => {
         const reportRef = db.collection('reports').doc(deps.reportId)

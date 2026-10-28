@@ -14,7 +14,7 @@ import {
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { requireAuth, bantayogErrorToHttps } from '../shared/https-error.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getResponderCallableCorsOrigins } from '../shared/callable-config.js'
 import { mirrorDispatchStatusToReportInTransaction } from '../reports/dispatch-report-mirror.js'
@@ -69,7 +69,6 @@ export const advanceDispatchCore = async (
 ) => {
   const { dispatchId, to, resolutionSummary, idempotencyKey, actor, now } = req
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = req
   const { result } = await withIdempotency(
     db,
@@ -82,17 +81,12 @@ export const advanceDispatchCore = async (
       const correlationId = crypto.randomUUID()
       const transition = await db.runTransaction(async (transaction) => {
         // Rate limit: 30 advances per 60s per responder (same as accept/decline)
-        const rl = await checkRateLimit(db, {
+        await enforceRateLimit(db, {
           key: `advanceDispatch::${actor.uid}`,
           limit: 30,
           windowSeconds: 60,
           now,
         })
-        if (!rl.allowed) {
-          throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-            retryAfterSeconds: rl.retryAfterSeconds,
-          })
-        }
 
         const dispatchRef = db.collection('dispatches').doc(dispatchId)
         const dispatchSnap = await transaction.get(dispatchRef)

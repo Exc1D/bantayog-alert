@@ -8,7 +8,7 @@ import { PDRRMO, PROVINCIAL_SUPERADMIN } from '../../constants/roles.js'
 import { streamAuditEvent } from '../ops/audit-stream.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { Timestamp } from 'firebase-admin/firestore'
 
 const HAZARD_TYPES = [
@@ -161,15 +161,12 @@ export const declareAlert = onCall(
     const { uid, claims } = requireAuth(request, [PROVINCIAL_SUPERADMIN, PDRRMO, 'municipal_admin'])
     requireMfaAuth(request)
 
-    const rl = await checkRateLimit(getFirestore(), {
+    await enforceRateLimit(getFirestore(), {
       key: `declareAlert:${uid}`,
       limit: 5,
       windowSeconds: 300,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit exceeded')
-    }
 
     return declareAlertCore(getFirestore(), request.data, { uid, claims })
   },

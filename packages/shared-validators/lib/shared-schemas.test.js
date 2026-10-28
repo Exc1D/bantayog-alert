@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { agencyAssistanceRequestDocSchema } from './coordination.js';
 import { hazardZoneDocSchema } from './hazard.js';
 import { moderationIncidentDocSchema } from './moderation.js';
-import { rateLimitDocSchema } from './rate-limits.js';
 import { idempotencyKeyDocSchema } from './idempotency-keys.js';
 import { deadLetterDocSchema } from './dead-letters.js';
 import { alertDocSchema } from './alerts-emergencies.js';
@@ -45,18 +44,6 @@ describe('hazard schemas', () => {
         expect(hazardSchemas).not.toHaveProperty('hazardSignalDocSchema');
         expect(hazardSchemas).not.toHaveProperty('hazardSignalStatusDocSchema');
         expect(exportedHazardZoneDocSchema).toBe(hazardZoneDocSchema);
-    });
-});
-describe('rate limit schema', () => {
-    it('accepts a window counter', () => {
-        expect(rateLimitDocSchema.parse({
-            key: 'citizen:submit:u-1',
-            windowStartAt: ts,
-            windowEndAt: ts + 60000,
-            count: 3,
-            limit: 10,
-            updatedAt: ts,
-        })).toMatchObject({ count: 3 });
     });
 });
 describe('idempotency key schema', () => {

@@ -1,13 +1,14 @@
 import { onCall, type CallableRequest, HttpsError } from 'firebase-functions/v2/https'
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
-import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
+import { BantayogError } from '@bantayog/shared-validators'
 import { adminDb } from '../../admin-init.js'
 import { withIdempotency } from '../../idempotency/guard.js'
 import { bantayogErrorToHttps, requireAuth } from '../shared/https-error.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { randomBytes, createHash, randomInt } from 'node:crypto'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
+import { readActiveAssignedDispatch } from '../dispatches/assigned-dispatch.js'
 
 export const submitResponderWitnessedReportSchema = z
   .object({
@@ -71,7 +72,6 @@ export async function submitResponderWitnessedReportCore(
     now,
   } = deps
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
 
   const { result } = await withIdempotency(
@@ -82,43 +82,15 @@ export async function submitResponderWitnessedReportCore(
       now: () => now.toMillis(),
     },
     async () => {
-      const rl = await checkRateLimit(db, {
+      await enforceRateLimit(db, {
         key: `submitResponderWitnessedReport:${actor.uid}`,
         limit: 30,
         windowSeconds: 60,
         now,
       })
-      if (!rl.allowed) {
-        throw new BantayogError(BantayogErrorCode.RATE_LIMITED, 'rate limit exceeded', {
-          retryAfterSeconds: rl.retryAfterSeconds,
-        })
-      }
 
       return db.runTransaction(async (tx) => {
-        const dispatchRef = db.collection('dispatches').doc(dispatchId)
-        const dispatchSnap = await tx.get(dispatchRef)
-
-        if (!dispatchSnap.exists) {
-          throw new BantayogError(BantayogErrorCode.NOT_FOUND, 'Dispatch not found')
-        }
-
-        const dispatch = dispatchSnap.data() as {
-          status: string
-          assignedTo?: { uid: string; agencyId: string; municipalityId: string }
-          reportId: string
-        }
-
-        if (dispatch.assignedTo?.uid !== actor.uid) {
-          throw new BantayogError(BantayogErrorCode.FORBIDDEN, 'Not assigned to this dispatch')
-        }
-
-        const activeStates = ['accepted', 'acknowledged', 'en_route', 'on_scene']
-        if (!activeStates.includes(dispatch.status)) {
-          throw new BantayogError(
-            BantayogErrorCode.FAILED_PRECONDITION,
-            `Dispatch must be active (current: ${dispatch.status})`,
-          )
-        }
+        const dispatch = await readActiveAssignedDispatch(db, tx, dispatchId, actor.uid)
 
         const reportId = db.collection('reports').doc().id
         const publicRef = generatePublicRef()

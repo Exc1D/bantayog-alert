@@ -102,6 +102,6 @@ Run in this order to avoid Firestore artifact interference:
 If a scenario fails:
 
 1. Classify as **environment-constrained** (staging quota, rule difference vs prod) or **real regression** (logic bug)
-2. Document in `docs/progress.md` with estimated prod impact
+2. Document in a GitHub issue with estimated prod impact
 3. Real regressions: fix if ≤3 files, otherwise track as named issue
 4. 8A exits regardless once all findings are classified

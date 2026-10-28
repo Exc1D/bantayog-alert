@@ -1,13 +1,7 @@
 import { useEffect, useState } from 'react'
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  type Firestore,
-  type Query,
-} from 'firebase/firestore'
+import { collection, onSnapshot, type Firestore } from 'firebase/firestore'
 import { useAuth } from '@bantayog/shared-ui'
+import { isAuthorized, scopeQuery } from './admin-scope'
 
 export interface ResponderRosterMember {
   uid: string
@@ -28,37 +22,6 @@ interface RosterDoc {
   updatedAt?: number
   municipalityId?: string
   agencyId?: string
-}
-
-const ALLOWED_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
-
-// Duplicated from useResponderFleet on purpose: the fleet query is the dispatch-candidate
-// boundary (available + active only); the roster is the full scoped set. Extract when a 3rd
-// caller needs the scope logic.
-function isAuthorized(
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-): boolean {
-  if (!ALLOWED_ROLES.has(role ?? '')) return false
-  if (role === 'municipal_admin' && !municipalityId) return false
-  if (role === 'agency_admin' && !agencyId) return false
-  return true
-}
-
-function scopeQuery(
-  base: Query,
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-): Query {
-  if (role === 'municipal_admin' && municipalityId) {
-    return query(base, where('municipalityId', '==', municipalityId))
-  }
-  if (role === 'agency_admin' && agencyId) {
-    return query(base, where('agencyId', '==', agencyId))
-  }
-  return base
 }
 
 export function useResponderRoster(db: Firestore) {
