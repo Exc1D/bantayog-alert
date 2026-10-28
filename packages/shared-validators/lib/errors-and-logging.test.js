@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BantayogErrorCode, isTerminalReportStatus, } from './errors.js';
+import { BantayogErrorCode, isTerminalReportStatus } from './errors.js';
 import { logEvent, LOG_DIMENSION_MAX } from './logging.js';
 // ─── BantayogErrorCode enum ────────────────────────────────────────────────
 describe('BantayogErrorCode', () => {
