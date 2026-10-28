@@ -92,8 +92,7 @@ async function isBlobReadable(blob: Blob): Promise<boolean> {
   try {
     await blob.slice(0, 1).arrayBuffer()
     return true
-  } catch (_err: unknown) {
-    void _err
+  } catch {
     return false
   }
 }
@@ -140,9 +139,7 @@ export const draftStore = {
       if (!readable) {
         await getPhotoStorage()
           .removeItem(id)
-          .catch((_e: unknown) => {
-            void _e
-          })
+          .catch(() => undefined)
         return { draft }
       }
       return { draft, photoBlob }
@@ -155,9 +152,7 @@ export const draftStore = {
     await getDraftStorage().removeItem(id)
     await getPhotoStorage()
       .removeItem(id)
-      .catch((_e: unknown) => {
-        void _e
-      })
+      .catch(() => undefined)
   },
 
   async list(): Promise<Draft[]> {
@@ -170,9 +165,7 @@ export const draftStore = {
       if (Date.now() - draft.updatedAt <= ttl) {
         fresh.push(draft)
       } else {
-        await this.clear(draft.id).catch((_e: unknown) => {
-          void _e
-        })
+        await this.clear(draft.id).catch(() => undefined)
       }
     }
     return fresh

@@ -79,10 +79,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # audit diffs against the PR base ref
-      # fallow-rs/fallow v2 branch snapshot from 2026-06-12.
-      - uses: fallow-rs/fallow@6280c23c3709f69691ebdaef9172c81a4883bdef
+      # fallow-rs/fallow action pin; CLI version must match it for binary verification.
+      - uses: fallow-rs/fallow@dd3e666178c2b938a0746d60fe75f2fd8fd5f49d
         with:
-          version: '2.91.0'
+          version: '3.31.0'
           command: audit
           gate: new-only
           fail-on-issues: true
@@ -135,7 +135,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -210,7 +210,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -234,7 +234,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'

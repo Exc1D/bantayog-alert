@@ -330,8 +330,8 @@ describe('reportDocSchema Phase 3 deltas', () => {
   })
 
   it('rejects a missing municipalityLabel', () => {
-    const { municipalityLabel, ...rest } = validBase
-    void municipalityLabel
+    const rest: Partial<typeof validBase> = { ...validBase }
+    delete rest.municipalityLabel
     expect(() => reportDocSchema.parse(rest)).toThrow()
   })
 

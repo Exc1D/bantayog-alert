@@ -6,7 +6,7 @@ import { PROVINCIAL_SUPERADMIN } from '../../constants/roles.js'
 import { requireAuth } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { getAdminCallableCorsOrigins } from '../shared/callable-config.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 
 const SURFACES = ['feed', 'alerts'] as const
 const VISIBILITIES = ['public', 'internal'] as const
@@ -147,17 +147,12 @@ export const setCitizenContentVisibility = onCall(
       throw new HttpsError('invalid-argument', 'malformed payload')
     }
 
-    const rl = await checkRateLimit(getFirestore(), {
+    await enforceRateLimit(getFirestore(), {
       key: `setCitizenContentVisibility:${uid}`,
       limit: 60,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit', {
-        retryAfterSeconds: rl.retryAfterSeconds,
-      })
-    }
 
     const actorClaims: SetCitizenContentVisibilityDeps['actor']['claims'] = {}
     if (typeof claims.role === 'string') actorClaims.role = claims.role

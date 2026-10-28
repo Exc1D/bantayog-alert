@@ -22,7 +22,6 @@ import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { ACTIVE_REPORT_STATUSES } from '@bantayog/shared-types'
 import { mapReportDocToReport } from '../utils/map-report-doc'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import {
   REJECTION_REASONS,
@@ -158,7 +157,7 @@ export default function MapPage() {
   const handleVerify = useCallback(async (id: string) => {
     try {
       // Key generated before withRetry so every attempt replays the same key.
-      const idempotencyKey = generateIdempotencyKey()
+      const idempotencyKey = crypto.randomUUID()
       await withRetry(() => callables.verifyReport({ reportId: id, idempotencyKey }))
       setSuccessMessage('Report verified')
     } catch (err) {
@@ -188,7 +187,7 @@ export default function MapPage() {
         setActionError('Admin note must be 500 characters or fewer')
         return
       }
-      const idempotencyKey = generateIdempotencyKey()
+      const idempotencyKey = crypto.randomUUID()
       await withRetry(() =>
         callables.rejectReport({
           reportId: id,
@@ -230,7 +229,7 @@ export default function MapPage() {
         return
       }
       try {
-        const idempotencyKey = generateIdempotencyKey()
+        const idempotencyKey = crypto.randomUUID()
         await withRetry(() =>
           callables.dispatchResponder({
             reportId,

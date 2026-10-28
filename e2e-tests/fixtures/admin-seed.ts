@@ -9,7 +9,7 @@ process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8081'
 
 const app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID })
 const auth = getAuth(app)
-const db = getFirestore(app)
+export const db = getFirestore(app)
 
 function isUserNotFoundError(err: unknown): boolean {
   return (
@@ -27,12 +27,12 @@ async function getUserByEmailOrNull(email: string) {
   })
 }
 
-async function ensureUser(opts: {
+export async function ensureUser(opts: {
   uid: string
   email: string
   password: string
   claims: Record<string, unknown>
-  activeAccount: Record<string, unknown>
+  activeAccount?: Record<string, unknown>
 }) {
   const user = await getUserByEmailOrNull(opts.email)
   if (user) {
@@ -41,14 +41,12 @@ async function ensureUser(opts: {
     await auth.createUser({ uid: opts.uid, email: opts.email, password: opts.password })
   }
   await auth.setCustomUserClaims(opts.uid, opts.claims)
-  await db
-    .collection('active_accounts')
-    .doc(opts.uid)
-    .set({
-      ...opts.activeAccount,
-      updatedAt: Date.now(),
-      lastClaimIssuedAt: Date.now(),
-    })
+  if (opts.activeAccount) {
+    await db
+      .collection('active_accounts')
+      .doc(opts.uid)
+      .set({ ...opts.activeAccount, updatedAt: Date.now(), lastClaimIssuedAt: Date.now() })
+  }
   return { email: opts.email, password: opts.password, uid: opts.uid }
 }
 

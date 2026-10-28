@@ -1,36 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
-import { auth, functions } from '../app/firebase'
-import { awaitFreshAuthToken } from '../app/await-auth-token'
+import { functions } from '../app/firebase'
+import { useCallableAction } from './useCallableAction'
 
 export function useAcceptDispatch(dispatchId: string) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | undefined>()
-  // Idempotency key generated once per hook mount — equivalent to 30-second client memory
-  const keyRef = useRef(crypto.randomUUID())
-  useEffect(() => {
-    keyRef.current = crypto.randomUUID()
-  }, [dispatchId])
+  const { run, loading, error } = useCallableAction('useAcceptDispatch', dispatchId)
 
   async function accept() {
-    setLoading(true)
-    setError(undefined)
-    try {
-      const user = await awaitFreshAuthToken(auth)
-      if (!user) throw new Error('auth_required')
+    await run(async ({ idempotencyKey }) => {
       const fn = httpsCallable<{ dispatchId: string; idempotencyKey: string }, { status: string }>(
         functions,
         'acceptDispatch',
       )
-      await fn({ dispatchId, idempotencyKey: keyRef.current })
-    } catch (err: unknown) {
-      console.error('[useAcceptDispatch] accept failed:', err)
-      const normalized = err instanceof Error ? err : new Error(String(err))
-      setError(normalized)
-      throw normalized
-    } finally {
-      setLoading(false)
-    }
+      await fn({ dispatchId, idempotencyKey })
+    })
   }
 
   return { accept, loading, error }

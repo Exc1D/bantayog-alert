@@ -12,13 +12,12 @@ export { userDocSchema } from './users.js';
 export { agencyAssistanceRequestDocSchema, commandChannelThreadDocSchema, commandChannelMessageDocSchema, } from './coordination.js';
 export { hazardZoneDocSchema, hazardZoneHistoryDocSchema } from './hazard.js';
 export { moderationIncidentDocSchema } from './moderation.js';
-export { rateLimitDocSchema } from './rate-limits.js';
 export { idempotencyKeyDocSchema } from './idempotency-keys.js';
 export { deadLetterDocSchema } from './dead-letters.js';
 export { alertDocSchema, emergencyDocSchema } from './alerts-emergencies.js';
 export { municipalityDocSchema, CAMARINES_NORTE_MUNICIPALITIES, mdrrmoLabelSchema, mdrrmoHotlineSchema, MDRRMO_HOTLINE_REGEX, MIN_MDRRMO_HOTLINE_DIGITS, countHotlineDigits, updateMunicipalityContactInputSchema, } from './municipalities.js';
 export { CAMARINES_NORTE_BARANGAYS, getBarangayGazetteer } from './barangays.js';
 export { dispatchToReportState, REPORT_STATES, REPORT_TRANSITIONS, isValidReportTransition, DISPATCH_STATES, DISPATCH_TRANSITIONS, CANCELLABLE_DISPATCH_STATUSES, isValidDispatchTransition, } from './state-machines/index.js';
-export { BantayogErrorCode, isBantayogErrorCode, isTerminalReportStatus, isTerminalDispatchStatus, BantayogError, notFoundError, invalidTransitionError, } from './errors.js';
+export { BantayogErrorCode, isTerminalReportStatus, BantayogError, invalidTransitionError, } from './errors.js';
 export { logEvent, logDimension, LOG_DIMENSION_MAX } from './logging.js';
 //# sourceMappingURL=index.js.map

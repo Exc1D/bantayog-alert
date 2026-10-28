@@ -33,20 +33,10 @@ export declare enum BantayogErrorCode {
     IDEMPOTENCY_KEY_CONFLICT = "IDEMPOTENCY_KEY_CONFLICT"
 }
 /**
- * Returns true if the given string is a valid BantayogErrorCode.
- * Useful for narrowing unknown error code values from external sources.
- */
-export declare function isBantayogErrorCode(value: string): value is BantayogErrorCode;
-/**
  * Returns true if the given report status is terminal (no further transitions
  * are valid — spec §5.3).
  */
 export declare function isTerminalReportStatus(status: ReportStatus): boolean;
-/**
- * Returns true if the given dispatch status is terminal (no further transitions
- * are valid for the responder — spec §5.4).
- */
-export declare function isTerminalDispatchStatus(status: DispatchStatus): boolean;
 /**
  * BantayogError is a structured error with a machine-readable code, a safe
  * user message, and an optional payload. It serializes safely to JSON and
@@ -58,11 +48,6 @@ export declare class BantayogError extends Error {
     constructor(code: BantayogErrorCode, message: string, data?: Record<string, unknown> | undefined);
     toJSON(): object;
 }
-/**
- * Create a BantayogError with a NOT_FOUND code and entity identifiers.
- * Convenience factory used across callables and triggers.
- */
-export declare function notFoundError(entity: string, id: string, data?: Record<string, unknown>): BantayogError;
 /**
  * Create a BantayogError with a INVALID_STATUS_TRANSITION code.
  */

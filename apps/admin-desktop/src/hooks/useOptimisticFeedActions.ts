@@ -20,7 +20,6 @@ function removeOptimisticState(
   reportId: string,
 ): Record<string, string> {
   const { [reportId]: _removed, ...rest } = prev
-  void _removed
   return rest
 }
 

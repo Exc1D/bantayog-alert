@@ -7,9 +7,9 @@ import {
   orderBy,
   limit,
   type Firestore,
-  type Query,
 } from 'firebase/firestore'
 import { useAuth } from '@bantayog/shared-ui'
+import { isAuthorized, scopeQuery, snapshotError } from './admin-scope'
 
 export interface DispatchEvent {
   id: string
@@ -67,38 +67,6 @@ const ALLOWED_STATUSES = [
 ]
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 const DEBOUNCE_MS = 100
-const ALLOWED_ROLES = new Set(['provincial_superadmin', 'municipal_admin', 'agency_admin'])
-
-function isAuthorized(
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-): boolean {
-  if (!ALLOWED_ROLES.has(role ?? '')) return false
-  if (role === 'municipal_admin' && !municipalityId) return false
-  if (role === 'agency_admin' && !agencyId) return false
-  return true
-}
-
-function scopeQuery(
-  base: Query,
-  role: string | null,
-  municipalityId: string | null,
-  agencyId: string | null,
-): Query {
-  if (role === 'municipal_admin' && municipalityId) {
-    return query(base, where('municipalityId', '==', municipalityId))
-  }
-  if (role === 'agency_admin' && agencyId) {
-    return query(base, where('agencyId', '==', agencyId))
-  }
-  return base
-}
-
-function snapshotError(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
-}
-
 export function resolveDispatchDeadlineAt(doc: {
   acknowledgementDeadlineAt?: number
   deadlineAt?: number

@@ -61,6 +61,7 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
     const messaging = getMessaging()
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     const msg: MulticastMessage = {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- we store FCM registration tokens, not FIDs
       tokens,
       notification: { title, body },
     }
@@ -73,6 +74,7 @@ export async function sendFcmToResponder(payload: FcmSendPayload): Promise<FcmSe
       const messaging = getMessaging()
       // eslint-disable-next-line @typescript-eslint/no-deprecated
       const msg: MulticastMessage = {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- we store FCM registration tokens, not FIDs
         tokens,
         notification: { title, body },
       }
@@ -188,6 +190,7 @@ export async function sendFcmToCitizen(payload: FcmCitizenSendPayload): Promise<
 
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   const msg: MulticastMessage = {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- we store FCM registration tokens, not FIDs
     tokens: [token],
     notification: { title, body },
   }
