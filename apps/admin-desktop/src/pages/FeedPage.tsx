@@ -9,9 +9,9 @@ import { useFirestoreListeners, type SituationUpdateDoc } from '../hooks/useFire
 import { callables } from '../services/callables'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { useOptimisticFeedActions } from '../hooks/useOptimisticFeedActions'
+import { usePendingIds } from '../hooks/usePendingIds'
 import { resolveReportMedia, type MediaItem } from '../utils/media-fetch'
 import type { Report } from '../types'
 
@@ -99,8 +99,8 @@ export default function FeedPage() {
     db,
   })
   const [drafts, setDrafts] = useState<Record<string, string>>({})
-  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set())
-  const [moderatingContentIds, setModeratingContentIds] = useState<Set<string>>(new Set())
+  const [publishingIds, whilePublishing] = usePendingIds()
+  const [moderatingContentIds, whileModerating] = usePendingIds()
   const [actionError, setActionError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [mediaUrlsByReport, setMediaUrlsByReport] = useState<Record<string, MediaItem[]>>({})
@@ -115,11 +115,11 @@ export default function FeedPage() {
       reports,
       verifyReport: async (reportId) => {
         // Keys generated before withRetry so every attempt replays the same key.
-        const idempotencyKey = generateIdempotencyKey()
+        const idempotencyKey = crypto.randomUUID()
         await withRetry(() => callables.verifyReport({ reportId, idempotencyKey }))
       },
       unpublishReport: async (reportId) => {
-        const idempotencyKey = generateIdempotencyKey()
+        const idempotencyKey = crypto.randomUUID()
         await withRetry(() =>
           callables.unpublishReport({
             reportId,
@@ -200,17 +200,18 @@ export default function FeedPage() {
   ): Promise<boolean> => {
     const visibility = isPublicVisibility(currentVisibility) ? 'internal' : 'public'
     const pendingKey = `${surface}:${contentId}`
-    setModeratingContentIds((prev) => new Set(prev).add(pendingKey))
     try {
-      const idempotencyKey = generateIdempotencyKey()
-      await withRetry(() =>
-        callables.setCitizenContentVisibility({
-          surface,
-          contentId,
-          visibility,
-          reason: surface === 'alerts' ? 'other' : 'sensitive_content',
-          idempotencyKey,
-        }),
+      const idempotencyKey = crypto.randomUUID()
+      await whileModerating(pendingKey, () =>
+        withRetry(() =>
+          callables.setCitizenContentVisibility({
+            surface,
+            contentId,
+            visibility,
+            reason: surface === 'alerts' ? 'other' : 'sensitive_content',
+            idempotencyKey,
+          }),
+        ),
       )
       setActionError(null)
       setSuccessMessage(
@@ -226,12 +227,6 @@ export default function FeedPage() {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Visibility update failed')
       return false
-    } finally {
-      setModeratingContentIds((prev) => {
-        const next = new Set(prev)
-        next.delete(pendingKey)
-        return next
-      })
     }
   }
 
@@ -332,26 +327,21 @@ export default function FeedPage() {
       setActionError('Kopyang nilinis ay hindi maaaring walang laman.')
       return
     }
-    setPublishingIds((prev) => new Set(prev).add(report.id))
     try {
-      const idempotencyKey = generateIdempotencyKey()
-      await withRetry(() =>
-        callables.verifyReport({
-          reportId: report.id,
-          scrubbedDescription,
-          idempotencyKey,
-        }),
+      const idempotencyKey = crypto.randomUUID()
+      await whilePublishing(report.id, () =>
+        withRetry(() =>
+          callables.verifyReport({
+            reportId: report.id,
+            scrubbedDescription,
+            idempotencyKey,
+          }),
+        ),
       )
       setActionError(null)
       setSuccessMessage('Na-publish sa pampublikong feed.')
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Publish failed')
-    } finally {
-      setPublishingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(report.id)
-        return next
-      })
     }
   }
 

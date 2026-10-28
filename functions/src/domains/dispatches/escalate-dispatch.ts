@@ -46,7 +46,6 @@ export async function escalateDispatchCore(db: Firestore, deps: EscalateDispatch
     idempotencyKey: deps.idempotencyKey,
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { now: _now, ...idempotentPayload } = deps
   // fallow-ignore-next-line code-duplication
   const { result } = await withIdempotency(

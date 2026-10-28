@@ -1,24 +1,17 @@
-import { useState } from 'react'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db, auth } from '../app/firebase'
-import { awaitFreshAuthToken } from '../app/await-auth-token'
+import { db } from '../app/firebase'
+import { useCallableAction } from './useCallableAction'
 
 export function useAddFieldNote(reportId: string) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | undefined>(undefined)
+  const { run, loading, error } = useCallableAction('useAddFieldNote', reportId)
 
   async function addNote(content: string): Promise<void> {
     if (!reportId.trim()) throw new Error('reportId_required')
     const trimmed = content.trim()
     if (!trimmed) throw new Error('content_required')
 
-    setLoading(true)
-    setError(undefined)
-    try {
-      const user = await awaitFreshAuthToken(auth)
-      if (!user) throw new Error('auth_required')
-      const col = collection(db, 'reports', reportId, 'field_notes')
-      await addDoc(col, {
+    await run(async ({ user }) => {
+      await addDoc(collection(db, 'reports', reportId, 'field_notes'), {
         body: trimmed,
         authorUid: user.uid,
         authorRole: 'responder',
@@ -26,13 +19,7 @@ export function useAddFieldNote(reportId: string) {
         createdAt: serverTimestamp(),
         schemaVersion: 1,
       })
-    } catch (err: unknown) {
-      const normalized = err instanceof Error ? err : new Error(String(err))
-      setError(normalized)
-      throw normalized
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return { addNote, loading, error }

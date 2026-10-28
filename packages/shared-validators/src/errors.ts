@@ -42,27 +42,11 @@ export enum BantayogErrorCode {
 }
 
 /**
- * Returns true if the given string is a valid BantayogErrorCode.
- * Useful for narrowing unknown error code values from external sources.
- */
-export function isBantayogErrorCode(value: string): value is BantayogErrorCode {
-  return Object.values(BantayogErrorCode).includes(value as BantayogErrorCode)
-}
-
-/**
  * Returns true if the given report status is terminal (no further transitions
  * are valid — spec §5.3).
  */
 export function isTerminalReportStatus(status: ReportStatus): boolean {
   return status === 'closed' || status === 'resolved'
-}
-
-/**
- * Returns true if the given dispatch status is terminal (no further transitions
- * are valid for the responder — spec §5.4).
- */
-export function isTerminalDispatchStatus(status: DispatchStatus): boolean {
-  return status === 'resolved' || status === 'declined'
 }
 
 /**
@@ -92,22 +76,6 @@ export class BantayogError extends Error {
       ...(this.data ? { data: this.data } : {}),
     }
   }
-}
-
-/**
- * Create a BantayogError with a NOT_FOUND code and entity identifiers.
- * Convenience factory used across callables and triggers.
- */
-export function notFoundError(
-  entity: string,
-  id: string,
-  data?: Record<string, unknown>,
-): BantayogError {
-  return new BantayogError(BantayogErrorCode.NOT_FOUND, `${entity} '${id}' not found`, {
-    entityId: id,
-    entityType: entity,
-    ...data,
-  })
 }
 
 /**

@@ -411,51 +411,54 @@ describe('declineDispatchCore', () => {
     },
   )
 
-  itif(available)('returns RATE_LIMITED when responder exceeds 30 declines/minute', async () => {
-    await seedActiveAccount(testEnv!, {
-      uid: 'responder-rate-limit',
-      role: 'responder',
-      municipalityId: 'daet',
-    })
+  itif(available)(
+    'returns resource-exhausted when responder exceeds 30 declines/minute',
+    async () => {
+      await seedActiveAccount(testEnv!, {
+        uid: 'responder-rate-limit',
+        role: 'responder',
+        municipalityId: 'daet',
+      })
 
-    for (let i = 0; i < 31; i++) {
-      const reportId = `report-decline-rl-${String(i)}`
-      const dispatchId = `dispatch-decline-rl-${String(i)}`
-      await seedReportAtStatusJS(testEnv!, reportId, 'assigned')
-      await seedDispatchJS(testEnv!, dispatchId, reportId, 'responder-rate-limit', 'pending')
-    }
-
-    await testEnv!.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore() as unknown as Firestore
-      const now = Timestamp.fromMillis(ts)
-
-      for (let i = 0; i < 30; i++) {
-        await declineDispatchCore(db, {
-          dispatchId: `dispatch-decline-rl-${String(i)}`,
-          declineReason: `Busy ${String(i)}`,
-          idempotencyKey: crypto.randomUUID(),
-          actor: {
-            uid: 'responder-rate-limit',
-            claims: { role: 'responder', municipalityId: 'daet' },
-          },
-          now,
-        })
+      for (let i = 0; i < 31; i++) {
+        const reportId = `report-decline-rl-${String(i)}`
+        const dispatchId = `dispatch-decline-rl-${String(i)}`
+        await seedReportAtStatusJS(testEnv!, reportId, 'assigned')
+        await seedDispatchJS(testEnv!, dispatchId, reportId, 'responder-rate-limit', 'pending')
       }
 
-      await expect(
-        declineDispatchCore(db, {
-          dispatchId: 'dispatch-decline-rl-30',
-          declineReason: 'Busy 30',
-          idempotencyKey: crypto.randomUUID(),
-          actor: {
-            uid: 'responder-rate-limit',
-            claims: { role: 'responder', municipalityId: 'daet' },
-          },
-          now,
-        }),
-      ).rejects.toMatchObject({ code: 'RATE_LIMITED' })
-    })
-  })
+      await testEnv!.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore
+        const now = Timestamp.fromMillis(ts)
+
+        for (let i = 0; i < 30; i++) {
+          await declineDispatchCore(db, {
+            dispatchId: `dispatch-decline-rl-${String(i)}`,
+            declineReason: `Busy ${String(i)}`,
+            idempotencyKey: crypto.randomUUID(),
+            actor: {
+              uid: 'responder-rate-limit',
+              claims: { role: 'responder', municipalityId: 'daet' },
+            },
+            now,
+          })
+        }
+
+        await expect(
+          declineDispatchCore(db, {
+            dispatchId: 'dispatch-decline-rl-30',
+            declineReason: 'Busy 30',
+            idempotencyKey: crypto.randomUUID(),
+            actor: {
+              uid: 'responder-rate-limit',
+              claims: { role: 'responder', municipalityId: 'daet' },
+            },
+            now,
+          }),
+        ).rejects.toMatchObject({ code: 'resource-exhausted' })
+      })
+    },
+  )
 })
 
 describe('declineDispatch callable', () => {

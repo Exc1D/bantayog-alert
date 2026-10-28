@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest'
 import { type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { guardInitTestEnvironment } from '../../../__tests__/helpers/emulator-guard.js'
 const itif = (condition: boolean) => (condition ? it : it.skip)
@@ -32,27 +32,25 @@ vi.mock('../../../admin-init.js', () => ({
 import { requestBackup, requestBackupCore } from '../request-backup.js'
 import { seedActiveAccount } from '../../../__tests__/helpers/seed-factories.js'
 
-let testEnv: RulesTestEnvironment | undefined
-let available = false
-
-beforeAll(async () => {
-  const guarded = await guardInitTestEnvironment(
-    {
-      projectId: 'request-backup-test',
-      firestore: {
-        host: 'localhost',
-        port: 8081,
-        rules:
-          'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
-      },
+// Top-level await: itif(available) is evaluated at collection time, so a
+// beforeAll-set flag would always be false and silently skip every test.
+const guarded = await guardInitTestEnvironment(
+  {
+    projectId: 'request-backup-test',
+    firestore: {
+      host: 'localhost',
+      port: 8081,
+      rules:
+        'rules_version = "2"; service cloud.firestore { match /{d=**} { allow read, write: if true; } }',
     },
-    'request-backup',
-  )
-  testEnv = guarded.env
-  available = guarded.available
-  if (!available) return
-  adminDb = testEnv!.unauthenticatedContext().firestore() as unknown as Firestore
-})
+  },
+  'request-backup',
+)
+const testEnv: RulesTestEnvironment | undefined = guarded.env
+const available = guarded.available
+if (available && testEnv) {
+  adminDb = testEnv.unauthenticatedContext().firestore() as unknown as Firestore
+}
 
 beforeEach(async () => {
   if (!available || !testEnv) return

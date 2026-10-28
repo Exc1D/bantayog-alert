@@ -3,6 +3,7 @@ import type { Draft } from '../services/draft-store'
 import { draftStore } from '../services/draft-store'
 import { ensureSignedIn } from '../services/firebase'
 import {
+  requestUploadUrl,
   submitCitizenReport,
   type SubmitCitizenReportInput,
   type SubmitCitizenReportResult,
@@ -59,6 +60,25 @@ export interface SubmitDraftOnlineDeps {
   ensureSignedIn(): Promise<string>
   submitCitizenReport(input: SubmitCitizenReportInput): Promise<SubmitCitizenReportResult>
   timeoutMs?: number
+  photoBlob?: Blob
+  uploadPhoto?(blob: Blob): Promise<string>
+}
+
+// ponytail: retries re-upload because the uploadId isn't cached on the draft,
+// which can leave orphan pending uploads; persist it on the draft if that matters.
+async function uploadPhoto(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())
+  const sha256 = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+  const { uploadUrl, uploadId } = await requestUploadUrl({
+    mimeType: blob.type || 'image/jpeg',
+    sizeBytes: blob.size,
+    sha256,
+  })
+  const res = await fetch(uploadUrl, { method: 'PUT', body: blob })
+  if (!res.ok) throw new Error(`photo upload failed: ${String(res.status)}`)
+  return uploadId
 }
 
 function normalizeTriage(triage: Draft['triage']): Draft['triage'] | undefined {
@@ -126,7 +146,12 @@ export async function submitDraftOnline(
   deps: SubmitDraftOnlineDeps,
 ): Promise<string> {
   await deps.ensureSignedIn()
-  const submit = deps.submitCitizenReport(buildSubmitCitizenReportInput(draft))
+  // Upload before submitting so a failed upload throws while the draft (and photo) still exist.
+  const mediaId =
+    deps.photoBlob && deps.uploadPhoto ? await deps.uploadPhoto(deps.photoBlob) : undefined
+  const input = buildSubmitCitizenReportInput(draft)
+  if (mediaId) input.payload = { ...input.payload, pendingMediaIds: [mediaId] }
+  const submit = deps.submitCitizenReport(input)
   const result =
     deps.timeoutMs === undefined ? await submit : await withTimeout(submit, deps.timeoutMs)
   return result.publicRef
@@ -197,10 +222,14 @@ export function useSubmissionMachine({
           updatedAt: Date.now(),
         })
 
+        const loaded = await draftStore.load(d.id)
+        const photoBlob = loaded && 'photoBlob' in loaded ? loaded.photoBlob : undefined
         const ref = await submitDraftOnline(d, {
           ensureSignedIn,
           submitCitizenReport,
           timeoutMs: SUBMIT_TIMEOUT_MS,
+          uploadPhoto,
+          ...(photoBlob ? { photoBlob } : {}),
         })
         await draftStore
           .save({ ...d, syncState: 'synced', retryCount: attemptCount })

@@ -7,7 +7,7 @@ import { BantayogError, BantayogErrorCode } from '@bantayog/shared-validators'
 import { bantayogErrorToHttps } from '../shared/https-error.js'
 import { shouldEnforceAppCheck } from '../shared/app-check-config.js'
 import { adminDb } from '../../admin-init.js'
-import { checkRateLimit } from '../shared/rate-limit.js'
+import { enforceRateLimit } from '../shared/enforce-rate-limit.js'
 import { getCitizenCallableCorsOrigins } from '../shared/callable-config.js'
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp'])
@@ -96,6 +96,7 @@ export async function requestUploadUrlImpl(
 
 export const requestUploadUrl = onCall(
   {
+    region: 'asia-southeast1',
     cors: getCitizenCallableCorsOrigins(),
     enforceAppCheck: shouldEnforceAppCheck(),
     maxInstances: 10,
@@ -104,15 +105,12 @@ export const requestUploadUrl = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Must be signed in to request upload URL.')
     }
-    const rl = await checkRateLimit(adminDb, {
+    await enforceRateLimit(adminDb, {
       key: `requestUploadUrl:${request.auth.uid}`,
       limit: 20,
       windowSeconds: 60,
       now: Timestamp.now(),
     })
-    if (!rl.allowed) {
-      throw new HttpsError('resource-exhausted', 'rate limit exceeded')
-    }
     try {
       return await requestUploadUrlImpl({
         auth: request.auth,

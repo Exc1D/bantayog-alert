@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OfflineBanner } from '../components/OfflineBanner'
 import { SuccessBanner } from '../components/SuccessBanner'
@@ -14,7 +14,6 @@ import { HelpModal } from '../components/HelpModal'
 import { ReDispatchModal } from '../components/ReDispatchModal'
 import { ActionErrorBanner } from '../components/ActionErrorBanner'
 import { StatusBar } from '../components/StatusBar'
-import { generateIdempotencyKey } from '../utils/generateIdempotencyKey'
 import { withRetry } from '../utils/withRetry'
 import { deriveDashboardMode } from '../utils/dashboard-mode'
 import type { DashboardMode } from '../utils/dashboard-mode'
@@ -24,6 +23,7 @@ import { useResponderFleet } from '../hooks/useResponderFleet'
 import { useOpsMetrics } from '../hooks/useOpsMetrics'
 import { useFirestoreListeners } from '../hooks/useFirestoreListeners'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { usePendingIds } from '../hooks/usePendingIds'
 import { useWindowSyncContext } from '../providers/WindowSyncProvider'
 import { db } from '../app/firebase'
 import { mapReportDocToReportLoose } from '../utils/map-report-doc'
@@ -521,7 +521,7 @@ export default function DashboardPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDispatching, setIsDispatching] = useState(false)
-  const [verifyingReportIds, setVerifyingReportIds] = useState<Set<string>>(() => new Set())
+  const [verifyingReportIds, whileVerifying] = usePendingIds()
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState(() => Date.now())
 
   const stalledDispatches = useMemo(() => getStalledDispatches(rows), [rows])
@@ -568,66 +568,55 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { sendSync } = useWindowSyncContext()
 
-  const handleReDispatch = useCallback((dispatchId: string) => {
+  const handleReDispatch = (dispatchId: string) => {
     setSelectedDispatchId(dispatchId)
     setReDispatchModalOpen(true)
-  }, [])
+  }
 
-  const handleConfirmReDispatch = useCallback(
-    async (newResponderUid: string) => {
-      if (!selectedDispatchId) return
-      setIsDispatching(true)
-      setActionError(null)
-      try {
-        const idempotencyKey = generateIdempotencyKey()
-        await withRetry(() =>
-          callables.redispatchReport({
-            oldDispatchId: selectedDispatchId,
-            newResponderUid,
-            reason: 'Re-dispatched via dashboard',
-            idempotencyKey,
-          }),
-        )
-        setSuccessMessage('Re-dispatched successfully')
-        setActionError(null)
-        setReDispatchModalOpen(false)
-        setSelectedDispatchId(null)
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Re-dispatch failed')
-        setSuccessMessage(null)
-      } finally {
-        setIsDispatching(false)
-      }
-    },
-    [selectedDispatchId],
-  )
-
-  const handleSelectMunicipality = useCallback(
-    (municipality: string) => {
-      void navigate(`/map?municipalityId=${encodeURIComponent(municipality)}`)
-      sendSync({ type: 'select:municipality', municipalityId: municipality, source: 'dashboard' })
-    },
-    [navigate, sendSync],
-  )
-
-  const handleVerifyReport = useCallback(async (reportId: string) => {
-    setVerifyingReportIds((prev) => new Set(prev).add(reportId))
+  const handleConfirmReDispatch = async (newResponderUid: string) => {
+    if (!selectedDispatchId) return
+    setIsDispatching(true)
     setActionError(null)
-    const idempotencyKey = generateIdempotencyKey()
     try {
-      const result = await withRetry(() => callables.verifyReport({ reportId, idempotencyKey }))
+      const idempotencyKey = crypto.randomUUID()
+      await withRetry(() =>
+        callables.redispatchReport({
+          oldDispatchId: selectedDispatchId,
+          newResponderUid,
+          reason: 'Re-dispatched via dashboard',
+          idempotencyKey,
+        }),
+      )
+      setSuccessMessage('Re-dispatched successfully')
+      setActionError(null)
+      setReDispatchModalOpen(false)
+      setSelectedDispatchId(null)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Re-dispatch failed')
+      setSuccessMessage(null)
+    } finally {
+      setIsDispatching(false)
+    }
+  }
+
+  const handleSelectMunicipality = (municipality: string) => {
+    void navigate(`/map?municipalityId=${encodeURIComponent(municipality)}`)
+    sendSync({ type: 'select:municipality', municipalityId: municipality, source: 'dashboard' })
+  }
+
+  const handleVerifyReport = async (reportId: string) => {
+    setActionError(null)
+    const idempotencyKey = crypto.randomUUID()
+    try {
+      const result = await whileVerifying(reportId, () =>
+        withRetry(() => callables.verifyReport({ reportId, idempotencyKey })),
+      )
       setSuccessMessage(result.status === 'verified' ? 'Report verified' : 'Report sent to review')
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Report verification failed')
       setSuccessMessage(null)
-    } finally {
-      setVerifyingReportIds((prev) => {
-        const next = new Set(prev)
-        next.delete(reportId)
-        return next
-      })
     }
-  }, [])
+  }
 
   useKeyboardShortcuts([
     {

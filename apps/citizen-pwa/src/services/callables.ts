@@ -68,6 +68,20 @@ export async function registerCitizen(): Promise<{
   }
 }
 
+export async function requestUploadUrl(input: {
+  mimeType: string
+  sizeBytes: number
+  sha256: string
+}): Promise<{ uploadUrl: string; uploadId: string }> {
+  const callable = httpsCallable(fns(), 'requestUploadUrl')
+  const result = await callable(input)
+  const data = result.data as Record<string, unknown>
+  if (typeof data.uploadUrl !== 'string' || typeof data.uploadId !== 'string') {
+    throw new Error('invalid server response')
+  }
+  return { uploadUrl: data.uploadUrl, uploadId: data.uploadId }
+}
+
 const idempotencyKeys = new Map<string, string>()
 
 export async function submitCitizenReport(
