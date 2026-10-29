@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ComponentProps } from 'react'
 import { TriagePanel } from '../components/TriagePanel'
 
 const mockReport = {
@@ -31,33 +32,34 @@ const mockResponders = [
   { uid: 'u3', displayName: 'Charlie', agency: 'BFP' },
 ]
 
+type PanelProps = ComponentProps<typeof TriagePanel>
+
+function panelProps(overrides: Partial<PanelProps> = {}): PanelProps {
+  return {
+    report: verifiedReport,
+    onClose: vi.fn(),
+    onVerify: vi.fn(),
+    onReject: vi.fn(),
+    onDispatch: vi.fn(),
+    ...overrides,
+  }
+}
+
+function renderPanel(overrides: Partial<PanelProps> = {}) {
+  return render(<TriagePanel {...panelProps(overrides)} />)
+}
+
 describe('TriagePanel', () => {
   it('resets dispatch state when report changes', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(
-      <TriagePanel
-        report={verifiedReport}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    const { rerender } = renderPanel({ responders: mockResponders })
 
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
     expect(screen.getByRole('combobox', { name: 'Select Agency' })).toBeInTheDocument()
 
     // Switch to a different report that still allows dispatch
     rerender(
-      <TriagePanel
-        report={verifiedReport2}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
+      <TriagePanel {...panelProps({ report: verifiedReport2, responders: mockResponders })} />,
     )
 
     // Dispatch form should be closed
@@ -67,43 +69,19 @@ describe('TriagePanel', () => {
   })
 
   it('does not render when no report', () => {
-    render(
-      <TriagePanel
-        report={null}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ report: null })
     expect(screen.queryByText('Report Detail')).not.toBeInTheDocument()
   })
 
   it('renders report details', () => {
-    render(
-      <TriagePanel
-        report={awaitingReport}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ report: awaitingReport })
     expect(screen.getByText('Water rising')).toBeInTheDocument()
   })
 
   it('calls onVerify when verify clicked', async () => {
     const user = userEvent.setup()
     const onVerify = vi.fn()
-    render(
-      <TriagePanel
-        report={awaitingReport}
-        onClose={vi.fn()}
-        onVerify={onVerify}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ report: awaitingReport, onVerify })
     await user.click(screen.getByRole('button', { name: 'Verify' }))
     expect(onVerify).toHaveBeenCalledWith('r1')
   })
@@ -112,15 +90,7 @@ describe('TriagePanel', () => {
     const user = userEvent.setup()
     const error = new Error('reject failed')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    render(
-      <TriagePanel
-        report={awaitingReport}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn().mockRejectedValue(error)}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ report: awaitingReport, onReject: vi.fn().mockRejectedValue(error) })
 
     await user.click(screen.getByRole('button', { name: 'Reject' }))
 
@@ -134,15 +104,7 @@ describe('TriagePanel', () => {
   })
 
   it('has dialog role and aria-modal', () => {
-    render(
-      <TriagePanel
-        report={verifiedReport}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel()
     const panel = screen.getByRole('dialog')
     expect(panel).toHaveAttribute('aria-modal', 'true')
     expect(panel).toHaveAttribute('aria-labelledby', 'triage-panel-title')
@@ -151,16 +113,7 @@ describe('TriagePanel', () => {
 
   it('shows agency allowlist in dispatch form', async () => {
     const user = userEvent.setup()
-    render(
-      <TriagePanel
-        report={verifiedReport}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ responders: mockResponders })
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
     const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     expect(agencySelect).toBeInTheDocument()
@@ -176,16 +129,7 @@ describe('TriagePanel', () => {
     ['acknowledged', acknowledgedReport],
   ])('does not expose dispatch controls for %s reports', (_status, report) => {
     const onDispatch = vi.fn()
-    render(
-      <TriagePanel
-        report={report}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={onDispatch}
-      />,
-    )
+    renderPanel({ report, responders: mockResponders, onDispatch })
 
     expect(screen.queryByRole('button', { name: 'Dispatch Responder' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /hold to dispatch/i })).not.toBeInTheDocument()
@@ -194,16 +138,7 @@ describe('TriagePanel', () => {
 
   it('filters responders by selected agency', async () => {
     const user = userEvent.setup()
-    render(
-      <TriagePanel
-        report={verifiedReport}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ responders: mockResponders })
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
     const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     await user.selectOptions(agencySelect, 'BFP')
@@ -217,16 +152,7 @@ describe('TriagePanel', () => {
 
   it('shows "No responders available" when agency has no responders', async () => {
     const user = userEvent.setup()
-    render(
-      <TriagePanel
-        report={verifiedReport}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ responders: mockResponders })
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
     const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     await user.selectOptions(agencySelect, 'MDRRMO')
@@ -235,16 +161,7 @@ describe('TriagePanel', () => {
 
   it('clears responder selection when agency changes', async () => {
     const user = userEvent.setup()
-    render(
-      <TriagePanel
-        report={verifiedReport}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={vi.fn()}
-      />,
-    )
+    renderPanel({ responders: mockResponders })
     await user.click(screen.getByRole('button', { name: 'Dispatch Responder' }))
     const agencySelect = screen.getByRole('combobox', { name: 'Select Agency' })
     await user.selectOptions(agencySelect, 'BFP')
@@ -265,16 +182,7 @@ describe('TriagePanel', () => {
   it('triggers dispatch via keyboard Space hold for 1000ms', () => {
     vi.useFakeTimers()
     const onDispatch = vi.fn()
-    render(
-      <TriagePanel
-        report={verifiedReport}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={onDispatch}
-      />,
-    )
+    renderPanel({ responders: mockResponders, onDispatch })
 
     fireEvent.click(screen.getByRole('button', { name: /dispatch responder/i }))
     const agencySelect = screen.getByRole('combobox', { name: /select agency/i })
@@ -298,16 +206,7 @@ describe('TriagePanel', () => {
   it('does not re-trigger dispatch when keydown repeats', () => {
     vi.useFakeTimers()
     const onDispatch = vi.fn()
-    render(
-      <TriagePanel
-        report={verifiedReport}
-        responders={mockResponders}
-        onClose={vi.fn()}
-        onVerify={vi.fn()}
-        onReject={vi.fn()}
-        onDispatch={onDispatch}
-      />,
-    )
+    renderPanel({ responders: mockResponders, onDispatch })
     fireEvent.click(screen.getByRole('button', { name: /dispatch responder/i }))
     const agencySelect2 = screen.getByRole('combobox', { name: /select agency/i })
     fireEvent.change(agencySelect2, { target: { value: 'BFP' } })

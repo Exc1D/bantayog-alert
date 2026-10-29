@@ -66,24 +66,13 @@ export function Step2WhoWhere({
   const [hasMemory, setHasMemory] = useState(false)
   const [municipalityError, setMunicipalityError] = useState<string | null>(null)
 
-  /* eslint-disable react-hooks/set-state-in-effect -- restoring persisted wizard state is the canonical use for setState-in-effect */
+  // Name, phone and confidence are restored by the useState initializers above.
+  // locationMethod lives in useGpsLocation, which has no initial-value param.
+  // Municipality / barangay hooks expose no setters, so the user re-selects them.
   useEffect(() => {
-    if (!initialValues) return
-    if (initialValues.reporterName) {
-      setReporterName(initialValues.reporterName)
-    }
-    if (initialValues.reporterMsisdn) {
-      setReporterMsisdn(initialValues.reporterMsisdn)
-    }
-    if (initialValues.locationConfidence) {
-      setLocationConfidence(initialValues.locationConfidence)
-    }
-    if (initialValues.locationMethod) setLocationMethod(initialValues.locationMethod)
-    // Municipality / barangay are handled via useMunicipalityBarangays; those
-    // hooks don't expose setters, so the user re-selects location.
+    if (initialValues?.locationMethod) setLocationMethod(initialValues.locationMethod)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   /* eslint-disable react-hooks/set-state-in-effect -- restoring session storage for name/phone */
   useEffect(() => {
@@ -177,8 +166,7 @@ export function Step2WhoWhere({
 
   const canProceed =
     (locationMethod === 'gps' && !!location) ||
-    (locationMethod === 'manual' && !!selectedMunicipalityId) ||
-    false
+    (locationMethod === 'manual' && !!selectedMunicipalityId)
 
   return (
     <div className="min-h-[100dvh] bg-surface-100 flex flex-col">

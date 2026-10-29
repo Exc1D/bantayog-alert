@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
-import TriagePage, { buildTriageExportCsv } from './TriagePage'
+import TriagePage from './TriagePage'
+import { buildTriageExportCsv } from '../utils/triage-export'
 
 const mockNavigate = vi.fn()
 const mockVerifyReport = vi.hoisted(() =>
