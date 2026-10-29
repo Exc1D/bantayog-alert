@@ -117,6 +117,209 @@ function ItemHeader({ kind, kindClass, time }: { kind: string; kindClass: string
   )
 }
 
+function VisibilityToggle({
+  isPublic,
+  pending,
+  disabled = false,
+  hideLabel,
+  subject,
+  restoreSubject = subject,
+  onClick,
+}: {
+  isPublic: boolean
+  pending: boolean
+  disabled?: boolean
+  hideLabel: string
+  subject: string
+  restoreSubject?: string
+  onClick: () => void
+}) {
+  const action = isPublic ? hideLabel : 'Restore'
+  return (
+    <button
+      type="button"
+      disabled={disabled || pending}
+      onClick={onClick}
+      className={SMALL_BUTTON_CLASS}
+      aria-label={`${action} ${isPublic ? subject : restoreSubject}`}
+    >
+      {pending ? 'Updating...' : action}
+    </button>
+  )
+}
+
+function postMeta({
+  barangayLabel,
+  municipalityLabel,
+  municipalityId,
+  reportedCount,
+  authorUid,
+}: SituationUpdateDoc): string {
+  const place = municipalityLabel ?? municipalityId ?? 'Location pending'
+  const parts = [barangayLabel ? `${barangayLabel}, ${place}` : place]
+  if (typeof reportedCount === 'number') {
+    parts.push(`${String(reportedCount)} report${reportedCount === 1 ? '' : 's'}`)
+  }
+  if (authorUid) parts.push(`by ${authorUid}`)
+  return parts.join(' · ')
+}
+
+function reportLocation({ municipality, barangay }: Report): string {
+  if (!municipality && !barangay) return 'Location pending'
+  return `${municipality || 'Unknown municipality'} · ${barangay || 'Unknown barangay'}`
+}
+
+function AlertItem({
+  alert,
+  alertId,
+  pending,
+  onToggleVisibility,
+}: {
+  alert: Record<string, unknown>
+  alertId: string
+  pending: boolean
+  onToggleVisibility: (alertId: string, currentVisibility: unknown) => void
+}) {
+  const isPublic = isPublicVisibility(alert.visibility)
+  const municipalities = readStringList(alert, 'affectedMunicipalityIds')
+  return (
+    <article className="rounded-lg bg-[var(--color-surface)] p-3">
+      <ItemHeader
+        kind={readString(alert, 'hazardType') || 'official alert'}
+        kindClass="text-[var(--color-danger)]"
+        time={toMillis(alert.publishedAt ?? alert.declaredAt)}
+      />
+      <p className="text-sm text-[var(--color-text-primary)]">
+        {readString(alert, 'message') || 'Alert details pending'}
+      </p>
+      <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+        {municipalities.length > 0 ? municipalities.join(', ') : 'Province-wide'}
+      </p>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <VisibilityPill isPublic={isPublic} />
+        <VisibilityToggle
+          isPublic={isPublic}
+          pending={pending}
+          disabled={!alertId}
+          hideLabel="Retire"
+          subject={`alert ${alertId}`}
+          restoreSubject={`retired alert ${alertId}`}
+          onClick={() => {
+            if (alertId) onToggleVisibility(alertId, alert.visibility)
+          }}
+        />
+      </div>
+    </article>
+  )
+}
+
+function CitizenPostItem({
+  update,
+  pending,
+  onToggleVisibility,
+  onHideAuthor,
+}: {
+  update: SituationUpdateDoc
+  pending: boolean
+  onToggleVisibility: (updateId: string, currentVisibility: unknown) => void
+  onHideAuthor: (authorUid: string) => void
+}) {
+  const isPublic = isPublicVisibility(update.visibility)
+  const { authorUid } = update
+  return (
+    <article className="rounded-lg bg-[var(--color-surface)] p-3">
+      <ItemHeader
+        kind={update.hazardType ?? 'situation'}
+        kindClass="text-[var(--color-info)]"
+        time={toMillis(update.createdAt)}
+      />
+      <p className="text-sm text-[var(--color-text-primary)]">
+        {update.body ?? 'Situation details pending'}
+      </p>
+      <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">{postMeta(update)}</p>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <VisibilityPill isPublic={isPublic} />
+        <div className="flex items-center gap-2">
+          {authorUid && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                onHideAuthor(authorUid)
+              }}
+              className={SMALL_BUTTON_CLASS}
+              aria-label={`Hide all posts by ${authorUid}`}
+            >
+              Hide all by author
+            </button>
+          )}
+          <VisibilityToggle
+            isPublic={isPublic}
+            pending={pending}
+            hideLabel="Hide"
+            subject={`situation update ${update.id}`}
+            onClick={() => {
+              onToggleVisibility(update.id, update.visibility)
+            }}
+          />
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function PublicReportItem({ item, media }: { item: FeedReport; media: readonly MediaItem[] }) {
+  const { report } = item
+  const featuredIds = report.featuredMediaIds ?? []
+  // Only admin-featured photos are shown to citizens.
+  const visibleMedia = media.filter((m) => featuredIds.includes(m.uploadId))
+  return (
+    <article className="rounded-lg bg-[var(--color-surface)] p-3">
+      <div className="flex items-start gap-2">
+        <div
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+          style={{
+            backgroundColor: SEVERITY_COLORS[report.severity] ?? 'var(--color-text-muted)',
+          }}
+          aria-hidden="true"
+        >
+          {report.type.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+            {report.municipality || 'Unknown municipality'}
+          </p>
+          <p className="text-[11px] text-[var(--color-text-muted)]">
+            {formatFeedTime(reportMillis(item))} · {reportLocation(report)}
+          </p>
+        </div>
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-primary)]">
+        {report.description.trim() || 'Report details pending'}
+      </p>
+      {visibleMedia.length > 0 && (
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          {visibleMedia.slice(0, 4).map((m, index) => (
+            <img
+              key={m.uploadId}
+              src={m.url}
+              alt={`Public report media ${String(index + 1)}`}
+              className="aspect-video w-full rounded-md object-cover"
+            />
+          ))}
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-text-muted)]">
+        <span className="rounded-full bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[var(--color-success)]">
+          Published
+        </span>
+        <span>{report.type}</span>
+        <span>{report.severity}</span>
+      </div>
+    </article>
+  )
+}
+
 export function OfficialAlertsWidget({
   alerts,
   moderatingIds,
@@ -136,40 +339,14 @@ export function OfficialAlertsWidget({
       <div className="space-y-3">
         {alerts.map((alert, index) => {
           const alertId = readString(alert, 'id') || readString(alert, 'alertId')
-          const isPublic = isPublicVisibility(alert.visibility)
-          const pending = moderatingIds.has(`alerts:${alertId}`)
-          const municipalities = readStringList(alert, 'affectedMunicipalityIds')
           return (
-            <article
+            <AlertItem
               key={alertId || `alert-${String(index)}`}
-              className="rounded-lg bg-[var(--color-surface)] p-3"
-            >
-              <ItemHeader
-                kind={readString(alert, 'hazardType') || 'official alert'}
-                kindClass="text-[var(--color-danger)]"
-                time={toMillis(alert.publishedAt ?? alert.declaredAt)}
-              />
-              <p className="text-sm text-[var(--color-text-primary)]">
-                {readString(alert, 'message') || 'Alert details pending'}
-              </p>
-              <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
-                {municipalities.length > 0 ? municipalities.join(', ') : 'Province-wide'}
-              </p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <VisibilityPill isPublic={isPublic} />
-                <button
-                  type="button"
-                  disabled={!alertId || pending}
-                  onClick={() => {
-                    if (alertId) onToggleVisibility(alertId, alert.visibility)
-                  }}
-                  className={SMALL_BUTTON_CLASS}
-                  aria-label={`${isPublic ? 'Retire' : 'Restore retired'} alert ${alertId}`}
-                >
-                  {pending ? 'Updating...' : isPublic ? 'Retire' : 'Restore'}
-                </button>
-              </div>
-            </article>
+              alert={alert}
+              alertId={alertId}
+              pending={moderatingIds.has(`alerts:${alertId}`)}
+              onToggleVisibility={onToggleVisibility}
+            />
           )
         })}
       </div>
@@ -196,60 +373,15 @@ export function CitizenPostsWidget({
       {...(updates.length === 0 ? { emptyText: 'No citizen situation posts in scope.' } : {})}
     >
       <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
-        {updates.map((update) => {
-          const isPublic = isPublicVisibility(update.visibility)
-          const pending = moderatingIds.has(`feed:${update.id}`)
-          const { authorUid, reportedCount } = update
-          return (
-            <article key={update.id} className="rounded-lg bg-[var(--color-surface)] p-3">
-              <ItemHeader
-                kind={update.hazardType ?? 'situation'}
-                kindClass="text-[var(--color-info)]"
-                time={toMillis(update.createdAt)}
-              />
-              <p className="text-sm text-[var(--color-text-primary)]">
-                {update.body ?? 'Situation details pending'}
-              </p>
-              <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
-                {update.barangayLabel ? `${update.barangayLabel}, ` : ''}
-                {update.municipalityLabel ?? update.municipalityId ?? 'Location pending'}
-                {typeof reportedCount === 'number'
-                  ? ` · ${String(reportedCount)} report${reportedCount === 1 ? '' : 's'}`
-                  : ''}
-                {authorUid ? ` · by ${authorUid}` : ''}
-              </p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <VisibilityPill isPublic={isPublic} />
-                <div className="flex items-center gap-2">
-                  {authorUid && (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => {
-                        onHideAuthor(authorUid)
-                      }}
-                      className={SMALL_BUTTON_CLASS}
-                      aria-label={`Hide all posts by ${authorUid}`}
-                    >
-                      Hide all by author
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => {
-                      onToggleVisibility(update.id, update.visibility)
-                    }}
-                    className={SMALL_BUTTON_CLASS}
-                    aria-label={`${isPublic ? 'Hide' : 'Restore'} situation update ${update.id}`}
-                  >
-                    {pending ? 'Updating...' : isPublic ? 'Hide' : 'Restore'}
-                  </button>
-                </div>
-              </div>
-            </article>
-          )
-        })}
+        {updates.map((update) => (
+          <CitizenPostItem
+            key={update.id}
+            update={update}
+            pending={moderatingIds.has(`feed:${update.id}`)}
+            onToggleVisibility={onToggleVisibility}
+            onHideAuthor={onHideAuthor}
+          />
+        ))}
       </div>
     </SidebarWidget>
   )
@@ -270,67 +402,13 @@ export function PublicFeedPreview({
       {...(reports.length === 0 ? { emptyText: 'No reports are visible to citizens yet.' } : {})}
     >
       <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
-        {reports.map((item) => {
-          const { report } = item
-          const reportMedia = mediaUrlsByReport[report.id] ?? []
-          const featuredIds = report.featuredMediaIds ?? []
-          // Only admin-featured photos are shown to citizens.
-          const visibleMedia = reportMedia.filter((media) => featuredIds.includes(media.uploadId))
-          const location =
-            report.municipality || report.barangay
-              ? `${report.municipality || 'Unknown municipality'} · ${
-                  report.barangay || 'Unknown barangay'
-                }`
-              : 'Location pending'
-          return (
-            <article
-              key={`public-${report.id}`}
-              className="rounded-lg bg-[var(--color-surface)] p-3"
-            >
-              <div className="flex items-start gap-2">
-                <div
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                  style={{
-                    backgroundColor: SEVERITY_COLORS[report.severity] ?? 'var(--color-text-muted)',
-                  }}
-                  aria-hidden="true"
-                >
-                  {report.type.slice(0, 1).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                    {report.municipality || 'Unknown municipality'}
-                  </p>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">
-                    {formatFeedTime(reportMillis(item))} · {location}
-                  </p>
-                </div>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-primary)]">
-                {report.description.trim() || 'Report details pending'}
-              </p>
-              {visibleMedia.length > 0 && (
-                <div className="mt-2 grid grid-cols-2 gap-1.5">
-                  {visibleMedia.slice(0, 4).map((media, index) => (
-                    <img
-                      key={media.uploadId}
-                      src={media.url}
-                      alt={`Public report media ${String(index + 1)}`}
-                      className="aspect-video w-full rounded-md object-cover"
-                    />
-                  ))}
-                </div>
-              )}
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-text-muted)]">
-                <span className="rounded-full bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[var(--color-success)]">
-                  Published
-                </span>
-                <span>{report.type}</span>
-                <span>{report.severity}</span>
-              </div>
-            </article>
-          )
-        })}
+        {reports.map((item) => (
+          <PublicReportItem
+            key={`public-${item.report.id}`}
+            item={item}
+            media={mediaUrlsByReport[item.report.id] ?? []}
+          />
+        ))}
       </div>
     </SidebarWidget>
   )
