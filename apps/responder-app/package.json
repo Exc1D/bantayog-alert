@@ -30,7 +30,7 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
-    "vitest": "^4.1.10",
+    "vitest": "^5.0.5",
     "@capacitor/cli": "^8.4.1",
     "vite": "^8.3.5",
     "@testing-library/jest-dom": "^6.4.0",
